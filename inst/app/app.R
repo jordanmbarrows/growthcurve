@@ -667,11 +667,22 @@ server <- function(input, output, session) {
   })
   
   options(
-    shiny.error = function(e) {
-      gc_silent(growthcurve:::gc_log_block(
-        "SHINY ERROR",
-        list(message = conditionMessage(e), callstack = sys.calls())
-      ))
+    shiny.error = function(e = NULL) {
+      
+      msg <- tryCatch(
+        if (!is.null(e)) conditionMessage(e) else "Unknown shiny error (no condition)",
+        error = function(...) "Failed to extract error message"
+      )
+      
+      gc_silent(
+        growthcurve:::gc_log_block(
+          "SHINY ERROR",
+          list(
+            message   = msg,
+            callstack = try(sys.calls(), silent = TRUE)
+          )
+        )
+      )
     }
   )
   
