@@ -9,7 +9,7 @@
 A comprehensive Shiny application for analyzing microbial growth curves from plate reader and oCelloscope instruments. Provides tools for single-plate analysis, batch processing, and results aggregation with interactive visualization and quality control flagging.
 }
 \author{
-\strong{Maintainer}: Jordan Barrows \email{jordanmbarrows@example.com}
+\strong{Maintainer}: Jordan Barrows \email{jordan.m.barrows@gmail.com}
 
 }
 \keyword{internal}
