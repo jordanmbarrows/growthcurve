@@ -48,7 +48,13 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
   
 } else {
   shiny::tagList(
-    titlePanel("Growth Curve Analysis"),
+    titlePanel(
+      div(
+        "Growth Curve Analysis",
+        uiOutput("dev_badge")  
+      )
+    )
+    ,
     
     wellPanel(
       h4("Working directory"),
@@ -526,36 +532,11 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       "
       )
     ),
-    tags$script(
-      HTML(
-        "
-        (function() {
-          let clicks = 0;
-          let timer = null;
-
-          document.addEventListener('DOMContentLoaded', function() {
-            const el = document.getElementById('dev_toggle');
-            if (!el) return;
-
-            el.addEventListener('click', function() {
-              clicks++;
-
-              clearTimeout(timer);
-              timer = setTimeout(() => { clicks = 0; }, 1500);
-
-              if (clicks >= 5) {
-                Shiny.setInputValue('dev_toggle_clicks', Math.random(), {priority: 'event'});
-                clicks = 0;
-              }
-            });
-          });
-        })();
-      "
-      )
-    ),
+    # Debug panel (dev mode only)
+    uiOutput("debug_panel"),
+    
     # ---- App version footer ----
     div(
-      id = "dev_toggle",
       style = "
     position: fixed;
     bottom: 6px;
@@ -621,6 +602,66 @@ server <- function(input, output, session) {
     } else {
       ""
     }
+  })
+  
+  #Debug panel; add options here as desired
+  
+  output$debug_panel <- renderUI({
+    if (!gc_dev_mode()) return(NULL)
+    
+    tags$div(
+      style = "
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #f5f5f5;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 12px;
+    ",
+      
+      tags$h4("🔧 Debug Panel"),
+      
+      tags$strong("Working directory:"), br(),
+      verbatimTextOutput("dbg_wd"),
+      
+      tags$strong("Dev mode:"), br(),
+      verbatimTextOutput("dbg_dev"),
+      
+      tags$strong("Selected files:"), br(),
+      verbatimTextOutput("dbg_files")
+    )
+  })
+  
+  output$dbg_wd <- renderPrint({
+    wd_path()
+  })
+  
+  output$dbg_dev <- renderPrint({
+    getOption("gc.dev_mode")
+  })
+  
+  output$dbg_files <- renderPrint({
+    list(
+      raw = input$raw_file,
+      design = input$design_file
+    )
+  })
+  
+  output$dev_badge <- renderUI({
+    if (!gc_dev_mode()) return(NULL)
+    
+    tags$div(
+      "DEV MODE",
+      style = "
+      color: white;
+      background-color: #d9534f;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: inline-block;
+      margin-left: 10px;
+    "
+    )
   })
   
   options(
