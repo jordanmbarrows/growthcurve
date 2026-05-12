@@ -21,7 +21,7 @@
 #
 # All CSV reading MUST go through read_csv_safe().
 # No direct read.csv(), read.table(), or delimiter detection allowed.
-# 
+#
 # All CSV output MUST go through write_csv_safe().
 # Do NOT use write.csv() or write.table() directly,
 # or regional formatting will break.
@@ -59,8 +59,9 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
         "wd",
         "Working directory path",
         value = if (isTRUE(DEV_DEFAULT))
-          "C:/Users/Jordan/Desktop/Shiny app development/dev/Dummy data/" 
-        else ""
+          "C:/Users/Jordan/Desktop/Shiny app development/dev/Dummy data/"
+        else
+          ""
       ),
       actionButton("set_wd", "Set working directory"),
       actionButton("refresh_files", "Refresh files"),
@@ -107,10 +108,9 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           
           h4("CSV format (regional settings)"),
           
-          tags$p(
-            "Detected:",
-            tags$strong(textOutput("region_detected_txt", inline = TRUE))
-          ),
+          tags$p("Detected:", tags$strong(
+            textOutput("region_detected_txt", inline = TRUE)
+          )),
           
           tags$p(
             style = guide_note_style(),
@@ -137,12 +137,7 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
     ),
     
     tabsetPanel(
-      tabPanel(
-        "User guide",
-        div(
-          uiOutput("user_guide_ui")
-        )
-      ),
+      tabPanel("User guide", div(uiOutput("user_guide_ui"))),
       tabPanel("Single plate", uiOutput("single_ui")),
       tabPanel(
         "Batch processing",
@@ -152,7 +147,7 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
         div(
           id = "batch_controls",
           
-          h3("Batch analysis"),   
+          h3("Batch analysis"),
           
           hr(),
           
@@ -161,8 +156,7 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           radioButtons(
             "batch_instrument",
             label = NULL,
-            choices = c("Plate reader" = "plate_reader",
-                        "oCelloscope"  = "ocelloscope"),
+            choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
             selected = "plate_reader",
             inline = TRUE
           ),
@@ -170,10 +164,7 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           hr(),
           
           tags$details(
-            tags$summary(
-              style = guide_summary_style(),
-              "ℹ️  Directory requirements"
-            ),
+            tags$summary(style = guide_summary_style(), "ℹ️  Directory requirements"),
             tags$div(style = guide_body_style(), tags$ul(
               tags$li("Each raw data file must match exactly one design file."),
               tags$li("Matching is based on a shared identifier in filenames."),
@@ -185,13 +176,10 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           selectInput("batch_data_dir", "Raw data directory", choices = NULL),
           
           tags$details(
-            tags$summary(
-              style = guide_summary_style(),
-              "👁 Preview raw data (first file)"
-            ),
+            tags$summary(style = guide_summary_style(), "👁 Preview raw data (first file)"),
             tags$div(
               style = guide_body_style(),
-              textOutput("batch_preview_label"), 
+              textOutput("batch_preview_label"),
               uiOutput("batch_raw_preview_ui")
             )
           ),
@@ -199,16 +187,10 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           selectInput("batch_design_dir", "Design file directory", choices = NULL),
           
           tags$details(
-            tags$summary(
-              style = guide_summary_style(),
-              "🧬 Preview design file (first pair)"
-            ),
-            tags$div(
-              style = guide_body_style(),
-              div(class = "preview-table",
-                  uiOutput("batch_design_preview")
-              )
-            )
+            tags$summary(style = guide_summary_style(), "🧬 Preview design file (first pair)"),
+            tags$div(style = guide_body_style(), div(
+              class = "preview-table", uiOutput("batch_design_preview")
+            ))
           ),
         ),
         
@@ -281,21 +263,21 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
             width: 100%;
             padding: 4px 6px;
             font-size: 12px;
-            
+
             border: 1px solid #ccc;
             border-radius: 4px;
-            
+
             background-color: #fff;
             color: #333;
-            
+
             transition: border-color 0.2s, box-shadow 0.2s;
           }
-          
+
           /* Hover */
           .batch-design-select:hover {
             border-color: #999;
           }
-          
+
           /* Focus (matches your DT styling) */
           .batch-design-select:focus {
             border-color: #66afe9;
@@ -304,19 +286,19 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
               inset 0 1px 1px rgba(0,0,0,.075),
               0 0 6px rgba(102,175,233,.6);
           }
-          
+
           /* Disabled look */
           .batch-design-select:disabled {
             background-color: #f5f5f5;
             color: #999;
             cursor: not-allowed;
           }
-          
+
           .batch_match_table td {
             padding-top: 6px !important;
             padding-bottom: 6px !important;
           }
-  
+
           .batch-design-select:focus {
             background-color: #f8fbff;
           }
@@ -340,64 +322,64 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
          /* =========================================================
             ✅ BATCH LAYOUT (CORE FIX)
          ========================================================= */
-        
+
         .batch-flex {
           display: flex;
           align-items: stretch;     /* ✅ prevents reflow jumping */
           gap: 24px;
           margin-bottom: 40px;
         }
-        
+
         .batch-left {
           flex: 1 1 0;
           min-width: 0;             /* ✅ critical for flex stability */
           max-width: 100%;
           overflow: hidden;         /* ✅ prevents expansion spike */
         }
-        
+
         .batch-right {
           flex: 0 0 480px;          /* ✅ fixed width → no shifting */
           max-width: 480px;
         }
-        
+
         /* Keep DT contained inside left panel */
         .batch-left .dataTables_wrapper {
           width: 100% !important;
           overflow-x: auto;         /* ✅ scroll instead of expand */
         }
-        
+
         /* Responsive fallback */
         @media (max-width: 1200px) {
           .batch-flex {
             flex-direction: column;
             align-items: stretch;
           }
-        
+
           .batch-left {
             min-width: 100%;
             max-width: 100%;
             overflow: visible;   /* ✅ CRITICAL FIX */
           }
-        
+
           .batch-right {
             max-width: 100%;
             flex: 0 0 auto;
           }
-        }        
-                
+        }
+
         /* =========================================================
             ✅ DT TABLE BEHAVIOR
          ========================================================= */
-        
+
         #agg_runs_table table.dataTable {
           table-layout: auto !important;
         }
-        
-        
+
+
         /* =========================================================
             ✅ COLUMN STRUCTURE (LOCK WIDTHS FIRST)
          ========================================================= */
-        
+
         #agg_runs_table th:first-child,
         #agg_runs_table td:first-child {
           width: 60px !important;
@@ -406,38 +388,38 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           text-align: left !important;
           padding-left: 8px !important;
         }
-        
+
         #agg_runs_table th:nth-child(2),
         #agg_runs_table td:nth-child(2) {
           width: 300px !important;
           min-width: 300px !important;
           max-width: 300px !important;
         }
-        
+
         #agg_runs_table th:nth-child(3),
         #agg_runs_table td:nth-child(3) {
           width: 220px !important;
           min-width: 220px !important;
           max-width: 220px !important;
         }
-        
-        
+
+
         /* =========================================================
             ✅ CELL CONTENT BEHAVIOR (AFTER WIDTH LOCK)
          ========================================================= */
-        
+
         /* Checkbox column */
         #agg_runs_table td:first-child {
           cursor: pointer;
           user-select: none;
           font-family: monospace;
         }
-        
+
         /* Run column */
         #agg_runs_table td:nth-child(2) {
           white-space: nowrap;
         }
-        
+
         /* Status column */
         #agg_runs_table td:nth-child(3) {
           white-space: nowrap;
@@ -445,17 +427,17 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           text-overflow: ellipsis;
           font-family: monospace;
         }
-        
-        
+
+
         /* =========================================================
             ✅ SCROLLING + STABILITY
          ========================================================= */
-        
+
         /* Ensure horizontal scrolling instead of layout shift */
         #agg_runs_table .dataTables_scrollBody {
           overflow-x: auto;
         }
-        
+
         /* Prevent DT wrapper from expanding parent container */
         #agg_runs_table .dataTables_wrapper {
           max-width: 100% !important;
@@ -463,7 +445,9 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
         "
       )
     ),
-    tags$style(HTML("
+    tags$style(
+      HTML(
+        "
         .guide-container {
           max-width: 900px;
           margin: 0;
@@ -487,8 +471,12 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           margin-top: 10px;
           margin-bottom: 15px;
         }
-      ")),
-    tags$style(HTML("
+      "
+      )
+    ),
+    tags$style(
+      HTML(
+        "
         .preview-table table {
           font-size: 12px;
           border-collapse: collapse;
@@ -500,31 +488,37 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
           padding: 4px 6px;
         }
         .preview-table table {
-          table-layout: fixed !important; 
-          width: max-content;              
+          table-layout: fixed !important;
+          width: max-content;
         }
-        
+
         .preview-table td,
         .preview-table th {
-          min-width: 70px;                
-          max-width: 70px;               
+          min-width: 70px;
+          max-width: 70px;
           text-align: center;
-          white-space: nowrap;             
+          white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .preview-table table.expanding td,
         .preview-table table.expanding th {
           min-width: 90px;
-          max-width: none;             
+          max-width: none;
         }
-      ")),
-    tags$style(HTML("
+      "
+      )
+    ),
+    tags$style(HTML(
+      "
         .preview-table-fixed-rows table tr {
           height: 24px;
         }
-      ")),
-    tags$script(HTML("
+      "
+    )),
+    tags$script(
+      HTML(
+        "
         Shiny.addCustomMessageHandler('toggle_all_checkboxes', function(value) {
           var checked = (value === 'true');
           document.querySelectorAll('input[id^=\"agg_include_\"]').forEach(function(el) {
@@ -532,22 +526,26 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
             el.dispatchEvent(new Event('change', { bubbles: true }));
           });
         });
-      ")),
-    tags$script(HTML("
+      "
+      )
+    ),
+    tags$script(
+      HTML(
+        "
         (function() {
           let clicks = 0;
           let timer = null;
-      
+
           document.addEventListener('DOMContentLoaded', function() {
             const el = document.getElementById('dev_toggle');
             if (!el) return;
-      
+
             el.addEventListener('click', function() {
               clicks++;
-      
+
               clearTimeout(timer);
               timer = setTimeout(() => { clicks = 0; }, 1500);
-      
+
               if (clicks >= 5) {
                 Shiny.setInputValue('dev_toggle_clicks', Math.random(), {priority: 'event'});
                 clicks = 0;
@@ -555,7 +553,9 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
             });
           });
         })();
-      ")),
+      "
+      )
+    ),
     # ---- App version footer ----
     div(
       id = "dev_toggle",
@@ -574,24 +574,20 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
 }))
 
 server <- function(input, output, session) {
-  
   dev_mode <- reactiveVal(DEV_DEFAULT)
   
   if (!isTRUE(getOption("gc.dev_mode"))) {
-    
-    sink_null <- function() sink("/dev/null")
+    sink_null <- function()
+      sink("/dev/null")
     
     gc_run_quiet <- function(expr) {
-      
       # capture all output channels
       zz <- file(tempfile(), open = "wt")
       sink(zz)
       sink(zz, type = "message")
       
       result <- withCallingHandlers(
-        suppressWarnings(
-          suppressMessages(expr)
-        ),
+        suppressWarnings(suppressMessages(expr)),
         warning = function(w) {
           invokeRestart("muffleWarning")  # ✅ kills ALL warnings
         },
@@ -608,11 +604,11 @@ server <- function(input, output, session) {
     }
     
   } else {
-    gc_run_quiet <- function(expr) expr
+    gc_run_quiet <- function(expr)
+      expr
   }
   
   if (!isTRUE(getOption("gc.dev_mode"))) {
-    
     gc_silent <- function(expr) {
       sink(tempfile())
       on.exit(sink(), add = TRUE)
@@ -620,8 +616,8 @@ server <- function(input, output, session) {
     }
     
   } else {
-    
-    gc_silent <- function(expr) expr
+    gc_silent <- function(expr)
+      expr
     
   }
   
@@ -638,9 +634,11 @@ server <- function(input, output, session) {
     }
   }
   
-  app_dir <- normalizePath(".", mustWork = TRUE)
-  
-  `%||%` <- function(a, b) if (!is.null(a)) a else b
+  `%||%` <- function(a, b)
+    if (!is.null(a))
+      a
+  else
+    b
   
   output$startup_error <- renderText({
     if (exists("gc_startup_error", envir = .GlobalEnv)) {
@@ -650,22 +648,19 @@ server <- function(input, output, session) {
     }
   })
   
-  options(shiny.error = function(e) {
-    gc_silent(gc_log_block("SHINY ERROR", list(
-      message = conditionMessage(e),
-      callstack = sys.calls()
-    )))
-  })
+  options(
+    shiny.error = function(e) {
+      gc_silent(gc_log_block(
+        "SHINY ERROR",
+        list(message = conditionMessage(e), callstack = sys.calls())
+      ))
+    }
+  )
   
   options(
     promises.onRejected = function(e) {
-      gc_log_block(
-        "GLOBAL PROMISE REJECTION",
-        list(
-          message   = conditionMessage(e),
-          callstack = try(sys.calls(), silent = TRUE)
-        )
-      )
+      gc_log_block("GLOBAL PROMISE REJECTION",
+                   list(message   = conditionMessage(e), callstack = try(sys.calls(), silent = TRUE)))
       
       NULL
     }
@@ -717,7 +712,6 @@ server <- function(input, output, session) {
     df <- agg_runs()
     
     keep <- vapply(df$run_name, function(name) {
-      
       safe_name <- gsub("[^a-zA-Z0-9_]", "_", name)
       
       val <- input[[paste0("agg_include_", safe_name)]]
@@ -728,13 +722,13 @@ server <- function(input, output, session) {
     
     df <- df[keep, , drop = FALSE]
     
-    if (nrow(df) == 0) return(NULL)
+    if (nrow(df) == 0)
+      return(NULL)
     
     df
   })
   
   duplicate_info <- reactive({
-    
     df_selected <- selected_runs()
     
     if (is.null(df_selected) || nrow(df_selected) == 0) {
@@ -756,8 +750,14 @@ server <- function(input, output, session) {
     dev_mode(new_val)
     
     showNotification(
-      if (new_val) "Developer mode enabled" else "Developer mode disabled",
-      type = if (new_val) "message" else "default",
+      if (new_val)
+        "Developer mode enabled"
+      else
+        "Developer mode disabled",
+      type = if (new_val)
+        "message"
+      else
+        "default",
       duration = 2
     )
   })
@@ -766,19 +766,16 @@ server <- function(input, output, session) {
     req(input$region_override)
     
     if (input$region_override == "auto") {
-      
       # re-detect default (what you initialized from)
       region_selected(APP_CONFIG$region)
       
     } else {
-      
       region_selected(input$region_override)
       
     }
   })
   
   output$region_detected_txt <- renderText({
-    
     region <- region_selected()
     
     if (region == "EU") {
@@ -789,7 +786,6 @@ server <- function(input, output, session) {
   })
   
   observe({
-    
     locked <- app_locked()
     
     ids <- c(
@@ -882,10 +878,10 @@ server <- function(input, output, session) {
     }
   }
   
-  update_blank_mode_state <- function(session, instrument, current_blank_mode) {
-    
+  update_blank_mode_state <- function(session,
+                                      instrument,
+                                      current_blank_mode) {
     if (instrument == "ocelloscope") {
-      
       if (!is.null(current_blank_mode) && current_blank_mode != "plate") {
         updateRadioButtons(session, "blank_mode", selected = "plate")
       }
@@ -893,18 +889,16 @@ server <- function(input, output, session) {
       shinyjs::disable("blank_mode_container")
       
     } else {
-      
       shinyjs::enable("blank_mode_container")
       
     }
   }
   
   format_preview_df <- function(df, region) {
-    
-    if (is.null(df) || !is.data.frame(df)) return(df)
+    if (is.null(df) || !is.data.frame(df))
+      return(df)
     
     df[] <- lapply(df, function(col) {
-      
       # Try numeric conversion
       num <- suppressWarnings(as.numeric(col))
       
@@ -914,11 +908,7 @@ server <- function(input, output, session) {
       }
       
       # Format WITHOUT padding
-      formatted <- ifelse(
-        is.na(num),
-        "",
-        as.character(signif(num, digits = 6))
-      )
+      formatted <- ifelse(is.na(num), "", as.character(signif(num, digits = 6)))
       
       # Replace decimal separator if EU
       if (region == "EU") {
@@ -935,7 +925,8 @@ server <- function(input, output, session) {
   }
   
   unwrap_preview <- function(res) {
-    if (is.null(res)) return(NULL)
+    if (is.null(res))
+      return(NULL)
     
     # ✅ NEW: detect backend preview_message
     if (inherits(res, "preview_message")) {
@@ -953,7 +944,9 @@ server <- function(input, output, session) {
     }
     
     # Fallback
-    list(type = "unknown", data = NULL, message = NULL)
+    list(type = "unknown",
+         data = NULL,
+         message = NULL)
   }
   
   is_preview_message <- function(x) {
@@ -961,19 +954,28 @@ server <- function(input, output, session) {
   }
   
   apply_instrument_defaults <- function(session, prefix, instrument) {
-    
     defaults <- gc_instrument_defaults[[instrument]]
     
-    if (is.null(defaults)) return()
+    if (is.null(defaults))
+      return()
     
     # Build input IDs dynamically
-    interval_id <- if (nzchar(prefix)) paste0(prefix, "_interval") else "interval_min"
-    minod_id    <- if (nzchar(prefix)) paste0(prefix, "_minod")    else "minod"
-    maxod_id    <- if (nzchar(prefix)) paste0(prefix, "_maxod")    else "maxod"
+    interval_id <- if (nzchar(prefix))
+      paste0(prefix, "_interval")
+    else
+      "interval_min"
+    minod_id    <- if (nzchar(prefix))
+      paste0(prefix, "_minod")
+    else
+      "minod"
+    maxod_id    <- if (nzchar(prefix))
+      paste0(prefix, "_maxod")
+    else
+      "maxod"
     
     updateNumericInput(session, interval_id, value = defaults$interval)
-    updateNumericInput(session, minod_id,    value = defaults$minod)
-    updateNumericInput(session, maxod_id,    value = defaults$maxod)
+    updateNumericInput(session, minod_id, value = defaults$minod)
+    updateNumericInput(session, maxod_id, value = defaults$maxod)
   }
   
   make_export_dirs <- function(wd, prefix) {
@@ -1030,9 +1032,7 @@ server <- function(input, output, session) {
                            old_plan,
                            failures,
                            all_failed) {
-    
     shiny::withReactiveDomain(session, {
-      
       # --- Close progress ---
       if (isTRUE(batch_state$progress_open)) {
         progress$close()
@@ -1048,25 +1048,20 @@ server <- function(input, output, session) {
       
       # ✅ --- Build failure UI OUTSIDE modal ---
       failure_ui <- if (length(failures) == 0) {
-        
         p("All plates were processed successfully.")
         
       } else {
-        
-        tagList(
-          p("Batch completed with some failures."),
-          p(strong("Failed plates:")),
-          tags$ul(
-            lapply(failures, function(x) {
-              tags$li(tags$code(x))
-            })
-          )
-        )
+        tagList(p("Batch completed with some failures."),
+                p(strong("Failed plates:")),
+                tags$ul(lapply(failures, function(x) {
+                  tags$li(tags$code(x))
+                })))
       }
       
       pretty_path <- tryCatch(
         pretty_export_path(root_path),
-        error = function(e) root_path
+        error = function(e)
+          root_path
       )
       
       showModal(
@@ -1080,30 +1075,22 @@ server <- function(input, output, session) {
             
             p(paste("Total runtime:", elapsed_str)),
             
-            if (!all_failed && dir.exists(root_path)) tagList(
-              p("Results were written to:"),
-              tags$div(
-                style = "margin-top: 6px;",
-                tags$code(
-                  style = "color: #1f78b4; font-size: 0.95em;",
-                  pretty_path
+            if (!all_failed && dir.exists(root_path))
+              tagList(
+                p("Results were written to:"),
+                tags$div(
+                  style = "margin-top: 6px;",
+                  tags$code(style = "color: #1f78b4; font-size: 0.95em;", pretty_path)
                 )
               )
-            )
           ),
           
           easyClose = TRUE,
           
-          footer = tagList(
-            if (!all_failed && dir.exists(root_path)) {
-              actionButton(
-                "open_batch_dir",
-                "📂 Open output folder",
-                class = "btn-primary"
-              )
-            },
-            modalButton("Close")
-          )
+          footer = tagList(if (!all_failed &&
+                               dir.exists(root_path)) {
+            actionButton("open_batch_dir", "📂 Open output folder", class = "btn-primary")
+          }, modalButton("Close"))
         )
       )
       
@@ -1122,10 +1109,8 @@ server <- function(input, output, session) {
     success <- open_folder(batch_root())
     
     if (!isTRUE(success)) {
-      showNotification(
-        "Could not open folder automatically. Please open it manually.",
-        type = "warning"
-      )
+      showNotification("Could not open folder automatically. Please open it manually.",
+                       type = "warning")
     }
   })
   
@@ -1135,10 +1120,8 @@ server <- function(input, output, session) {
     success <- open_folder(input$agg_dir)
     
     if (!isTRUE(success)) {
-      showNotification(
-        "Could not open folder automatically. Please open it manually.",
-        type = "warning"
-      )
+      showNotification("Could not open folder automatically. Please open it manually.",
+                       type = "warning")
     }
   })
   
@@ -1171,7 +1154,7 @@ server <- function(input, output, session) {
         read_csv_safe(f),
         error = function(e)
           NULL
-      )      
+      )
       if (is.null(df))
         return(NULL)
       
@@ -1223,8 +1206,8 @@ server <- function(input, output, session) {
   }
   
   detect_duplicate_plates <- function(run_df) {
-    
-    if (is.null(run_df) || !is.data.frame(run_df) || nrow(run_df) == 0) {
+    if (is.null(run_df) ||
+        !is.data.frame(run_df) || nrow(run_df) == 0) {
       return(list(
         run_flags = setNames(logical(0), character(0)),
         duplicate_map = list()
@@ -1316,22 +1299,30 @@ server <- function(input, output, session) {
   }
   
   design_example <- reactive({
-    path <- file.path(app_dir, "preview files", "plate_design_for_preview.csv")
+    path <- system.file(
+      "app/preview_files",
+      "plate_design_for_preview.csv",
+      package = "growthcurve"
+    )
     
-    if (!file.exists(path)) return(NULL)
+    # fallback for development
+    if (path == "") {
+      path <- file.path("preview_files", "plate_design_for_preview.csv")
+    }
+    
+    if (!file.exists(path))
+      return(NULL)
     
     read_preview_file(path, nrows = 30)
   })
   
   output$design_example_table <- renderTable({
-    
     df <- design_example()
     req(df)
     
     df
     
-  }, striped = TRUE, bordered = TRUE, spacing = "xs",
-  colnames = FALSE, na = "")
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = FALSE, na = "")
   
   validated_batch_pairs <- reactive({
     req(batch_pairs())
@@ -1392,15 +1383,12 @@ server <- function(input, output, session) {
     # ✅ DEBUG (safe: no side effects)
     gc_silent(gc_log_block("VALIDATED BATCH PAIRS", result_df))
     
-    result_df    
+    result_df
   })
   
-  validated_pairs_cached <- bindCache(
-    reactive({
-      validated_batch_pairs()
-    }),
-    batch_pairs()
-  )
+  validated_pairs_cached <- bindCache(reactive({
+    validated_batch_pairs()
+  }), batch_pairs())
   
   batch_can_parallel <- function() {
     cores <- parallel::detectCores(logical = TRUE)
@@ -1494,7 +1482,9 @@ server <- function(input, output, session) {
           
           tagList(
             p("We couldn't install the required packages."),
-            p(paste("Technical error:", gc_get_message(e))),
+            p(paste(
+              "Technical error:", gc_get_message(e)
+            )),
             p("Please check your internet connection and try again."),
             p("The application cannot continue.")
           ),
@@ -1607,9 +1597,8 @@ server <- function(input, output, session) {
   })
   
   observe({
-    
     # ✅ FIRST: handle directory readiness (no req yet)
-    dir_ready <- 
+    dir_ready <-
       !is.null(input$batch_data_dir) &&
       nzchar(input$batch_data_dir) &&
       !is.null(input$batch_design_dir) &&
@@ -1700,7 +1689,10 @@ server <- function(input, output, session) {
   observeEvent(input$agg_select_all, {
     req(agg_runs())
     
-    value <- if (isTRUE(input$agg_select_all)) "true" else "false"
+    value <- if (isTRUE(input$agg_select_all))
+      "true"
+    else
+      "false"
     
     session$sendCustomMessage("toggle_all_checkboxes", value)
   })
@@ -1737,9 +1729,7 @@ server <- function(input, output, session) {
   })
   
   output$user_guide_ui <- renderUI({
-    
     tagList(
-      
       h3("User guide"),
       
       tags$p(
@@ -1783,10 +1773,7 @@ server <- function(input, output, session) {
       # ⚙️ INPUT PARAMETERS
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "⚙️ Analysis parameters (what do these mean?)"
-        ),
+        tags$summary(style = guide_summary_style(), "⚙️ Analysis parameters (what do these mean?)"),
         tags$div(
           style = guide_body_style(),
           
@@ -1809,13 +1796,13 @@ server <- function(input, output, session) {
           
           h4("Instrument selection"),
           
-          tags$p(
-            "Select the instrument used to generate the growth curve data."
-          ),
+          tags$p("Select the instrument used to generate the growth curve data."),
           
           tags$ul(
             tags$li("Determines how the input file is parsed."),
-            tags$li("Automatically sets appropriate default values for interval and OD thresholds."),
+            tags$li(
+              "Automatically sets appropriate default values for interval and OD thresholds."
+            ),
             tags$li("Controls whether blank correction is applied.")
           ),
           
@@ -1835,7 +1822,9 @@ server <- function(input, output, session) {
           ),
           tags$ul(
             tags$li("Only data within this time window are used."),
-            tags$li("Should match (or slightly exceed) your experimental runtime.")
+            tags$li(
+              "Should match (or slightly exceed) your experimental runtime."
+            )
           ),
           
           tags$hr(),
@@ -1844,9 +1833,7 @@ server <- function(input, output, session) {
           # Interval
           # -----------------------------------------------------
           h4("Interval (minutes)"),
-          tags$p(
-            "Time between consecutive measurements."
-          ),
+          tags$p("Time between consecutive measurements."),
           tags$ul(
             tags$li("Used to correctly reconstruct the time axis."),
             tags$li("Must match the acquisition interval of your instrument."),
@@ -1870,12 +1857,8 @@ server <- function(input, output, session) {
             tags$li(
               "Values below this threshold are ignored when calculating growth rates."
             ),
-            tags$li(
-              "Helps exclude noise and baseline fluctuations at very low OD."
-            ),
-            tags$li(
-              "Prevents false growth-rate estimates during lag phase."
-            )
+            tags$li("Helps exclude noise and baseline fluctuations at very low OD."),
+            tags$li("Prevents false growth-rate estimates during lag phase.")
           ),
           
           tags$p(
@@ -1912,9 +1895,7 @@ server <- function(input, output, session) {
             tags$li(
               "Values above this threshold are excluded from growth-rate calculations."
             ),
-            tags$li(
-              "Removes saturated or non-exponential growth phases."
-            )
+            tags$li("Removes saturated or non-exponential growth phases.")
           ),
           
           tags$hr(),
@@ -1925,9 +1906,7 @@ server <- function(input, output, session) {
           
           h4("Output prefix"),
           
-          tags$p(
-            "An optional label added to the name of the output folder."
-          ),
+          tags$p("An optional label added to the name of the output folder."),
           
           tags$ul(
             tags$li("Does not affect the analysis itself."),
@@ -1935,9 +1914,7 @@ server <- function(input, output, session) {
             tags$li("Useful when testing different parameter settings.")
           ),
           
-          tags$p(
-            "If provided, output folders will be named like:"
-          ),
+          tags$p("If provided, output folders will be named like:"),
           
           tags$pre(
             "yyyymmdd_hhmmss_myexperiment_single\nyyyymmdd_hhmmss_myexperiment_batch"
@@ -1949,7 +1926,7 @@ server <- function(input, output, session) {
           ),
           
           tags$hr(),
-        
+          
           # -----------------------------------------------------
           # Design variables
           # -----------------------------------------------------
@@ -1961,10 +1938,16 @@ server <- function(input, output, session) {
           ),
           
           tags$ul(
-            tags$li("These are automatically extracted from the selected design file."),
+            tags$li(
+              "These are automatically extracted from the selected design file."
+            ),
             tags$li("Each variable corresponds to a block in the design file."),
-            tags$li("All detected variables are included in the analysis by default."),
-            tags$li("They are used to group wells when calculating summary statistics.")
+            tags$li(
+              "All detected variables are included in the analysis by default."
+            ),
+            tags$li(
+              "They are used to group wells when calculating summary statistics."
+            )
           ),
           
           tags$p(
@@ -2003,20 +1986,19 @@ server <- function(input, output, session) {
         ),
         
       ),
-            
-            
+      
+      
       # =========================================================
       # 📄 RAW DATA — PLATE READER
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "📄 Raw data (Plate reader)"
-        ),
+        tags$summary(style = guide_summary_style(), "📄 Raw data (Plate reader)"),
         tags$div(
           style = guide_body_style(),
           
-          p(strong("Important: file preparation step required")),
+          p(strong(
+            "Important: file preparation step required"
+          )),
           
           p(
             "Plate reader output files must be re-saved to ensure a consistent CSV format."
@@ -2040,7 +2022,9 @@ server <- function(input, output, session) {
           tags$ul(
             tags$li("96-well plate layout (rows A–H, columns 1–12)"),
             tags$li("May contain multiple reads (kinetic measurements)"),
-            tags$li("Includes header/metadata rows (these are handled automatically)")
+            tags$li(
+              "Includes header/metadata rows (these are handled automatically)"
+            )
           ),
           
           tags$p(
@@ -2058,7 +2042,7 @@ A   0.09  0.09  0.09\n
 B   0.09  0.09  0.09\n
 C   0.09  0.09  0.09\n
 ...\n"
-          )        
+          )
         )
       ),
       
@@ -2066,14 +2050,13 @@ C   0.09  0.09  0.09\n
       # 🔬 RAW DATA — OCELLOSCOPE
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "🔬 Raw data (oCelloscope)"
-        ),
+        tags$summary(style = guide_summary_style(), "🔬 Raw data (oCelloscope)"),
         tags$div(
           style = guide_body_style(),
           
-          p(strong("Important: file preparation step required")),
+          p(strong(
+            "Important: file preparation step required"
+          )),
           
           p(
             "oCelloscope data must be exported as an Excel (.xlsx) file and then converted to CSV format."
@@ -2100,8 +2083,12 @@ C   0.09  0.09  0.09\n
           
           tags$ul(
             tags$li("The analysis only works with TANormalized values"),
-            tags$li("Ensure TANormalized measurements were collected during the experiment"),
-            tags$li("Ensure TANormalized is included when exporting from UniExplorer")
+            tags$li(
+              "Ensure TANormalized measurements were collected during the experiment"
+            ),
+            tags$li(
+              "Ensure TANormalized is included when exporting from UniExplorer"
+            )
           ),
           
           
@@ -2117,7 +2104,9 @@ C   0.09  0.09  0.09\n
           
           tags$ul(
             tags$li("File contains one or more data blocks with repeated headers"),
-            tags$li("Includes a TANormalized section containing growth measurements"),
+            tags$li(
+              "Includes a TANormalized section containing growth measurements"
+            ),
             tags$li("Each block contains time and well measurements")
           ),
           
@@ -2132,10 +2121,7 @@ C   0.09  0.09  0.09\n
       # 🧬 DESIGN FILE
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "🧬 Design file format"
-        ),
+        tags$summary(style = guide_summary_style(), "🧬 Design file format"),
         tags$div(
           style = guide_body_style(),
           
@@ -2164,11 +2150,17 @@ C   0.09  0.09  0.09\n
             tags$li("Each variable is one block (e.g., Strain, Treatment)."),
             tags$li("Each block must be a complete 96‑well layout (A–H, 1–12)."),
             tags$li("The top-left cell of each block contains the variable name."),
-            tags$li("Each block must contain one header row followed by eight rows (A–H)."),
+            tags$li(
+              "Each block must contain one header row followed by eight rows (A–H)."
+            ),
             tags$li("All blocks must have identical dimensions and alignment."),
             tags$li("Each block must be separated by one completely empty row."),
-            tags$li("The 'Well_type' variable must always be included as the first block."),
-            tags$li("Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."),
+            tags$li(
+              "The 'Well_type' variable must always be included as the first block."
+            ),
+            tags$li(
+              "Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."
+            ),
             tags$li("Cells representing unused wells must be left empty")
           ),
           
@@ -2219,9 +2211,7 @@ B           0   0   1
           
           hr(),
           
-          div(class = "preview-table-fixed-rows",
-              tableOutput("design_example_table")
-          ),
+          div(class = "preview-table-fixed-rows", tableOutput("design_example_table")),
           
           tags$p(
             style = guide_note_style(),
@@ -2234,10 +2224,7 @@ B           0   0   1
       # 📥 TEMPLATES
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "📥 Download templates"
-        ),
+        tags$summary(style = guide_summary_style(), "📥 Download templates"),
         tags$div(
           style = guide_body_style(),
           
@@ -2247,10 +2234,18 @@ B           0   0   1
           
           tags$ul(
             tags$li("Each block represents one variable."),
-            tags$li("Replace the template cells with your own experimental design."),
-            tags$li("Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."),
-            tags$li("To add a variable, copy a full block, paste it below, and rename it."),
-            tags$li('Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty.')
+            tags$li(
+              "Replace the template cells with your own experimental design."
+            ),
+            tags$li(
+              "Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."
+            ),
+            tags$li(
+              "To add a variable, copy a full block, paste it below, and rename it."
+            ),
+            tags$li(
+              'Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty.'
+            )
           ),
           
           tags$p(
@@ -2281,17 +2276,17 @@ B           0   0   1
           hr(),
           
           tags$p(
-            style = guide_note_style(), "Download the template matching your regional CSV format."
+            style = guide_note_style(),
+            "Download the template matching your regional CSV format."
           ),
           
-          fluidRow(
-            column(6,
-                   downloadButton("download_template_us", "US format (comma)")
-            ),
-            column(6,
-                   downloadButton("download_template_eu", "European format (semicolon)")
-            )
-          )
+          fluidRow(column(
+            6,
+            downloadButton("download_template_us", "US format (comma)")
+          ), column(
+            6,
+            downloadButton("download_template_eu", "European format (semicolon)")
+          ))
         )
       ),
       
@@ -2299,10 +2294,7 @@ B           0   0   1
       # 📁 BATCH STRUCTURE
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "📁 Batch processing structure"
-        ),
+        tags$summary(style = guide_summary_style(), "📁 Batch processing structure"),
         tags$div(
           style = guide_body_style(),
           
@@ -2318,7 +2310,9 @@ B           0   0   1
           
           tags$ul(
             tags$li("Each data file must match one design file"),
-            tags$li("Matching is based on shared identifiers in filenames (not order)"),
+            tags$li(
+              "Matching is based on shared identifiers in filenames (not order)"
+            ),
             tags$li("Order does not matter")
           )
         )
@@ -2328,18 +2322,13 @@ B           0   0   1
       # 📊 AGGREGATE MODE
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "📊 Aggregate results"
-        ),
+        tags$summary(style = guide_summary_style(), "📊 Aggregate results"),
         tags$div(
           style = guide_body_style(),
           
-          tags$pre(
-            "Analysis/
+          tags$pre("Analysis/
 ├── run_1/
-├── run_2/"
-          ),
+├── run_2/"),
           
           p("Each subfolder is treated as a separate run.")
         )
@@ -2349,18 +2338,11 @@ B           0   0   1
       # ⚠️ COMMON ISSUES
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "⚠️ Common issues"
-        ),
-        tags$div(
-          style = guide_body_style(),
-          
-          tags$ul(
-            tags$li("Selecting a design file that does not match the raw data"),
-            tags$li("Design blocks with inconsistent dimensions or missing rows"),
-          )
-        )
+        tags$summary(style = guide_summary_style(), "⚠️ Common issues"),
+        tags$div(style = guide_body_style(), tags$ul(
+          tags$li("Selecting a design file that does not match the raw data"),
+          tags$li("Design blocks with inconsistent dimensions or missing rows"),
+        ))
       ),
       
       # =========================================================
@@ -2389,20 +2371,13 @@ B           0   0   1
       # ✅ CHECKLIST
       # =========================================================
       tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "✅ Validation checklist"
-        ),
-        tags$div(
-          style = guide_body_style(),
-          
-          tags$ul(
-            tags$li("✅ Files match"),
-            tags$li("✅ Required columns present"),
-            tags$li("✅ Correct delimiter"),
-            tags$li("✅ No empty header rows")
-          )
-        )
+        tags$summary(style = guide_summary_style(), "✅ Validation checklist"),
+        tags$div(style = guide_body_style(), tags$ul(
+          tags$li("✅ Files match"),
+          tags$li("✅ Required columns present"),
+          tags$li("✅ Correct delimiter"),
+          tags$li("✅ No empty header rows")
+        ))
       )
     )
     
@@ -2413,24 +2388,41 @@ B           0   0   1
       "design_template_us.csv"
     },
     content = function(file) {
-      file.copy(
-        from = file.path(app_dir, "templates", "design_template_us.csv"),
-        to   = file,
-        overwrite = TRUE
+      
+      path <- system.file(
+        "app/templates",
+        "design_template_us.csv",
+        package = "growthcurve"
       )
+      
+      # fallback for development
+      if (path == "") {
+        path <- file.path("templates", "design_template_us.csv")
+      }
+      
+      file.copy(from = path, to = file, overwrite = TRUE)
     }
   )
+  
   
   output$download_template_eu <- downloadHandler(
     filename = function() {
       "design_template_eu.csv"
     },
     content = function(file) {
-      file.copy(
-        from = file.path(app_dir, "templates", "design_template_eu.csv"),
-        to   = file,
-        overwrite = TRUE
+      
+      path <- system.file(
+        "app/templates",
+        "design_template_eu.csv",
+        package = "growthcurve"
       )
+      
+      # fallback for development
+      if (path == "") {
+        path <- file.path("templates", "design_template_eu.csv")
+      }
+      
+      file.copy(from = path, to = file, overwrite = TRUE)
     }
   )
   
@@ -2441,7 +2433,6 @@ B           0   0   1
   outputOptions(output, "stage_ready", suspendWhenHidden = FALSE)
   
   output$single_ui <- renderUI({
-    
     if (!wd_set()) {
       return(tagList(
         tags$div(
@@ -2455,7 +2446,6 @@ B           0   0   1
     files <- wd_files()
     
     tagList(
-      
       # =========================================================
       # INPUT SECTION
       # =========================================================
@@ -2468,10 +2458,7 @@ B           0   0   1
       radioButtons(
         inputId = "instrument",
         label   = NULL,
-        choices = c(
-          "Plate reader" = "plate_reader",
-          "oCelloscope"  = "ocelloscope"
-        ),
+        choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
         selected = "plate_reader",
         inline = TRUE
       ),
@@ -2482,7 +2469,8 @@ B           0   0   1
       
       
       selectInput(
-        "raw_file", "Raw data file",
+        "raw_file",
+        "Raw data file",
         choices = c(empty_choice, files),
         selected = ""
       ),
@@ -2498,18 +2486,17 @@ B           0   0   1
       
       
       selectInput(
-        "design_file", "Design file",
+        "design_file",
+        "Design file",
         choices = c(empty_choice, files),
         selected = ""
       ),
       
       tags$details(
         tags$summary(style = guide_summary_style(), "🧬 Preview design file"),
-        tags$div(
-          style = guide_body_style(),
-          div(class = "preview-table",
-              uiOutput("design_preview"))
-        )
+        tags$div(style = guide_body_style(), div(class = "preview-table", uiOutput(
+          "design_preview"
+        )))
       ),
       
       hr(),
@@ -2553,13 +2540,14 @@ B           0   0   1
       # =========================================================
       
       # ---- Export FIRST ----
-      div(style = "margin-top:10px;",
-          actionButton(
-            "export_files",
-            "📁 Export analysis files",
-            class = "btn-success",
-            disabled = TRUE
-          )
+      div(
+        style = "margin-top:10px;",
+        actionButton(
+          "export_files",
+          "📁 Export analysis files",
+          class = "btn-success",
+          disabled = TRUE
+        )
       ),
       
       hr(),
@@ -2580,15 +2568,11 @@ B           0   0   1
       # PLOTS (ONLY WHEN AVAILABLE)
       # =========================================================
       
-      conditionalPanel(
-        condition = "output.stage_ready == true",
-        uiOutput("stage_ui")
-      )
+      conditionalPanel(condition = "output.stage_ready == true", uiOutput("stage_ui"))
     )
   })
   
   single_preview_raw <- reactive({
-    
     req(input$raw_file, wd_path(), input$instrument)
     
     file <- file.path(wd_path(), input$raw_file)
@@ -2599,12 +2583,10 @@ B           0   0   1
       NULL
     }
     
-    build_preview(
-      file,
-      design,
-      interval = interval_hours(),
-      instrument = input$instrument
-    )
+    build_preview(file,
+                  design,
+                  interval = interval_hours(),
+                  instrument = input$instrument)
     
   })
   
@@ -2621,18 +2603,18 @@ B           0   0   1
   })
   
   batch_preview_raw <- reactive({
-    
     req(input$batch_data_dir)
     
     files <- base::list.files(input$batch_data_dir, full.names = TRUE)
-    if (length(files) == 0) return(NULL)
+    if (length(files) == 0)
+      return(NULL)
     
     file <- files[1]
     
     # 🚨 Guard for oCelloscope without design
     if (input$batch_instrument == "ocelloscope" &&
-        (is.null(input$batch_design_dir) || !nzchar(input$batch_design_dir))) {
-      
+        (is.null(input$batch_design_dir) ||
+         !nzchar(input$batch_design_dir))) {
       return(structure(
         list(message = "Select a design directory to preview oCelloscope data."),
         class = "preview_message"
@@ -2642,9 +2624,13 @@ B           0   0   1
     # Optional design file
     design <- NULL
     
-    if (!is.null(input$batch_design_dir) && nzchar(input$batch_design_dir)) {
-      
-      df <- tryCatch(validated_pairs_cached(), error = function(e) NULL)
+    if (!is.null(input$batch_design_dir) &&
+        nzchar(input$batch_design_dir)) {
+      df <- tryCatch(
+        validated_pairs_cached(),
+        error = function(e)
+          NULL
+      )
       
       if (!is.null(df) && nrow(df) > 0) {
         design <- df$design_file[1]
@@ -2673,7 +2659,6 @@ B           0   0   1
   )
   
   output$single_raw_preview_table <- renderTable({
-    
     result <- single_preview_data()
     
     if (is_preview_message(result)) {
@@ -2682,14 +2667,9 @@ B           0   0   1
     
     format_preview_df(result$data, region_selected())
     
-  }, striped = TRUE,
-  bordered = TRUE,
-  spacing = "xs",
-  colnames = TRUE,
-  na = "")
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
   output$single_preview_label <- renderText({
-    
     req(input$raw_file, wd_path())
     
     file <- file.path(wd_path(), input$raw_file)
@@ -2700,12 +2680,10 @@ B           0   0   1
   })
   
   output$single_raw_preview_ui <- renderUI({
-    
     result <- single_preview_data()
     
     # ✅ Case 1: warning / message
-    if (is_preview_message(result)) {      
-      
+    if (is_preview_message(result)) {
       return(
         div(
           style = "
@@ -2723,15 +2701,12 @@ B           0   0   1
     }
     
     # ✅ Case 2: render table
-    div(
-      class = "preview-table",
-      style = "overflow-x: auto; white-space: nowrap;",
-      tableOutput("single_raw_preview_table")
-    )
+    div(class = "preview-table",
+        style = "overflow-x: auto; white-space: nowrap;",
+        tableOutput("single_raw_preview_table"))
   })
   
   output$design_preview <- renderUI({
-    
     req(input$design_file, wd_path())
     
     file <- file.path(wd_path(), input$design_file)
@@ -2750,20 +2725,22 @@ B           0   0   1
     
     for (k in seq_along(block_starts)) {
       start <- block_starts[k]
-      end <- if (k < n_blocks) block_starts[k + 1] - 1 else nrow(df)
+      end <- if (k < n_blocks)
+        block_starts[k + 1] - 1
+      else
+        nrow(df)
       row_block_id[start:end] <- k
     }
     
     # Build HTML table manually
     rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      
       block_id <- row_block_id[i]
       is_block_header <- (i - 1) %% 10 == 0
       
       cells <- lapply(seq_len(ncol(df)), function(j) {
-        
         val <- df[i, j]
-        if (is.na(val)) val <- ""
+        if (is.na(val))
+          val <- ""
         
         style_parts <- c(
           "border: 1px solid #e6e6e6;"  # ✅ soft gridlines
@@ -2777,14 +2754,12 @@ B           0   0   1
         
         # ✅ Column headers (1–12 row)
         if (is_block_header && j > 1) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold;")
+          style_parts <- c(style_parts, "font-weight: bold;")
         }
         
         # ✅ Row labels (A–H)
         if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: 500;")
+          style_parts <- c(style_parts, "font-weight: 500;")
         }
         
         style <- paste(style_parts, collapse = " ")
@@ -2804,8 +2779,10 @@ B           0   0   1
     needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
     
     tags$table(
-      class = paste("design-preview-table",
-                    if (needs_expand) "expanding" else ""),
+      class = paste("design-preview-table", if (needs_expand)
+        "expanding"
+        else
+          ""),
       style = "border-collapse: collapse;",
       tags$tbody(rows)
     )
@@ -2824,10 +2801,7 @@ B           0   0   1
         class = "batch-left",
         
         # ✅ Show table ONLY when valid pairs exist
-        conditionalPanel(
-          condition = "output.batch_has_pairs == true",
-          DT::DTOutput("batch_match_table")
-        ),
+        conditionalPanel(condition = "output.batch_has_pairs == true", DT::DTOutput("batch_match_table")),
         
         # ✅ Show placeholder when no valid pairs exist
         conditionalPanel(
@@ -2868,18 +2842,18 @@ B           0   0   1
   outputOptions(output, "batch_has_pairs", suspendWhenHidden = FALSE)
   
   output$batch_raw_preview_ui <- renderUI({
-    
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
-    if (length(files) == 0) return(NULL)
+    if (length(files) == 0)
+      return(NULL)
     
     file <- files[1]
     
     # 🚨 NEW: explicit oCelloscope guard
     if (input$batch_instrument == "ocelloscope" &&
-        (is.null(input$batch_design_dir) || !nzchar(input$batch_design_dir))) {
-      
+        (is.null(input$batch_design_dir) ||
+         !nzchar(input$batch_design_dir))) {
       return(
         div(
           style = "
@@ -2898,9 +2872,13 @@ B           0   0   1
     
     # Optional design
     design <- NULL
-    if (!is.null(input$batch_design_dir) && nzchar(input$batch_design_dir)) {
-      
-      df <- tryCatch(validated_pairs_cached(), error = function(e) NULL)
+    if (!is.null(input$batch_design_dir) &&
+        nzchar(input$batch_design_dir)) {
+      df <- tryCatch(
+        validated_pairs_cached(),
+        error = function(e)
+          NULL
+      )
       
       if (!is.null(df) && nrow(df) > 0) {
         design <- df$design_file[1]
@@ -2931,23 +2909,22 @@ B           0   0   1
     
     # ✅ Table
     # ✅ Table placeholder ONLY
-    div(
-      class = "preview-table",
-      style = "overflow-x: auto; white-space: nowrap;",
-      tableOutput("batch_raw_preview_table")
-    )
+    div(class = "preview-table",
+        style = "overflow-x: auto; white-space: nowrap;",
+        tableOutput("batch_raw_preview_table"))
   })
   
   output$batch_raw_preview_table <- renderTable({
-    
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
-    if (length(files) == 0) return(NULL)
+    if (length(files) == 0)
+      return(NULL)
     
     # 🚨 NEW: block table rendering if design missing for oCelloscope
     if (input$batch_instrument == "ocelloscope" &&
-        (is.null(input$batch_design_dir) || !nzchar(input$batch_design_dir))) {
+        (is.null(input$batch_design_dir) ||
+         !nzchar(input$batch_design_dir))) {
       return(NULL)
     }
     
@@ -2955,9 +2932,13 @@ B           0   0   1
     
     # Optional design
     design <- NULL
-    if (!is.null(input$batch_design_dir) && nzchar(input$batch_design_dir)) {
-      
-      df <- tryCatch(validated_pairs_cached(), error = function(e) NULL)
+    if (!is.null(input$batch_design_dir) &&
+        nzchar(input$batch_design_dir)) {
+      df <- tryCatch(
+        validated_pairs_cached(),
+        error = function(e)
+          NULL
+      )
       
       if (!is.null(df) && nrow(df) > 0) {
         design <- df$design_file[1]
@@ -2975,23 +2956,26 @@ B           0   0   1
     
     format_preview_df(result$data, region_selected())
     
-  }, striped = TRUE, bordered = TRUE, spacing = "xs",
-  colnames = TRUE, na = "")
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
   output$batch_preview_label <- renderText({
-    
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
-    if (length(files) == 0) return(NULL)
+    if (length(files) == 0)
+      return(NULL)
     
     file <- files[1]
     
     # Optional design
     design <- NULL
-    if (!is.null(input$batch_design_dir) && nzchar(input$batch_design_dir)) {
-      
-      df <- tryCatch(validated_pairs_cached(), error = function(e) NULL)
+    if (!is.null(input$batch_design_dir) &&
+        nzchar(input$batch_design_dir)) {
+      df <- tryCatch(
+        validated_pairs_cached(),
+        error = function(e)
+          NULL
+      )
       
       if (!is.null(df) && nrow(df) > 0) {
         design <- df$design_file[1]
@@ -3004,12 +2988,12 @@ B           0   0   1
   })
   
   output$batch_design_preview <- renderUI({
-    
     # ✅ Only require design directory (NOT matching logic)
     req(input$batch_design_dir)
     
     files <- list.files(input$batch_design_dir, full.names = TRUE)
-    if (length(files) == 0) return(NULL)
+    if (length(files) == 0)
+      return(NULL)
     
     file <- files[1]
     req(!is.na(file), file.exists(file))
@@ -3026,24 +3010,24 @@ B           0   0   1
     
     for (k in seq_along(block_starts)) {
       start <- block_starts[k]
-      end <- if (k < n_blocks) block_starts[k + 1] - 1 else nrow(df)
+      end <- if (k < n_blocks)
+        block_starts[k + 1] - 1
+      else
+        nrow(df)
       row_block_id[start:end] <- k
     }
     
     # ✅ Build styled table
     rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      
       block_id <- row_block_id[i]
       is_block_header <- (i - 1) %% 10 == 0
       
       cells <- lapply(seq_len(ncol(df)), function(j) {
-        
         val <- df[i, j]
-        if (is.na(val)) val <- ""
+        if (is.na(val))
+          val <- ""
         
-        style_parts <- c(
-          "border: 1px solid #e6e6e6;"
-        )
+        style_parts <- c("border: 1px solid #e6e6e6;")
         
         # ✅ Block header (first column)
         if (j == 1 && is_block_header) {
@@ -3053,14 +3037,12 @@ B           0   0   1
         
         # ✅ Column headers (1–12)
         if (is_block_header && j > 1) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold;")
+          style_parts <- c(style_parts, "font-weight: bold;")
         }
         
         # ✅ Row labels (A–H)
         if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: 500;")
+          style_parts <- c(style_parts, "font-weight: 500;")
         }
         
         style <- paste(style_parts, collapse = " ")
@@ -3080,8 +3062,10 @@ B           0   0   1
     needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
     
     tags$table(
-      class = paste("design-preview-table",
-                    if (needs_expand) "expanding" else ""),
+      class = paste("design-preview-table", if (needs_expand)
+        "expanding"
+        else
+          ""),
       style = "border-collapse: collapse;",
       tags$tbody(rows)
     )
@@ -3178,16 +3162,13 @@ B           0   0   1
     df$status <- "…"   # placeholder
     
     df$include_ui <- vapply(df$run_name, function(name) {
-      
       safe_name <- gsub("[^a-zA-Z0-9_]", "_", name)
       
-      as.character(
-        tags$input(
-          type = "checkbox",
-          id = paste0("agg_include_", safe_name),
-          checked = "checked"
-        )
-      )
+      as.character(tags$input(
+        type = "checkbox",
+        id = paste0("agg_include_", safe_name),
+        checked = "checked"
+      ))
       
     }, character(1))
     
@@ -3202,17 +3183,18 @@ B           0   0   1
         ordering = FALSE,
         autoWidth = FALSE
       ),
-      callback =htmlwidgets::JS("
+      callback = htmlwidgets::JS(
+        "
       table.on('draw.dt', function() {
         Shiny.bindAll(table.table().node());
       });
-    ")
+    "
+      )
     )
     
   }, server = TRUE)
   
   observe({
-    
     req(agg_runs())
     
     df <- agg_runs()
@@ -3229,27 +3211,26 @@ B           0   0   1
     
     # preserve checkbox column structure
     df$include_ui <- vapply(df$run_name, function(name) {
-      
       safe_name <- gsub("[^a-zA-Z0-9_]", "_", name)
       
       val <- input[[paste0("agg_include_", safe_name)]]
       
-      as.character(
-        tags$input(
-          type = "checkbox",
-          id = paste0("agg_include_", safe_name),
-          checked = if (isTRUE(val) || is.null(val)) "checked" else NULL
-        )
-      )
+      as.character(tags$input(
+        type = "checkbox",
+        id = paste0("agg_include_", safe_name),
+        checked = if (isTRUE(val) ||
+                      is.null(val))
+          "checked"
+        else
+          NULL
+      ))
       
     }, character(1))
     
-    DT::replaceData(
-      table_proxy,
-      df[, c("include_ui", "run_name", "status")],
-      resetPaging = FALSE,
-      rownames = FALSE
-    )
+    DT::replaceData(table_proxy,
+                    df[, c("include_ui", "run_name", "status")],
+                    resetPaging = FALSE,
+                    rownames = FALSE)
     
   })
   
@@ -3299,7 +3280,9 @@ B           0   0   1
         
         conditionalPanel(
           condition = "input.batch_instrument == 'ocelloscope'",
-          helpText("oCelloscope data are already baseline-corrected during acquisition, so additional blank correction is not applied.")
+          helpText(
+            "oCelloscope data are already baseline-corrected during acquisition, so additional blank correction is not applied."
+          )
         )
       ),
       
@@ -3347,31 +3330,27 @@ B           0   0   1
     file_refresh()
   ),
   {
-    
     # ✅ Only proceed if BOTH are selected AND non-empty
     req(
       !is.null(input$batch_data_dir),
-      nzchar(input$batch_data_dir),
-      !is.null(input$batch_design_dir),
+      nzchar(input$batch_data_dir),!is.null(input$batch_design_dir),
       nzchar(input$batch_design_dir)
     )
     
     if (identical(input$batch_data_dir, input$batch_design_dir)) {
-      
-      showModal(
-        modalDialog(
-          title = "Invalid directory selection",
-          p("Raw data directory and design directory cannot be the same."),
-          easyClose = TRUE
-        )
-      )
+      showModal(modalDialog(
+        title = "Invalid directory selection",
+        p("Raw data directory and design directory cannot be the same."),
+        easyClose = TRUE
+      ))
       
       batch_pairs(NULL)
       
       return(NULL)
     }
     
-    if (input$batch_data_dir == "" || input$batch_design_dir == "") {
+    if (input$batch_data_dir == "" ||
+        input$batch_design_dir == "") {
       batch_pairs(NULL)
       return(NULL)
     }
@@ -3402,22 +3381,16 @@ B           0   0   1
   })
   
   design_blocks <- reactive({
-    
     req(input$design_file, wd_path())
     
     extract_design_blocks(file.path(wd_path(), input$design_file))
     
   })
   
-  design_blocks <- bindCache(
-    design_blocks,
-    input$design_file
-  )
+  design_blocks <- bindCache(design_blocks, input$design_file)
   
   output$design_section <- renderUI({
-    
     tagList(
-      
       selectInput(
         "design_vars",
         "Design variables",
@@ -3426,64 +3399,54 @@ B           0   0   1
         multiple = TRUE
       ),
       
-      div(
-        id = "blank_mode_container",
-        
-        tagList(
-          
-          radioButtons(
-            inputId  = "blank_mode",
-            label    = "Blank correction",
-            choices  = c(
-              "Plate-based blanks (recommended)" = "plate",
-              "Per-well internal baseline"        = "per_well"
-            ),
-            selected = "plate"
+      div(id = "blank_mode_container", tagList(
+        radioButtons(
+          inputId  = "blank_mode",
+          label    = "Blank correction",
+          choices  = c(
+            "Plate-based blanks (recommended)" = "plate",
+            "Per-well internal baseline"        = "per_well"
           ),
-          
-          conditionalPanel(
-            condition = "input.instrument == 'ocelloscope'",
-            helpText(
-              "oCelloscope data are already baseline-corrected during acquisition, so additional blank correction is not applied."
-            )
+          selected = "plate"
+        ),
+        
+        conditionalPanel(
+          condition = "input.instrument == 'ocelloscope'",
+          helpText(
+            "oCelloscope data are already baseline-corrected during acquisition, so additional blank correction is not applied."
           )
-          
         )
-      ),
+        
+      )),
       
       tags$div(style = "margin-top: 8px;", verbatimTextOutput("blank_info"))
     )
   })
   
   observeEvent(input$design_file, {
-    
     req(wd_path(), input$design_file)
     
     file <- file.path(wd_path(), input$design_file)
     
     vars <- tryCatch(
       extract_design_blocks(file),
-      error = function(e) character(0)
+      error = function(e)
+        character(0)
     )
     
-    updateSelectInput(
-      session,
-      "design_vars",
-      choices  = vars,
-      selected = vars
-    )
+    updateSelectInput(session,
+                      "design_vars",
+                      choices  = vars,
+                      selected = vars)
     
   })
   
   observeEvent(input$instrument, {
-    
     if (input$instrument == "ocelloscope") {
-      
       updateRadioButtons(session, "blank_mode", selected = "plate")
       shinyjs::disable("blank_mode_container")
       
     } else {
-      
       shinyjs::enable("blank_mode_container")
       
     }
@@ -3581,9 +3544,7 @@ B           0   0   1
       
     } else if (current_stage() == "fitted_percap") {
       tagList(
-        h3(
-          "Fitted per‑capita growth rate with maximum marked"
-        ),
+        h3("Fitted per‑capita growth rate with maximum marked"),
         plotOutput("plot_fitted_percap", height = "500px"),
         p(
           "Inspect the fitted per‑capita growth‑rate curves with the ",
@@ -3594,9 +3555,7 @@ B           0   0   1
       
     } else if (current_stage() == "od_with_maxgc") {
       tagList(
-        h3(
-          "OD curves with maximum growth‑rate time marked"
-        ),
+        h3("OD curves with maximum growth‑rate time marked"),
         plotOutput("plot_od_with_maxgc", height = "500px"),
         p(
           "Inspect OD curves with the time of maximum per‑capita growth ",
@@ -3618,7 +3577,9 @@ B           0   0   1
       
     } else if (current_stage() == "max_growth_rate") {
       tagList(
-        h3("Maximum growth‑rate summary (mean and 95% confidence interval)"),
+        h3(
+          "Maximum growth‑rate summary (mean and 95% confidence interval)"
+        ),
         plotOutput("plot_max_growth_rate", height = "500px"),
         p(
           "Inspect maximum per‑capita growth rates by condition. ",
@@ -3695,17 +3656,25 @@ B           0   0   1
     df$design_file_name <- vapply(seq_len(nrow(df)), function(i) {
       current <- df$design_file_name[i]
       opts <- vapply(choices, function(ch) {
-        selected <- if (!is.na(current) && ch == current) " selected" else ""
+        selected <- if (!is.na(current) &&
+                        ch == current)
+          " selected"
+        else
+          ""
         sprintf('<option value="%s"%s>%s</option>', ch, selected, ch)
       }, character(1))
       sprintf(
         '<select class="batch-design-select" data-row="%d">%s</select>',
-        i, paste(opts, collapse = "")
+        i,
+        paste(opts, collapse = "")
       )
     }, character(1))
     
     DT::datatable(
-      df[, c("data_file_name", "design_file_name", "design_vars", "status")],
+      df[, c("data_file_name",
+             "design_file_name",
+             "design_vars",
+             "status")],
       rownames = FALSE,
       escape = FALSE,
       selection = "none",
@@ -3728,15 +3697,17 @@ B           0   0   1
           list(width = "10%", targets = 3)
         )
       ),
-      callback = htmlwidgets::JS("
+      callback = htmlwidgets::JS(
+        "
       table.on('change', '.batch-design-select', function() {
         var row = parseInt($(this).data('row'));
         var val = $(this).val();
         Shiny.setInputValue('batch_design_select', {row: row, value: val}, {priority: 'event'});
       });
-    ")
+    "
+      )
     )
-  })  
+  })
   
   observeEvent(input$run, {
     if (requireNamespace("future", quietly = TRUE)) {
@@ -3750,26 +3721,23 @@ B           0   0   1
     req(input$raw_file, input$design_file, input$design_vars)
     
     if (input$raw_file == "" || input$design_file == "") {
-      
-      showModal(
-        modalDialog(
-          title = "Missing input",
-          p("Please select both a raw data file and a design file before running the analysis."),
-          easyClose = TRUE
-        )
-      )
+      showModal(modalDialog(
+        title = "Missing input",
+        p(
+          "Please select both a raw data file and a design file before running the analysis."
+        ),
+        easyClose = TRUE
+      ))
       
       return(NULL)
     }
     
     if (identical(input$raw_file, input$design_file)) {
-      showModal(
-        modalDialog(
-          title = "Invalid selection",
-          p("Raw data file and design file cannot be the same."),
-          easyClose = TRUE
-        )
-      )
+      showModal(modalDialog(
+        title = "Invalid selection",
+        p("Raw data file and design file cannot be the same."),
+        easyClose = TRUE
+      ))
       return(NULL)
     }
     
@@ -3790,34 +3758,35 @@ B           0   0   1
                    }
                    
                    res <- tryCatch({
+                     gc_log_block(
+                       "SINGLE RUN PARAMS",
+                       list(
+                         raw_file = raw_file_path,
+                         design   = design_file_path,
+                         vars     = input$design_vars
+                       )
+                     )
                      
-                     gc_log_block("SINGLE RUN PARAMS", list(
-                       raw_file = raw_file_path,
-                       design   = design_file_path,
-                       vars     = input$design_vars
-                     ))
-                     
-                     gc_run_quiet(run_gc(
-                       rawdatafile = raw_file_path,
-                       designfile  = design_file_path,
-                       design_vars = input$design_vars,
-                       hrs         = input$hrs,
-                       interval    = interval_hours(),
-                       minod       = input$minod,
-                       maxod       = input$maxod,
-                       instrument  = input$instrument,
-                       blank_mode  = blank_mode_effective,
-                       prefix      = input$prefix,
-                       batch       = FALSE,
-                       region      = region_selected()
-                     ))
+                     gc_run_quiet(
+                       run_gc(
+                         rawdatafile = raw_file_path,
+                         designfile  = design_file_path,
+                         design_vars = input$design_vars,
+                         hrs         = input$hrs,
+                         interval    = interval_hours(),
+                         minod       = input$minod,
+                         maxod       = input$maxod,
+                         instrument  = input$instrument,
+                         blank_mode  = blank_mode_effective,
+                         prefix      = input$prefix,
+                         batch       = FALSE,
+                         region      = region_selected()
+                       )
+                     )
                      
                    }, error = function(e) {
-                     
-                     gc_log_block("SINGLE RUN INTERNAL ERROR", list(
-                       error = e,
-                       callstack = sys.calls()
-                     ))
+                     gc_log_block("SINGLE RUN INTERNAL ERROR",
+                                  list(error = e, callstack = sys.calls()))
                      
                      msg <- if (inherits(e, "gc_error")) {
                        gc_get_message(e)
@@ -3825,17 +3794,15 @@ B           0   0   1
                        paste("Unexpected error:\n", gc_get_message(e))
                      }
                      
-                     showModal(
-                       modalDialog(
-                         title = "Analysis failed",
-                         tagList(
-                           p("The analysis could not be completed."),
-                           tags$hr(),
-                           tags$pre(style = "white-space: pre-wrap;", msg)
-                         ),
-                         easyClose = TRUE
-                       )
-                     )
+                     showModal(modalDialog(
+                       title = "Analysis failed",
+                       tagList(
+                         p("The analysis could not be completed."),
+                         tags$hr(),
+                         tags$pre(style = "white-space: pre-wrap;", msg)
+                       ),
+                       easyClose = TRUE
+                     ))
                      
                      return(NULL)
                    })
@@ -3864,20 +3831,20 @@ B           0   0   1
   })
   
   observeEvent(input$reset_analysis, {
-    
-    showModal(modalDialog(
-      title = "Reset analysis?",
-      "This will clear the current results.",
-      footer = tagList(
-        modalButton("Cancel"),
-        actionButton("confirm_reset", "Reset", class = "btn-danger")
+    showModal(
+      modalDialog(
+        title = "Reset analysis?",
+        "This will clear the current results.",
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton("confirm_reset", "Reset", class = "btn-danger")
+        )
       )
-    ))
+    )
     
   })
   
   observeEvent(input$confirm_reset, {
-    
     removeModal()
     
     analysis_result(NULL)
@@ -3899,7 +3866,6 @@ B           0   0   1
   })
   
   observeEvent(input$batch_instrument, {
-    
     if (input$batch_instrument == "ocelloscope") {
       updateRadioButtons(session, "batch_blank_mode", selected = "plate")
       shinyjs::disable("batch_blank_mode_container")
@@ -3912,7 +3878,9 @@ B           0   0   1
       }
     }
     
-    apply_instrument_defaults(session, prefix = "batch", instrument = input$batch_instrument)
+    apply_instrument_defaults(session,
+                              prefix = "batch",
+                              instrument = input$batch_instrument)
   })
   
   observeEvent(input$agg_dir, {
@@ -3920,11 +3888,9 @@ B           0   0   1
     
     root <- input$agg_dir
     
-    dirs <- list.dirs(
-      path = root,
-      recursive = FALSE,
-      full.names = TRUE
-    )
+    dirs <- list.dirs(path = root,
+                      recursive = FALSE,
+                      full.names = TRUE)
     
     if (length(dirs) == 0) {
       agg_runs(NULL)
@@ -3946,19 +3912,23 @@ B           0   0   1
   })
   
   observeEvent(input$instrument, {
-    
-    apply_instrument_defaults(session, prefix = "", instrument = input$instrument)
+    apply_instrument_defaults(session,
+                              prefix = "",
+                              instrument = input$instrument)
     
   })
   
   observeEvent(input$run_batch, {
-    
     APP_CONFIG$region <- region_selected()
     
     batch_abort(FALSE)
     
     # Hard guard: reject run if any pair is not fully matched
-    pairs_check <- tryCatch(validated_pairs_cached(), error = function(e) NULL)
+    pairs_check <- tryCatch(
+      validated_pairs_cached(),
+      error = function(e)
+        NULL
+    )
     if (is.null(pairs_check) || nrow(pairs_check) == 0 ||
         !all(pairs_check$status == "✅ matched")) {
       showModal(modalDialog(
@@ -3972,12 +3942,16 @@ B           0   0   1
     
     batch_failures(character(0))
     
-    req(validated_pairs_cached(), nrow(validated_pairs_cached()) > 0)
+    req(validated_pairs_cached(),
+        nrow(validated_pairs_cached()) > 0)
     
     pairs_val      <- validated_pairs_cached()
     n              <- nrow(pairs_val)
     batch_start_time <- Sys.time()
-    old_plan       <- if (requireNamespace("future", quietly = TRUE)) future::plan() else NULL
+    old_plan       <- if (requireNamespace("future", quietly = TRUE))
+      future::plan()
+    else
+      NULL
     
     params <- list(
       hrs        = input$batch_hrs,
@@ -3992,10 +3966,7 @@ B           0   0   1
       }
     )
     
-    gc_silent(gc_log_block("RUN BATCH START", list(
-      n = n,
-      params = params
-    )))
+    gc_silent(gc_log_block("RUN BATCH START", list(n = n, params = params)))
     
     timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
     batch_tag <- if (nzchar(input$batch_prefix)) {
@@ -4018,7 +3989,11 @@ B           0   0   1
     bs$finished  <- FALSE                 # finish_batch called exactly once
     # ────────────────────────────────────────────────────────────────────────────
     
-    workers <- if (isTRUE(input$batch_parallel) && batch_can_parallel()) 2L else 1L
+    workers <- if (isTRUE(input$batch_parallel) &&
+                   batch_can_parallel())
+      2L
+    else
+      1L
     
     if (workers > 1 && !inherits(future::plan(), "multisession")) {
       future::plan(future::multisession, workers = workers)
@@ -4035,24 +4010,31 @@ B           0   0   1
     progress <- Progress$new(session, min = 0, max = n)
     batch_state$progress_open <- TRUE
     tryCatch(
-      progress$set(message = "Batch analysis running", detail = "Starting…", value = 0),
-      error = function(e) NULL
+      progress$set(
+        message = "Batch analysis running",
+        detail = "Starting…",
+        value = 0
+      ),
+      error = function(e)
+        NULL
     )
     
     # ── maybe_finish: called after every plate completes ───────────────────────
     maybe_finish <- function() {
-      if (bs$running > 0 || length(bs$queue) > 0) return()
-      if (bs$finished) return()
+      if (bs$running > 0 || length(bs$queue) > 0)
+        return()
+      if (bs$finished)
+        return()
       bs$finished <- TRUE
       
-      gc_log_block("BATCH FINISH STATE", list(
-        completed = bs$completed,
-        failures  = bs$failures
-      ))
+      gc_log_block("BATCH FINISH STATE",
+                   list(
+                     completed = bs$completed,
+                     failures  = bs$failures
+                   ))
       
       later::later(function() {
         tryCatch({
-          
           # ── Only attempt cleanup if every plate failed ──
           all_failed <- (length(bs$failures) == n)
           
@@ -4080,16 +4062,19 @@ B           0   0   1
     
     # ── launch_next: schedules the next plate, respecting abort + concurrency ──
     launch_next <- function() {
-      
       gc_log(
-        "Queue:", length(bs$queue),
-        "| Running:", bs$running,
-        "| Completed:", bs$completed
+        "Queue:",
+        length(bs$queue),
+        "| Running:",
+        bs$running,
+        "| Completed:",
+        bs$completed
       )
       
       if (bs$aborted || length(bs$queue) == 0) {
         # If everything that was running has now finished, wrap up
-        if (bs$running == 0) maybe_finish()
+        if (bs$running == 0)
+          maybe_finish()
         return()
       }
       
@@ -4099,7 +4084,10 @@ B           0   0   1
       }
       
       i         <- bs$queue[[1]]
-      bs$queue  <- if (length(bs$queue) > 1) bs$queue[-1] else list()
+      bs$queue  <- if (length(bs$queue) > 1)
+        bs$queue[-1]
+      else
+        list()
       bs$running <- bs$running + 1L
       
       tryCatch(
@@ -4107,7 +4095,8 @@ B           0   0   1
           value  = bs$completed,
           detail = paste("Completed", bs$completed, "of", n, "| Running plate", i)
         ),
-        error = function(e) NULL
+        error = function(e)
+          NULL
       )
       
       run_one_plate_future(
@@ -4115,7 +4104,8 @@ B           0   0   1
         pairs_val = pairs_val,
         params    = params,
         root_path = root_path,
-        bs        = bs,               # pass the env directly — no closure capture issues
+        bs        = bs,
+        # pass the env directly — no closure capture issues
         session   = session,
         progress  = progress,
         n         = n,
@@ -4130,10 +4120,16 @@ B           0   0   1
   
   # ── run_one_plate_future ──────────────────────────────────────────────────────
   # All mutable state lives in `bs` (the env passed in). No <<- needed.
-  run_one_plate_future <- function(i, pairs_val, params, root_path,
-                                   bs, session, progress, n,
-                                   launch_next_fn, maybe_finish_fn) {
-    
+  run_one_plate_future <- function(i,
+                                   pairs_val,
+                                   params,
+                                   root_path,
+                                   bs,
+                                   session,
+                                   progress,
+                                   n,
+                                   launch_next_fn,
+                                   maybe_finish_fn) {
     future_globals <- list(
       i         = i,
       pairs_val = pairs_val,
@@ -4143,14 +4139,14 @@ B           0   0   1
     )
     
     prom <- promises::future_promise(expr = {
-      
       # ✅ Define quiet wrapper INSIDE worker
       gc_run_quiet <- if (!isTRUE(getOption("gc.dev_mode"))) {
         function(expr) {
           suppressWarnings(suppressMessages(expr))
         }
       } else {
-        function(expr) expr
+        function(expr)
+          expr
       }
       
       if (exists("gc_log") && isTRUE(getOption("gc.dev_mode"))) {
@@ -4170,21 +4166,21 @@ B           0   0   1
         # ── Paths defined above, but NO dir.create() yet ──
         
         res <- tryCatch({
-            gc_run_quiet(
-              run_gc(
-                rawdatafile = pairs_val$data_file[i],
-                designfile  = pairs_val$design_file[i],
-                hrs         = params$hrs,
-                interval    = params$interval,
-                minod       = params$minod,
-                maxod       = params$maxod,
-                instrument  = params$instrument,
-                blank_mode  = params$blank_mode,
-                batch       = TRUE,
-                prefix      = plate_tag,
-                region      = region
-              )
+          gc_run_quiet(
+            run_gc(
+              rawdatafile = pairs_val$data_file[i],
+              designfile  = pairs_val$design_file[i],
+              hrs         = params$hrs,
+              interval    = params$interval,
+              minod       = params$minod,
+              maxod       = params$maxod,
+              instrument  = params$instrument,
+              blank_mode  = params$blank_mode,
+              batch       = TRUE,
+              prefix      = plate_tag,
+              region      = region
             )
+          )
         }, error = function(e) {
           list(
             success = FALSE,
@@ -4198,18 +4194,26 @@ B           0   0   1
         })
         
         if (!is.list(res) || is.null(res$plots)) {
-          return(list(
-            success = FALSE,
-            message = res$message %||% "Run failed before producing valid output",
-            plate   = pairs_val$data_file[i]
-          ))
+          return(
+            list(
+              success = FALSE,
+              message = res$message %||% "Run failed before producing valid output",
+              plate   = pairs_val$data_file[i]
+            )
+          )
         }
         
-        dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
+        dir.create(root_path,
+                   recursive = TRUE,
+                   showWarnings = FALSE)
         
         # ── Analysis succeeded — now safe to create directories ──
-        dir.create(plots_dir,   recursive = TRUE, showWarnings = FALSE)
-        dir.create(summary_dir, recursive = TRUE, showWarnings = FALSE)
+        dir.create(plots_dir,
+                   recursive = TRUE,
+                   showWarnings = FALSE)
+        dir.create(summary_dir,
+                   recursive = TRUE,
+                   showWarnings = FALSE)
         
         gc_save_plots(res$plots, plots_dir)
         gc_write_summaries(
@@ -4230,17 +4234,17 @@ B           0   0   1
         )
       })
       
-    }, globals = future_globals, seed = TRUE)
+    },
+    globals = future_globals,
+    seed = TRUE)
     
     # ── then: plate finished (success or reported failure) ─────────────────────
     prom <- promises::then(prom, function(result) {
-      
       if (exists("gc_log_block")) {
         try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
       }
       
       tryCatch({
-        
         bs$running   <- bs$running - 1L
         bs$completed <- bs$completed + 1L
         
@@ -4249,15 +4253,17 @@ B           0   0   1
           bs$aborted <- TRUE
           bs$queue   <- list()
           bs$failures <- c(bs$failures,
-                           paste0("Plate ", i, ": ",
-                                  result$message %||% "unknown error"))
+                           paste0("Plate ", i, ": ", result$message %||% "unknown error"))
           gc_log_block(paste("BATCH FAILURE plate", i), result$message)
         }
         
         tryCatch(
-          progress$set(value  = bs$completed,
-                       detail = paste("Completed", bs$completed, "of", n)),
-          error = function(e) NULL
+          progress$set(
+            value  = bs$completed,
+            detail = paste("Completed", bs$completed, "of", n)
+          ),
+          error = function(e)
+            NULL
         )
         
         # Either launch the next plate or finish up
@@ -4279,7 +4285,6 @@ B           0   0   1
     
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
-      
       gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
       
       tryCatch({
@@ -4288,9 +4293,9 @@ B           0   0   1
         bs$aborted   <- TRUE
         bs$queue     <- list()
         bs$failures  <- c(bs$failures,
-                          paste0("Plate ", i, ": async system error — ",
-                                 conditionMessage(e)))
-        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i), conditionMessage(e))
+                          paste0("Plate ", i, ": async system error — ", conditionMessage(e)))
+        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
+                     conditionMessage(e))
         maybe_finish_fn()
       }, error = function(e2) {
         gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
@@ -4364,7 +4369,7 @@ B           0   0   1
         footer = modalButton("Close")
       )
     )
-  })  
+  })
   
   gc_disable_navigation <- function() {
     shinyjs::disable("prev_stage")
@@ -4377,7 +4382,6 @@ B           0   0   1
   }
   
   observeEvent(input$export_files, {
-    
     req(analysis_result())
     res <- analysis_result()
     
@@ -4445,7 +4449,8 @@ B           0   0   1
     
     pretty_path <- tryCatch(
       pretty_export_path(analysis_dir),
-      error = function(e) analysis_dir
+      error = function(e)
+        analysis_dir
     )
     
     showModal(
@@ -4455,10 +4460,7 @@ B           0   0   1
           p("Analysis files were written to:"),
           tags$div(
             style = "margin-top: 6px;",
-            tags$code(
-              style = "color: #1f78b4; font-size: 0.95em;",
-              pretty_path
-            )
+            tags$code(style = "color: #1f78b4; font-size: 0.95em;", pretty_path)
           )
         ),
         easyClose = TRUE,
@@ -4476,10 +4478,8 @@ B           0   0   1
     success <- open_folder(last_export_dir())
     
     if (!isTRUE(success)) {
-      showNotification(
-        "Could not open folder automatically. Please open it manually.",
-        type = "warning"
-      )
+      showNotification("Could not open folder automatically. Please open it manually.",
+                       type = "warning")
     }
   })
   
@@ -4500,7 +4500,6 @@ B           0   0   1
   })
   
   observe({
-    
     ready <-
       wd_set() &&
       nzchar(input$raw_file %||% "") &&
@@ -4578,7 +4577,6 @@ B           0   0   1
   })
   
   observeEvent(input$export_agg, {
-    
     req(agg_result(), input$agg_dir)
     
     APP_CONFIG$region <- region_selected()
@@ -4592,7 +4590,8 @@ B           0   0   1
     
     pretty_path <- tryCatch(
       pretty_export_path(out_file),
-      error = function(e) out_file
+      error = function(e)
+        out_file
     )
     
     showModal(
@@ -4603,25 +4602,18 @@ B           0   0   1
           p("Combined dataset was written to:"),
           tags$div(
             style = "margin-top: 6px;",
-            tags$code(
-              style = "color: #1f78b4; font-size: 0.95em;",
-              pretty_path
-            )
+            tags$code(style = "color: #1f78b4; font-size: 0.95em;", pretty_path)
           )
         ),
         
         easyClose = TRUE,
         
         footer = tagList(
-          actionButton(
-            "open_agg_dir",
-            "📂 Open containing folder",
-            class = "btn-primary"
-          ),
+          actionButton("open_agg_dir", "📂 Open containing folder", class = "btn-primary"),
           modalButton("Close")
         )
       )
-    )    
+    )
   })
   
 }
@@ -4629,4 +4621,3 @@ B           0   0   1
 
 app <- shiny::shinyApp(ui = ui, server = server)
 app
-

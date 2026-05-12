@@ -35,5 +35,5 @@ run_growthcurve <- function() {
   source(file.path(app_dir, "growthcurve_functions.R"), local = TRUE)
   
   # Source and run the app
-  source(file.path(app_dir, "growthcurve_app.R"), local = TRUE)
+  source(file.path(app_dir, "app.R"), local = TRUE)
 }

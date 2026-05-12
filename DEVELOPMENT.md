@@ -17,7 +17,7 @@ growthcurve_app/
         ├── app.R                    # Main Shiny app 
         ├── growthcurve_system.R     # System functions
         ├── growthcurve_functions.R  # Core analysis functions
-        ├── preview files/
+        ├── preview_files/
         │   └── plate_design_for_preview.csv
         └── templates/
             ├── design_template_us.csv
