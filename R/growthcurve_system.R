@@ -35,6 +35,7 @@ APP_VERSION <- as.character(utils::packageVersion("growthcurve"))
 # ✅ Backend readiness check (replaces app.R logic)
 # ============================================================
 
+#' @export
 gc_backend_ready <- function() {
   tryCatch({
     

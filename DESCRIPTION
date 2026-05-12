@@ -10,7 +10,7 @@ Description: A comprehensive Shiny application for analyzing microbial growth cu
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen2: list(markdown = TRUE)
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.3
 Depends:
     R (>= 4.0.0)
 Imports:
