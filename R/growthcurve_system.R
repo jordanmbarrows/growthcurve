@@ -2,9 +2,6 @@
 # growthcurve_system.R
 # Growth Curve App – System Configuration & Behavior Layer
 #
-# Version: 1.0.0
-# Date: 2026-05-11
-#
 # Purpose:
 #   Centralizes all environment-dependent behavior, including:
 #   - OS detection
@@ -24,15 +21,15 @@
 # DEV MODE (global single source of truth)
 # ============================================================
 
-DEV_DEFAULT <- FALSE
-options(gc.dev_mode = DEV_DEFAULT)
+gc_dev_mode <- function() {
+  isTRUE(getOption("gc.dev_mode", FALSE))
+}
 
 # ============================================================
-# ✅ App Metadata (single source of truth)
-# ============================================================
+# ✅ App Metadata  (sourced from DESCRIPTION)
+#=============================================================
 
-APP_VERSION <- "1.0.0"
-APP_DATE    <- "2026-05-11"
+APP_VERSION <- as.character(utils::packageVersion("growthcurve"))
 
 # ============================================================
 # ✅ Backend readiness check (replaces app.R logic)
@@ -73,12 +70,6 @@ gc_backend_ready <- function() {
 # ============================================================
 # DEBUG LOGGING UTILITIES
 # ============================================================
-DEV_MODE <- isTRUE(getOption("gc.dev_mode", TRUE))
-
-gc_dev_mode <- function() {
-  isTRUE(getOption("gc.dev_mode", FALSE))
-}
-
 gc_log <- function(...) {
   if (!gc_dev_mode()) return(invisible(NULL))
   
@@ -400,8 +391,3 @@ write_csv_safe <- function(df, file, region = NULL) {
     fileEncoding = "UTF-8"
   )
 }
-
-
-
-
-

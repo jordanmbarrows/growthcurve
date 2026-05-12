@@ -2,9 +2,6 @@
 # growthcurve_functions.R
 # Growth Curve Analysis – Shiny-Safe Backend
 #
-# Version: 1.0.0
-# Date: 2026-05-11
-#
 # Purpose:
 #   Provides deterministic, batch-capable growth curve
 #   analysis functions used by the Shiny app.

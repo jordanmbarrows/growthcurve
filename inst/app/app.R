@@ -2,9 +2,6 @@
 # app.R
 # Growth Curve Shiny App – UI and Server Orchestration
 #
-# Version: 1.0.0
-# Date: 2026-05-11
-#
 # Purpose:
 #   Defines the Shiny user interface and server logic.
 #   Orchestrates file selection, parameter input, progress
@@ -58,8 +55,8 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       textInput(
         "wd",
         "Working directory path",
-        value = if (isTRUE(DEV_DEFAULT))
-          "C:/Users/Jordan/Desktop/Shiny app development/dev/Dummy data/"
+        value = if (gc_dev_mode())
+          "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
         else
           ""
       ),
@@ -574,64 +571,42 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
 }))
 
 server <- function(input, output, session) {
-  dev_mode <- reactiveVal(DEV_DEFAULT)
+
+  # ============================================================
+  # ✅ Dev-mode aware helpers (single source of truth)
+  # ============================================================
   
-  if (!isTRUE(getOption("gc.dev_mode"))) {
-    sink_null <- function()
-      sink("/dev/null")
+  gc_run_quiet <- function(expr) {
+    if (gc_dev_mode()) return(expr)
     
-    gc_run_quiet <- function(expr) {
-      # capture all output channels
-      zz <- file(tempfile(), open = "wt")
-      sink(zz)
-      sink(zz, type = "message")
-      
-      result <- withCallingHandlers(
-        suppressWarnings(suppressMessages(expr)),
-        warning = function(w) {
-          invokeRestart("muffleWarning")  # ✅ kills ALL warnings
-        },
-        message = function(m) {
-          invokeRestart("muffleMessage")  # ✅ kills ALL messages
-        }
-      )
-      
+    zz <- file(tempfile(), open = "wt")
+    sink(zz)
+    sink(zz, type = "message")
+    
+    on.exit({
       sink(type = "message")
       sink()
       close(zz)
-      
-      result
-    }
+    }, add = TRUE)
     
-  } else {
-    gc_run_quiet <- function(expr)
-      expr
+    withCallingHandlers(
+      suppressWarnings(suppressMessages(expr)),
+      warning = function(w) invokeRestart("muffleWarning"),
+      message = function(m) invokeRestart("muffleMessage")
+    )
   }
   
-  if (!isTRUE(getOption("gc.dev_mode"))) {
-    gc_silent <- function(expr) {
-      sink(tempfile())
-      on.exit(sink(), add = TRUE)
-      suppressWarnings(suppressMessages(expr))
-    }
+  gc_silent <- function(expr) {
+    if (gc_dev_mode()) return(expr)
     
-  } else {
-    gc_silent <- function(expr)
-      expr
+    sink(tempfile())
+    on.exit(sink(), add = TRUE)
     
+    suppressWarnings(suppressMessages(expr))
   }
-  
-  # Keep global option in sync (used by gc_log functions)
-  shiny::observe({
-    options(gc.dev_mode = dev_mode())
-  })
   
   quiet <- function(expr) {
-    if (isTRUE(getOption("gc.dev_mode"))) {
-      expr
-    } else {
-      suppressWarnings(suppressMessages(expr))
-    }
+    if (gc_dev_mode()) expr else suppressWarnings(suppressMessages(expr))
   }
   
   `%||%` <- function(a, b)
@@ -743,23 +718,6 @@ server <- function(input, output, session) {
   
   output$wd_ready <- reactive({
     wd_set()
-  })
-  
-  shiny::observeEvent(input$dev_toggle_clicks, {
-    new_val <- !dev_mode()
-    dev_mode(new_val)
-    
-    showNotification(
-      if (new_val)
-        "Developer mode enabled"
-      else
-        "Developer mode disabled",
-      type = if (new_val)
-        "message"
-      else
-        "default",
-      duration = 2
-    )
   })
   
   shiny::observe({
@@ -4139,17 +4097,14 @@ B           0   0   1
     )
     
     prom <- promises::future_promise(expr = {
-      # ✅ Define quiet wrapper INSIDE worker
-      gc_run_quiet <- if (!isTRUE(getOption("gc.dev_mode"))) {
-        function(expr) {
-          suppressWarnings(suppressMessages(expr))
-        }
-      } else {
-        function(expr)
-          expr
+      # Worker-safe version (no sinks / handlers)
+      gc_run_quiet_worker <- function(expr) {
+        if (isTRUE(getOption("gc.dev_mode"))) return(expr)
+        
+        suppressWarnings(suppressMessages(expr))
       }
       
-      if (exists("gc_log") && isTRUE(getOption("gc.dev_mode"))) {
+      if (exists("gc_log") && gc_dev_mode()) {
         try(gc_log(paste("Worker starting plate", i)), silent = TRUE)
       }
       
@@ -4166,7 +4121,7 @@ B           0   0   1
         # ── Paths defined above, but NO dir.create() yet ──
         
         res <- tryCatch({
-          gc_run_quiet(
+          gc_run_quiet_worker(
             run_gc(
               rawdatafile = pairs_val$data_file[i],
               designfile  = pairs_val$design_file[i],
