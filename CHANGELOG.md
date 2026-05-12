@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Internal improvements & bug fixes
+- Moved helper functions into `R/` directory
+- Fixed namespace resolution issues in Shiny runtime
+- Removed `source()`-based function loading
+- Stabilized async batch execution (future + promises)
+- Hardened error handlers against missing conditions
+- Resolved `"argument 'e' is missing"` crashes
+- Improved compatibility with `devtools::load_all()`
+
 ## [1.0.0] - 2026-05-12
 
 ### Added
@@ -8,13 +19,13 @@
 - CSV import functionality
 - Interactive visualization
 
-### Fixed
+### Stabilized
 - Path handling issues
 - Namespace errors
 
 ---
 
-## [0.6.4]
+## [0.6.4] - 2026-05-11
 
 ### Added
 - Prototype version of app

@@ -21,6 +21,7 @@
 # DEV MODE (global single source of truth)
 # ============================================================
 
+#' @export
 gc_dev_mode <- function() {
   isTRUE(getOption("gc.dev_mode", FALSE))
 }
@@ -29,7 +30,10 @@ gc_dev_mode <- function() {
 # ✅ App Metadata  (sourced from DESCRIPTION)
 #=============================================================
 
-APP_VERSION <- as.character(utils::packageVersion("growthcurve"))
+#' @export
+gc_app_version <- function() {
+  as.character(utils::packageVersion(utils::packageName()))
+}
 
 # ============================================================
 # ✅ Backend readiness check (replaces app.R logic)
@@ -160,9 +164,10 @@ detect_region <- function() {
 # ✅ Global Configuration Object
 # ============================================================
 
-APP_CONFIG <- list(
-  region = detect_region()
-)
+#' @export
+gc_app_config <- function() {
+  list(region = detect_region())
+}
 
 
 # ============================================================

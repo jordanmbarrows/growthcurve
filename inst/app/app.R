@@ -24,6 +24,8 @@
 # or regional formatting will break.
 # ============================================================
 
+library(growthcurve)
+
 guide_summary_style <- function() {
   "
   cursor: pointer;
@@ -546,7 +548,7 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
     z-index: 9999;
     cursor: default;
   ",
-      paste0("GrowthCurve v", APP_VERSION)
+      paste0("GrowthCurve v", gc_app_version())
     )
   )
 }))
@@ -666,7 +668,7 @@ server <- function(input, output, session) {
   
   options(
     shiny.error = function(e) {
-      gc_silent(gc_log_block(
+      gc_silent(growthcurve:::gc_log_block(
         "SHINY ERROR",
         list(message = conditionMessage(e), callstack = sys.calls())
       ))
@@ -674,9 +676,20 @@ server <- function(input, output, session) {
   )
   
   options(
-    promises.onRejected = function(e) {
-      gc_log_block("GLOBAL PROMISE REJECTION",
-                   list(message   = conditionMessage(e), callstack = try(sys.calls(), silent = TRUE)))
+    promises.onRejected = function(e = NULL) {
+      
+      msg <- tryCatch(
+        if (!is.null(e)) conditionMessage(e) else "Unknown async error (no condition)",
+        error = function(...) "Failed to extract error message"
+      )
+      
+      growthcurve:::gc_log_block(
+        "GLOBAL PROMISE REJECTION",
+        list(
+          message   = msg,
+          callstack = try(sys.calls(), silent = TRUE)
+        )
+      )
       
       NULL
     }
@@ -693,7 +706,7 @@ server <- function(input, output, session) {
     path.expand(path)
   }
   
-  region_selected <- reactiveVal(APP_CONFIG$region)
+  region_selected <- reactiveVal(gc_app_config()$region)
   wd_set <- reactiveVal(FALSE)
   wd_path <- reactiveVal(NULL)
   file_refresh <- reactiveVal(0)
@@ -766,7 +779,7 @@ server <- function(input, output, session) {
     
     if (input$region_override == "auto") {
       # re-detect default (what you initialized from)
-      region_selected(APP_CONFIG$region)
+      region_selected(gc_app_config()$region)
       
     } else {
       region_selected(input$region_override)
@@ -1059,7 +1072,7 @@ server <- function(input, output, session) {
       
       pretty_path <- tryCatch(
         pretty_export_path(root_path),
-        error = function(e)
+        error = function(e = NULL)
           root_path
       )
       
@@ -1151,7 +1164,7 @@ server <- function(input, output, session) {
     data_list <- lapply(all_files, function(f) {
       df <- tryCatch(
         read_csv_safe(f),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       if (is.null(df))
@@ -1344,7 +1357,7 @@ server <- function(input, output, session) {
       
       vars <- tryCatch(
         extract_design_blocks(dfile),
-        error = function(e)
+        error = function(e = NULL)
           character(0)
       )
       
@@ -1380,7 +1393,7 @@ server <- function(input, output, session) {
     )
     
     # ✅ DEBUG (safe: no side effects)
-    gc_silent(gc_log_block("VALIDATED BATCH PAIRS", result_df))
+    gc_silent(growthcurve:::gc_log_block("VALIDATED BATCH PAIRS", result_df))
     
     result_df
   })
@@ -1409,14 +1422,14 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$install_yes, {
     removeModal()
     
-    pkgs_before <- gc_check_packages()
+    pkgs_before <- growthcurve:::gc_check_packages()
     missing <- c(pkgs_before$missing, pkgs_before$broken)
     
     tryCatch({
       install.packages(missing)
       
       # ✅ Re-check after installation attempt
-      pkgs_after <- gc_check_packages()
+      pkgs_after <- growthcurve:::gc_check_packages()
       still_missing <- c(pkgs_after$missing, pkgs_after$broken)
       
       if (length(still_missing) == 0) {
@@ -1474,7 +1487,7 @@ server <- function(input, output, session) {
         )
       }
       
-    }, error = function(e) {
+    }, error = function(e = NULL) {
       showModal(
         modalDialog(
           title = "Installation failed",
@@ -1482,7 +1495,7 @@ server <- function(input, output, session) {
           shiny::tagList(
             p("We couldn't install the required packages."),
             p(paste(
-              "Technical error:", gc_get_message(e)
+              "Technical error:", growthcurve:::gc_get_message(e)
             )),
             p("Please check your internet connection and try again."),
             p("The application cannot continue.")
@@ -1531,7 +1544,7 @@ server <- function(input, output, session) {
   })
   
   session$onFlushed(function() {
-    pkgs <- gc_check_packages()
+    pkgs <- growthcurve:::gc_check_packages()
     missing <- c(pkgs$missing, pkgs$broken)
     
     if (length(missing) > 0) {
@@ -2627,7 +2640,7 @@ B           0   0   1
         nzchar(input$batch_design_dir)) {
       df <- tryCatch(
         validated_pairs_cached(),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       
@@ -2875,7 +2888,7 @@ B           0   0   1
         nzchar(input$batch_design_dir)) {
       df <- tryCatch(
         validated_pairs_cached(),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       
@@ -2935,7 +2948,7 @@ B           0   0   1
         nzchar(input$batch_design_dir)) {
       df <- tryCatch(
         validated_pairs_cached(),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       
@@ -2972,7 +2985,7 @@ B           0   0   1
         nzchar(input$batch_design_dir)) {
       df <- tryCatch(
         validated_pairs_cached(),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       
@@ -3375,7 +3388,7 @@ B           0   0   1
     batch_pairs_last_valid(df)
     batch_pairs(df)
     
-    gc_log_block("BATCH PAIRS", df)
+    growthcurve:::gc_log_block("BATCH PAIRS", df)
     
   })
   
@@ -3429,7 +3442,7 @@ B           0   0   1
     
     vars <- tryCatch(
       extract_design_blocks(file),
-      error = function(e)
+      error = function(e = NULL)
         character(0)
     )
     
@@ -3713,7 +3726,7 @@ B           0   0   1
       future::plan(future::sequential)
     }
     
-    APP_CONFIG$region <- region_selected()
+    region <- region_selected()
     
     analysis_result(NULL)
     
@@ -3757,7 +3770,7 @@ B           0   0   1
                    }
                    
                    res <- tryCatch({
-                     gc_log_block(
+                     growthcurve:::gc_log_block(
                        "SINGLE RUN PARAMS",
                        list(
                          raw_file = raw_file_path,
@@ -3783,14 +3796,14 @@ B           0   0   1
                        )
                      )
                      
-                   }, error = function(e) {
-                     gc_log_block("SINGLE RUN INTERNAL ERROR",
+                   }, error = function(e = NULL) {
+                     growthcurve:::gc_log_block("SINGLE RUN INTERNAL ERROR",
                                   list(error = e, callstack = sys.calls()))
                      
                      msg <- if (inherits(e, "gc_error")) {
-                       gc_get_message(e)
+                       growthcurve:::gc_get_message(e)
                      } else {
-                       paste("Unexpected error:\n", gc_get_message(e))
+                       paste("Unexpected error:\n", growthcurve:::gc_get_message(e))
                      }
                      
                      showModal(modalDialog(
@@ -3918,14 +3931,14 @@ B           0   0   1
   })
   
   shiny::observeEvent(input$run_batch, {
-    APP_CONFIG$region <- region_selected()
+    region <- region_selected()
     
     batch_abort(FALSE)
     
     # Hard guard: reject run if any pair is not fully matched
     pairs_check <- tryCatch(
       validated_pairs_cached(),
-      error = function(e)
+      error = function(e = NULL)
         NULL
     )
     if (is.null(pairs_check) || nrow(pairs_check) == 0 ||
@@ -3965,7 +3978,7 @@ B           0   0   1
       }
     )
     
-    gc_silent(gc_log_block("RUN BATCH START", list(n = n, params = params)))
+    gc_silent(growthcurve:::gc_log_block("RUN BATCH START", list(n = n, params = params)))
     
     timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
     batch_tag <- if (nzchar(input$batch_prefix)) {
@@ -4014,7 +4027,7 @@ B           0   0   1
         detail = "Starting…",
         value = 0
       ),
-      error = function(e)
+      error = function(e = NULL)
         NULL
     )
     
@@ -4026,7 +4039,7 @@ B           0   0   1
         return()
       bs$finished <- TRUE
       
-      gc_log_block("BATCH FINISH STATE",
+      growthcurve:::gc_log_block("BATCH FINISH STATE",
                    list(
                      completed = bs$completed,
                      failures  = bs$failures
@@ -4053,15 +4066,15 @@ B           0   0   1
             app_locked(FALSE)
           })
           
-        }, error = function(e) {
-          gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
+        }, error = function(e = NULL) {
+          growthcurve:::gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
         })
       }, delay = 0)
     }
     
     # ── launch_next: schedules the next plate, respecting abort + concurrency ──
     launch_next <- function() {
-      gc_log(
+      growthcurve:::gc_log(
         "Queue:",
         length(bs$queue),
         "| Running:",
@@ -4094,7 +4107,7 @@ B           0   0   1
           value  = bs$completed,
           detail = paste("Completed", bs$completed, "of", n, "| Running plate", i)
         ),
-        error = function(e)
+        error = function(e = NULL)
           NULL
       )
       
@@ -4146,13 +4159,11 @@ B           0   0   1
       }
       
       if (exists("gc_log") && gc_dev_mode()) {
-        try(gc_log(paste("Worker starting plate", i)), silent = TRUE)
+        try(growthcurve:::gc_log(paste("Worker starting plate", i)), silent = TRUE)
       }
       
       tryCatch({
-        source("growthcurve_system.R")
-        source("growthcurve_functions.R")
-        
+
         fname     <- basename(pairs_val$data_file[i])
         plate_tag <- tools::file_path_sans_ext(fname)
         plate_dir   <- file.path(root_path, plate_tag)
@@ -4177,13 +4188,13 @@ B           0   0   1
               region      = region
             )
           )
-        }, error = function(e) {
+        }, error = function(e = NULL) {
           list(
             success = FALSE,
             message = if (inherits(e, "gc_error")) {
-              gc_get_message(e)
+              growthcurve:::gc_get_message(e)
             } else {
-              paste("Unexpected error:", gc_get_message(e))
+              paste("Unexpected error:", growthcurve:::gc_get_message(e))
             },
             plate   = pairs_val$data_file[i]
           )
@@ -4222,7 +4233,7 @@ B           0   0   1
         
         list(success = TRUE)
         
-      }, error = function(e) {
+      }, error = function(e = NULL) {
         list(
           success = FALSE,
           message = paste("Fatal worker error:", conditionMessage(e)),
@@ -4237,7 +4248,7 @@ B           0   0   1
     # ── then: plate finished (success or reported failure) ─────────────────────
     prom <- promises::then(prom, function(result) {
       if (exists("gc_log_block")) {
-        try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
+        try(growthcurve:::gc_log_block(paste("Plate finished", i)), silent = TRUE)
       }
       
       tryCatch({
@@ -4250,7 +4261,7 @@ B           0   0   1
           bs$queue   <- list()
           bs$failures <- c(bs$failures,
                            paste0("Plate ", i, ": ", result$message %||% "unknown error"))
-          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+          growthcurve:::gc_log_block(paste("BATCH FAILURE plate", i), result$message)
         }
         
         tryCatch(
@@ -4258,7 +4269,7 @@ B           0   0   1
             value  = bs$completed,
             detail = paste("Completed", bs$completed, "of", n)
           ),
-          error = function(e)
+          error = function(e = NULL)
             NULL
         )
         
@@ -4269,8 +4280,8 @@ B           0   0   1
           maybe_finish_fn()
         }
         
-      }, error = function(e) {
-        gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
+      }, error = function(e = NULL) {
+        growthcurve:::gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
         bs$aborted  <- TRUE
         bs$queue    <- list()
         bs$running  <- bs$running - 1L
@@ -4281,7 +4292,7 @@ B           0   0   1
     
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
-      gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
+      growthcurve:::gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
       
       tryCatch({
         bs$running   <- bs$running - 1L
@@ -4290,11 +4301,11 @@ B           0   0   1
         bs$queue     <- list()
         bs$failures  <- c(bs$failures,
                           paste0("Plate ", i, ": async system error — ", conditionMessage(e)))
-        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
+        growthcurve:::gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
                      conditionMessage(e))
         maybe_finish_fn()
       }, error = function(e2) {
-        gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
+        growthcurve:::gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
       })
     })
     
@@ -4381,7 +4392,7 @@ B           0   0   1
     req(analysis_result())
     res <- analysis_result()
     
-    APP_CONFIG$region <- region_selected()
+    region <- region_selected()
     
     gc_disable_navigation()
     
@@ -4445,7 +4456,7 @@ B           0   0   1
     
     pretty_path <- tryCatch(
       pretty_export_path(analysis_dir),
-      error = function(e)
+      error = function(e = NULL)
         analysis_dir
     )
     
@@ -4575,7 +4586,7 @@ B           0   0   1
   shiny::observeEvent(input$export_agg, {
     req(agg_result(), input$agg_dir)
     
-    APP_CONFIG$region <- region_selected()
+    region <- region_selected()
     
     timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
     
@@ -4586,7 +4597,7 @@ B           0   0   1
     
     pretty_path <- tryCatch(
       pretty_export_path(out_file),
-      error = function(e)
+      error = function(e = NULL)
         out_file
     )
     
