@@ -46,11 +46,11 @@ guide_note_style <- function() {
   "font-size: 0.9em; color: #555;"
 }
 
-ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
-  verbatimTextOutput("startup_error")
+ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_ready()) {
+  shiny::verbatimTextOutput("startup_error")
   
 } else {
-  tagList(
+  shiny::tagList(
     titlePanel("Growth Curve Analysis"),
     
     wellPanel(
@@ -65,7 +65,7 @@ ui <- fluidPage(shinyjs::useShinyjs(), tagList(if (!gc_backend_ready()) {
       ),
       actionButton("set_wd", "Set working directory"),
       actionButton("refresh_files", "Refresh files"),
-      verbatimTextOutput("wd_txt"),
+      shiny::verbatimTextOutput("wd_txt"),
       
       
       tags$details(
@@ -622,7 +622,7 @@ server <- function(input, output, session) {
   }
   
   # Keep global option in sync (used by gc_log functions)
-  observe({
+  shiny::observe({
     options(gc.dev_mode = dev_mode())
   })
   
@@ -640,7 +640,7 @@ server <- function(input, output, session) {
   else
     b
   
-  output$startup_error <- renderText({
+  output$startup_error <- shiny::renderText({
     if (exists("gc_startup_error", envir = .GlobalEnv)) {
       paste("Startup error:\n", gc_startup_error)
     } else {
@@ -745,7 +745,7 @@ server <- function(input, output, session) {
     wd_set()
   })
   
-  observeEvent(input$dev_toggle_clicks, {
+  shiny::observeEvent(input$dev_toggle_clicks, {
     new_val <- !dev_mode()
     dev_mode(new_val)
     
@@ -762,7 +762,7 @@ server <- function(input, output, session) {
     )
   })
   
-  observe({
+  shiny::observe({
     req(input$region_override)
     
     if (input$region_override == "auto") {
@@ -775,7 +775,7 @@ server <- function(input, output, session) {
     }
   })
   
-  output$region_detected_txt <- renderText({
+  output$region_detected_txt <- shiny::renderText({
     region <- region_selected()
     
     if (region == "EU") {
@@ -785,7 +785,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observe({
+  shiny::observe({
     locked <- app_locked()
     
     ids <- c(
@@ -811,7 +811,7 @@ server <- function(input, output, session) {
     
   })
   
-  observe({
+  shiny::observe({
     if (wd_set()) {
       shinyjs::show("batch_controls")
     } else {
@@ -820,7 +820,7 @@ server <- function(input, output, session) {
     
   })
   
-  observe({
+  shiny::observe({
     if (wd_set()) {
       shinyjs::show("aggregate_controls")
     } else {
@@ -829,7 +829,7 @@ server <- function(input, output, session) {
     
   })
   
-  output$batch_gate <- renderUI({
+  output$batch_gate <- shiny::renderUI({
     if (wd_set())
       return(NULL)
     
@@ -839,7 +839,7 @@ server <- function(input, output, session) {
     
   })
   
-  output$aggregate_gate <- renderUI({
+  output$aggregate_gate <- shiny::renderUI({
     if (wd_set())
       return(NULL)
     
@@ -1051,7 +1051,7 @@ server <- function(input, output, session) {
         p("All plates were processed successfully.")
         
       } else {
-        tagList(p("Batch completed with some failures."),
+        shiny::tagList(p("Batch completed with some failures."),
                 p(strong("Failed plates:")),
                 tags$ul(lapply(failures, function(x) {
                   tags$li(tags$code(x))
@@ -1068,7 +1068,7 @@ server <- function(input, output, session) {
         modalDialog(
           title = "Batch analysis complete",
           
-          tagList(
+          shiny::tagList(
             failure_ui,
             
             tags$hr(),
@@ -1076,7 +1076,7 @@ server <- function(input, output, session) {
             p(paste("Total runtime:", elapsed_str)),
             
             if (!all_failed && dir.exists(root_path))
-              tagList(
+              shiny::tagList(
                 p("Results were written to:"),
                 tags$div(
                   style = "margin-top: 6px;",
@@ -1087,7 +1087,7 @@ server <- function(input, output, session) {
           
           easyClose = TRUE,
           
-          footer = tagList(if (!all_failed &&
+          footer = shiny::tagList(if (!all_failed &&
                                dir.exists(root_path)) {
             actionButton("open_batch_dir", "📂 Open output folder", class = "btn-primary")
           }, modalButton("Close"))
@@ -1103,7 +1103,7 @@ server <- function(input, output, session) {
     })
   }
   
-  observeEvent(input$open_batch_dir, {
+  shiny::observeEvent(input$open_batch_dir, {
     req(batch_root())
     
     success <- open_folder(batch_root())
@@ -1114,7 +1114,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(input$open_agg_dir, {
+  shiny::observeEvent(input$open_agg_dir, {
     req(input$agg_dir)
     
     success <- open_folder(input$agg_dir)
@@ -1316,7 +1316,7 @@ server <- function(input, output, session) {
     read_preview_file(path, nrows = 30)
   })
   
-  output$design_example_table <- renderTable({
+  output$design_example_table <- shiny::renderTable({
     df <- design_example()
     req(df)
     
@@ -1399,15 +1399,15 @@ server <- function(input, output, session) {
   
   last_export_dir <- reactiveVal(NULL)
   
-  observeEvent(input$install_no, {
+  shiny::observeEvent(input$install_no, {
     stopApp()
   })
   
-  observeEvent(input$close_app_after_failed_install, {
+  shiny::observeEvent(input$close_app_after_failed_install, {
     stopApp()
   })
   
-  observeEvent(input$install_yes, {
+  shiny::observeEvent(input$install_yes, {
     removeModal()
     
     pkgs_before <- gc_check_packages()
@@ -1426,7 +1426,7 @@ server <- function(input, output, session) {
           modalDialog(
             title = "Installation complete",
             
-            tagList(
+            shiny::tagList(
               p(
                 "All required packages have been installed successfully."
               ),
@@ -1435,7 +1435,7 @@ server <- function(input, output, session) {
               )
             ),
             
-            footer = tagList(actionButton(
+            footer = shiny::tagList(actionButton(
               "close_app_after_install", "Close app"
             )),
             
@@ -1449,7 +1449,7 @@ server <- function(input, output, session) {
           modalDialog(
             title = "Installation incomplete",
             
-            tagList(
+            shiny::tagList(
               p("Some packages could not be installed."),
               p("The following are still missing:"),
               tags$ul(lapply(still_missing, tags$li)),
@@ -1466,7 +1466,7 @@ server <- function(input, output, session) {
               )
             ),
             
-            footer = tagList(
+            footer = shiny::tagList(
               actionButton("close_app_after_failed_install", "Close app", class = "btn-danger")
             ),
             
@@ -1480,7 +1480,7 @@ server <- function(input, output, session) {
         modalDialog(
           title = "Installation failed",
           
-          tagList(
+          shiny::tagList(
             p("We couldn't install the required packages."),
             p(paste(
               "Technical error:", gc_get_message(e)
@@ -1489,7 +1489,7 @@ server <- function(input, output, session) {
             p("The application cannot continue.")
           ),
           
-          footer = tagList(
+          footer = shiny::tagList(
             actionButton("close_app_after_failed_install", "Close app", class = "btn-danger")
           ),
           
@@ -1499,11 +1499,11 @@ server <- function(input, output, session) {
     })
   })
   
-  observeEvent(input$close_app_after_install, {
+  shiny::observeEvent(input$close_app_after_install, {
     stopApp()
   })
   
-  observeEvent(input$set_wd, {
+  shiny::observeEvent(input$set_wd, {
     req(nzchar(input$wd))
     
     cleaned_path <- clean_path(input$wd)
@@ -1522,12 +1522,12 @@ server <- function(input, output, session) {
     wd_set(TRUE)
     file_refresh(file_refresh() + 1)
     
-    output$wd_txt <- renderText({
+    output$wd_txt <- shiny::renderText({
       paste("Working directory:", wd_path())
     })
   })
   
-  observeEvent(input$refresh_files, {
+  shiny::observeEvent(input$refresh_files, {
     file_refresh(file_refresh() + 1)
   })
   
@@ -1540,7 +1540,7 @@ server <- function(input, output, session) {
         modalDialog(
           title = "Missing required packages",
           
-          tagList(
+          shiny::tagList(
             p(
               "The following packages are required but are not properly installed:"
             ),
@@ -1548,7 +1548,7 @@ server <- function(input, output, session) {
             p("Would you like to install them now?")
           ),
           
-          footer = tagList(
+          footer = shiny::tagList(
             actionButton("install_yes", "Yes"),
             actionButton("install_no", "No")
           ),
@@ -1558,7 +1558,7 @@ server <- function(input, output, session) {
     }
   }, once = TRUE)
   
-  observe({
+  shiny::observe({
     if (is.null(analysis_result()) ||
         current_stage() == stage_order[1]) {
       shinyjs::disable("prev_stage")
@@ -1567,7 +1567,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observe({
+  shiny::observe({
     req(input$next_stage)
     req(current_stage())
     
@@ -1580,7 +1580,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observe({
+  shiny::observe({
     if (!is.null(analysis_result())) {
       shinyjs::enable("export_files")
     } else {
@@ -1588,7 +1588,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observe({
+  shiny::observe({
     if (!is.null(analysis_result())) {
       shinyjs::enable("reset_analysis")
     } else {
@@ -1596,7 +1596,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observe({
+  shiny::observe({
     # ✅ FIRST: handle directory readiness (no req yet)
     dir_ready <-
       !is.null(input$batch_data_dir) &&
@@ -1625,7 +1625,7 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(list(wd_set(), file_refresh()), {
+  shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
     dirs <- list.dirs(path       = wd_path(),
@@ -1661,7 +1661,7 @@ server <- function(input, output, session) {
     
   }, ignoreInit = TRUE)
   
-  observeEvent(list(wd_set(), file_refresh()), {
+  shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
     dirs <- list.dirs(path       = wd_path(),
@@ -1686,7 +1686,7 @@ server <- function(input, output, session) {
     
   }, ignoreInit = TRUE)
   
-  observeEvent(input$agg_select_all, {
+  shiny::observeEvent(input$agg_select_all, {
     req(agg_runs())
     
     value <- if (isTRUE(input$agg_select_all))
@@ -1697,7 +1697,7 @@ server <- function(input, output, session) {
     session$sendCustomMessage("toggle_all_checkboxes", value)
   })
   
-  output$blank_info <- renderText({
+  output$blank_info <- shiny::renderText({
     res <- analysis_result()
     validate(need(!is.null(res), ""))
     
@@ -1728,8 +1728,8 @@ server <- function(input, output, session) {
     )
   })
   
-  output$user_guide_ui <- renderUI({
-    tagList(
+  output$user_guide_ui <- shiny::renderUI({
+    shiny::tagList(
       h3("User guide"),
       
       tags$p(
@@ -2432,7 +2432,7 @@ B           0   0   1
   
   outputOptions(output, "stage_ready", suspendWhenHidden = FALSE)
   
-  output$single_ui <- renderUI({
+  output$single_ui <- shiny::renderUI({
     if (!wd_set()) {
       return(tagList(
         tags$div(
@@ -2445,7 +2445,7 @@ B           0   0   1
     
     files <- wd_files()
     
-    tagList(
+    shiny::tagList(
       # =========================================================
       # INPUT SECTION
       # =========================================================
@@ -2553,7 +2553,7 @@ B           0   0   1
       hr(),
       
       # ---- Stage counter ----
-      verbatimTextOutput("stage_counter"),
+      shiny::verbatimTextOutput("stage_counter"),
       
       # ---- Navigation stays with plots ----
       div(
@@ -2658,7 +2658,7 @@ B           0   0   1
     input$batch_interval
   )
   
-  output$single_raw_preview_table <- renderTable({
+  output$single_raw_preview_table <- shiny::renderTable({
     result <- single_preview_data()
     
     if (is_preview_message(result)) {
@@ -2669,7 +2669,7 @@ B           0   0   1
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
-  output$single_preview_label <- renderText({
+  output$single_preview_label <- shiny::renderText({
     req(input$raw_file, wd_path())
     
     file <- file.path(wd_path(), input$raw_file)
@@ -2679,7 +2679,7 @@ B           0   0   1
     build_preview_label(file, res, instrument = input$instrument)
   })
   
-  output$single_raw_preview_ui <- renderUI({
+  output$single_raw_preview_ui <- shiny::renderUI({
     result <- single_preview_data()
     
     # ✅ Case 1: warning / message
@@ -2706,7 +2706,7 @@ B           0   0   1
         tableOutput("single_raw_preview_table"))
   })
   
-  output$design_preview <- renderUI({
+  output$design_preview <- shiny::renderUI({
     req(input$design_file, wd_path())
     
     file <- file.path(wd_path(), input$design_file)
@@ -2789,7 +2789,7 @@ B           0   0   1
     
   })
   
-  output$batch_ui <- renderUI({
+  output$batch_ui <- shiny::renderUI({
     if (!wd_set())
       return(NULL)
     
@@ -2841,7 +2841,7 @@ B           0   0   1
   })
   outputOptions(output, "batch_has_pairs", suspendWhenHidden = FALSE)
   
-  output$batch_raw_preview_ui <- renderUI({
+  output$batch_raw_preview_ui <- shiny::renderUI({
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
@@ -2914,7 +2914,7 @@ B           0   0   1
         tableOutput("batch_raw_preview_table"))
   })
   
-  output$batch_raw_preview_table <- renderTable({
+  output$batch_raw_preview_table <- shiny::renderTable({
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
@@ -2958,7 +2958,7 @@ B           0   0   1
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
-  output$batch_preview_label <- renderText({
+  output$batch_preview_label <- shiny::renderText({
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
@@ -2987,7 +2987,7 @@ B           0   0   1
     build_preview_label(file, res, instrument = isolate(input$batch_instrument))
   })
   
-  output$batch_design_preview <- renderUI({
+  output$batch_design_preview <- shiny::renderUI({
     # ✅ Only require design directory (NOT matching logic)
     req(input$batch_design_dir)
     
@@ -3072,7 +3072,7 @@ B           0   0   1
     
   })
   
-  output$aggregate_ui <- renderUI({
+  output$aggregate_ui <- shiny::renderUI({
     if (!wd_set())
       return(NULL)
     
@@ -3194,7 +3194,7 @@ B           0   0   1
     
   }, server = TRUE)
   
-  observe({
+  shiny::observe({
     req(agg_runs())
     
     df <- agg_runs()
@@ -3250,10 +3250,10 @@ B           0   0   1
     )
   })
   
-  output$batch_param_section <- renderUI({
+  output$batch_param_section <- shiny::renderUI({
     req(wd_set())
     
-    tagList(
+    shiny::tagList(
       hr(),
       
       h4("Analysis parameters"),
@@ -3303,7 +3303,7 @@ B           0   0   1
       div(
         style = "display: flex; align-items: center; gap: 8px;",
         
-        tagList(
+        shiny::tagList(
           actionButton(
             "run_batch",
             "🚀 Run batch analysis",
@@ -3324,7 +3324,7 @@ B           0   0   1
     )
   })
   
-  observeEvent(list(
+  shiny::observeEvent(list(
     input$batch_data_dir,
     input$batch_design_dir,
     file_refresh()
@@ -3389,8 +3389,8 @@ B           0   0   1
   
   design_blocks <- bindCache(design_blocks, input$design_file)
   
-  output$design_section <- renderUI({
-    tagList(
+  output$design_section <- shiny::renderUI({
+    shiny::tagList(
       selectInput(
         "design_vars",
         "Design variables",
@@ -3399,7 +3399,7 @@ B           0   0   1
         multiple = TRUE
       ),
       
-      div(id = "blank_mode_container", tagList(
+      div(id = "blank_mode_container", shiny::tagList(
         radioButtons(
           inputId  = "blank_mode",
           label    = "Blank correction",
@@ -3419,11 +3419,11 @@ B           0   0   1
         
       )),
       
-      tags$div(style = "margin-top: 8px;", verbatimTextOutput("blank_info"))
+      tags$div(style = "margin-top: 8px;", shiny::verbatimTextOutput("blank_info"))
     )
   })
   
-  observeEvent(input$design_file, {
+  shiny::observeEvent(input$design_file, {
     req(wd_path(), input$design_file)
     
     file <- file.path(wd_path(), input$design_file)
@@ -3441,7 +3441,7 @@ B           0   0   1
     
   })
   
-  observeEvent(input$instrument, {
+  shiny::observeEvent(input$instrument, {
     if (input$instrument == "ocelloscope") {
       updateRadioButtons(session, "blank_mode", selected = "plate")
       shinyjs::disable("blank_mode_container")
@@ -3453,11 +3453,11 @@ B           0   0   1
     
   }, ignoreNULL = TRUE)
   
-  output$stage_ui <- renderUI({
+  output$stage_ui <- shiny::renderUI({
     req(analysis_result(), current_stage())
     
     if (current_stage() == "blank_linear") {
-      tagList(
+      shiny::tagList(
         h3("Blank‑corrected OD (linear scale)"),
         plotOutput("plot_blank_linear", height = "500px"),
         p(
@@ -3473,7 +3473,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "blank_log") {
-      tagList(
+      shiny::tagList(
         h3("Blank‑corrected OD (log scale)"),
         plotOutput("plot_blank_log", height = "500px"),
         p(
@@ -3489,7 +3489,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "mean_curves") {
-      tagList(
+      shiny::tagList(
         h3("Mean growth curves with 95% confidence interval"),
         plotOutput("plot_mean_curves", height = "500px"),
         p(
@@ -3500,7 +3500,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "perwell_linear") {
-      tagList(
+      shiny::tagList(
         h3("Per‑well OD curves (linear scale)"),
         plotOutput("plot_perwell_linear", height = "500px"),
         p(
@@ -3511,7 +3511,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "perwell_log") {
-      tagList(
+      shiny::tagList(
         h3("Per‑well OD curves (log scale)"),
         plotOutput("plot_perwell_log", height = "500px"),
         p(
@@ -3521,7 +3521,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "deriv_raw") {
-      tagList(
+      shiny::tagList(
         h3("Raw growth‑rate derivatives"),
         plotOutput("plot_deriv_raw", height = "500px"),
         p(
@@ -3532,7 +3532,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "deriv_percap") {
-      tagList(
+      shiny::tagList(
         h3("Per‑capita growth‑rate derivatives"),
         plotOutput("plot_deriv_percap", height = "500px"),
         p(
@@ -3543,7 +3543,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "fitted_percap") {
-      tagList(
+      shiny::tagList(
         h3("Fitted per‑capita growth rate with maximum marked"),
         plotOutput("plot_fitted_percap", height = "500px"),
         p(
@@ -3554,7 +3554,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "od_with_maxgc") {
-      tagList(
+      shiny::tagList(
         h3("OD curves with maximum growth‑rate time marked"),
         plotOutput("plot_od_with_maxgc", height = "500px"),
         p(
@@ -3565,7 +3565,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "doubling_time") {
-      tagList(
+      shiny::tagList(
         h3("Doubling time summary (mean and 95% confidence interval)"),
         plotOutput("plot_doubling_time", height = "500px"),
         p(
@@ -3576,7 +3576,7 @@ B           0   0   1
       )
       
     } else if (current_stage() == "max_growth_rate") {
-      tagList(
+      shiny::tagList(
         h3(
           "Maximum growth‑rate summary (mean and 95% confidence interval)"
         ),
@@ -3594,47 +3594,47 @@ B           0   0   1
     }
   })
   
-  output$plot_blank_linear <- renderPlot({
+  output$plot_blank_linear <- shiny::renderPlot({
     analysis_result()$plots$blank_linear
   })
   
-  output$plot_blank_log <- renderPlot({
+  output$plot_blank_log <- shiny::renderPlot({
     analysis_result()$plots$blank_log
   })
   
-  output$plot_mean_curves <- renderPlot({
+  output$plot_mean_curves <- shiny::renderPlot({
     analysis_result()$plots$mean_curves
   })
   
-  output$plot_perwell_linear <- renderPlot({
+  output$plot_perwell_linear <- shiny::renderPlot({
     analysis_result()$plots$perwell_linear
   })
   
-  output$plot_perwell_log <- renderPlot({
+  output$plot_perwell_log <- shiny::renderPlot({
     analysis_result()$plots$perwell_log
   })
   
-  output$plot_deriv_raw <- renderPlot({
+  output$plot_deriv_raw <- shiny::renderPlot({
     analysis_result()$plots$deriv_raw
   })
   
-  output$plot_deriv_percap <- renderPlot({
+  output$plot_deriv_percap <- shiny::renderPlot({
     analysis_result()$plots$deriv_percap
   })
   
-  output$plot_fitted_percap <- renderPlot({
+  output$plot_fitted_percap <- shiny::renderPlot({
     analysis_result()$plots$fitted_percap
   })
   
-  output$plot_od_with_maxgc <- renderPlot({
+  output$plot_od_with_maxgc <- shiny::renderPlot({
     analysis_result()$plots$od_with_maxgc
   })
   
-  output$plot_doubling_time <- renderPlot({
+  output$plot_doubling_time <- shiny::renderPlot({
     analysis_result()$plots$doubling_time
   })
   
-  output$plot_max_growth_rate <- renderPlot({
+  output$plot_max_growth_rate <- shiny::renderPlot({
     analysis_result()$plots$max_growth_rate
   })
   
@@ -3709,7 +3709,7 @@ B           0   0   1
     )
   })
   
-  observeEvent(input$run, {
+  shiny::observeEvent(input$run, {
     if (requireNamespace("future", quietly = TRUE)) {
       future::plan(future::sequential)
     }
@@ -3796,7 +3796,7 @@ B           0   0   1
                      
                      showModal(modalDialog(
                        title = "Analysis failed",
-                       tagList(
+                       shiny::tagList(
                          p("The analysis could not be completed."),
                          tags$hr(),
                          tags$pre(style = "white-space: pre-wrap;", msg)
@@ -3818,7 +3818,7 @@ B           0   0   1
                    showModal(
                      modalDialog(
                        title = "Analysis complete",
-                       tagList(
+                       shiny::tagList(
                          p("Your growth curve analysis has finished successfully."),
                          p("No files have been written yet."),
                          p("You can explore the results and export files when ready.")
@@ -3830,12 +3830,12 @@ B           0   0   1
                  })
   })
   
-  observeEvent(input$reset_analysis, {
+  shiny::observeEvent(input$reset_analysis, {
     showModal(
       modalDialog(
         title = "Reset analysis?",
         "This will clear the current results.",
-        footer = tagList(
+        footer = shiny::tagList(
           modalButton("Cancel"),
           actionButton("confirm_reset", "Reset", class = "btn-danger")
         )
@@ -3844,7 +3844,7 @@ B           0   0   1
     
   })
   
-  observeEvent(input$confirm_reset, {
+  shiny::observeEvent(input$confirm_reset, {
     removeModal()
     
     analysis_result(NULL)
@@ -3865,7 +3865,7 @@ B           0   0   1
     
   })
   
-  observeEvent(input$batch_instrument, {
+  shiny::observeEvent(input$batch_instrument, {
     if (input$batch_instrument == "ocelloscope") {
       updateRadioButtons(session, "batch_blank_mode", selected = "plate")
       shinyjs::disable("batch_blank_mode_container")
@@ -3883,7 +3883,7 @@ B           0   0   1
                               instrument = input$batch_instrument)
   })
   
-  observeEvent(input$agg_dir, {
+  shiny::observeEvent(input$agg_dir, {
     req(input$agg_dir)
     
     root <- input$agg_dir
@@ -3906,19 +3906,19 @@ B           0   0   1
     agg_runs(df)
   })
   
-  observeEvent(input$next_stage, {
+  shiny::observeEvent(input$next_stage, {
     req(current_stage() != "not_run")
     advance_stage()
   })
   
-  observeEvent(input$instrument, {
+  shiny::observeEvent(input$instrument, {
     apply_instrument_defaults(session,
                               prefix = "",
                               instrument = input$instrument)
     
   })
   
-  observeEvent(input$run_batch, {
+  shiny::observeEvent(input$run_batch, {
     APP_CONFIG$region <- region_selected()
     
     batch_abort(FALSE)
@@ -4305,11 +4305,11 @@ B           0   0   1
     invisible(prom)
   }
   
-  observeEvent(input$prev_stage, {
+  shiny::observeEvent(input$prev_stage, {
     retreat_stage()
   })
   
-  observeEvent(input$batch_design_select, {
+  shiny::observeEvent(input$batch_design_select, {
     info <- input$batch_design_select
     i <- info$row
     v <- info$value
@@ -4327,11 +4327,11 @@ B           0   0   1
   })
   
   
-  observeEvent(input$how_to_stop, {
+  shiny::observeEvent(input$how_to_stop, {
     showModal(
       modalDialog(
         title = "How to stop a running batch",
-        tagList(
+        shiny::tagList(
           p(
             "Once a batch has started, it cannot be cancelled from within the app. ",
             "The analysis will run to completion even if you close the browser tab."
@@ -4381,7 +4381,7 @@ B           0   0   1
     shinyjs::enable("next_stage")
   }
   
-  observeEvent(input$export_files, {
+  shiny::observeEvent(input$export_files, {
     req(analysis_result())
     res <- analysis_result()
     
@@ -4411,7 +4411,7 @@ B           0   0   1
     if (dir.exists(plots_dir) || dir.exists(summary_dir)) {
       showModal(modalDialog(
         title = "Export aborted",
-        tagList(
+        shiny::tagList(
           p("An export with this prefix already exists."),
           tags$code(basename(plots_dir))
         ),
@@ -4456,7 +4456,7 @@ B           0   0   1
     showModal(
       modalDialog(
         title = "Export complete",
-        tagList(
+        shiny::tagList(
           p("Analysis files were written to:"),
           tags$div(
             style = "margin-top: 6px;",
@@ -4464,7 +4464,7 @@ B           0   0   1
           )
         ),
         easyClose = TRUE,
-        footer = tagList(
+        footer = shiny::tagList(
           actionButton("open_export_dir", "📂 Open export folder", class = "btn-primary"),
           modalButton("Close")
         )
@@ -4472,7 +4472,7 @@ B           0   0   1
     )
   })
   
-  observeEvent(input$open_export_dir, {
+  shiny::observeEvent(input$open_export_dir, {
     req(last_export_dir())
     
     success <- open_folder(last_export_dir())
@@ -4483,7 +4483,7 @@ B           0   0   1
     }
   })
   
-  observe({
+  shiny::observe({
     if (!is.null(analysis_result())) {
       shinyjs::disable("run")
       shinyjs::disable("hrs")
@@ -4499,7 +4499,7 @@ B           0   0   1
     }
   })
   
-  observe({
+  shiny::observe({
     ready <-
       wd_set() &&
       nzchar(input$raw_file %||% "") &&
@@ -4516,7 +4516,7 @@ B           0   0   1
     
   })
   
-  observeEvent(input$run_aggregate, {
+  shiny::observeEvent(input$run_aggregate, {
     req(selected_runs())
     
     withProgress(message = "Combining runs...", value = 0, {
@@ -4530,7 +4530,7 @@ B           0   0   1
           modalDialog(
             title = "Overlapping plate data detected",
             
-            tagList(
+            shiny::tagList(
               p("Some selected runs contain overlapping plate data."),
               p("This may result in duplicated observations."),
               
@@ -4576,7 +4576,7 @@ B           0   0   1
     
   })
   
-  observeEvent(input$export_agg, {
+  shiny::observeEvent(input$export_agg, {
     req(agg_result(), input$agg_dir)
     
     APP_CONFIG$region <- region_selected()
@@ -4598,7 +4598,7 @@ B           0   0   1
       modalDialog(
         title = "Export complete",
         
-        tagList(
+        shiny::tagList(
           p("Combined dataset was written to:"),
           tags$div(
             style = "margin-top: 6px;",
@@ -4608,7 +4608,7 @@ B           0   0   1
         
         easyClose = TRUE,
         
-        footer = tagList(
+        footer = shiny::tagList(
           actionButton("open_agg_dir", "📂 Open containing folder", class = "btn-primary"),
           modalButton("Close")
         )

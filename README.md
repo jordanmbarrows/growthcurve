@@ -2,21 +2,38 @@
 
 A comprehensive Shiny application for analyzing microbial growth curves from plate reader and oCelloscope instruments.
 
+## Quick Start
+
+```r
+if (!requireNamespace("pak", quietly = TRUE)) {
+  install.packages("pak")
+}
+pak::pak("jordanmbarrows/growthcurve")
+
+library(growthcurve)
+run_growthcurve()
+```
+
 ## Installation
 
 ### From GitHub
 
 ```r
-# Install devtools if needed
-install.packages("devtools")
+# Install pak if needed
+install.packages("pak")
 
 # Install growthcurve package
-devtools::install_github("jordanmbarrows/growthcurve")
+pak::pak("jordanmbarrows/growthcurve")
 ```
 
 ### Local Installation
 
 1. Clone or download the repository
+```bash
+git clone https://github.com/jordanmbarrows/growthcurve.git
+cd growthcurve
+```
+
 2. In R/RStudio:
 
 ```r
@@ -44,6 +61,10 @@ This opens the interactive Shiny app in your default web browser.
 - **Regional Support**: US and European CSV formats
 - **Instrument Support**: Plate reader and oCelloscope data formats
 
+### Screenshot
+
+![Screenshot](inst/app/www/screenshot.png)
+
 ## Data Requirements
 
 ### Raw Data Files
@@ -70,7 +91,7 @@ See the User Guide tab in the app for detailed format specifications.
 ## System Requirements
 
 - R ≥ 4.0.0
-- All required packages installed automatically on first run
+- All required dependencies are installed automatically during installation
 
 ## License
 

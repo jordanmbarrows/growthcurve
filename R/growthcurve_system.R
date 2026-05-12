@@ -47,7 +47,11 @@ gc_backend_ready <- function() {
       "gc_check_packages"
     )
     
-    missing <- required_objects[!vapply(required_objects, exists, logical(1))]
+    pkg_env <- asNamespace("growthcurve")
+    
+    missing <- required_objects[
+      !vapply(required_objects, exists, logical(1), envir = pkg_env)
+    ]
     
     if (length(missing) > 0) {
       stop(
@@ -59,7 +63,9 @@ gc_backend_ready <- function() {
     TRUE
     
   }, error = function(e) {
-    assign("gc_startup_error", conditionMessage(e), envir = .GlobalEnv)
+    msg <- conditionMessage(e)   # ✅ FIXED
+    assign("gc_startup_error", msg, envir = .GlobalEnv)
+    message(msg)                 # ✅ now prints to console
     FALSE
   })
 }
