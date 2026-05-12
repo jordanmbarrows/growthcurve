@@ -556,37 +556,35 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
 server <- function(input, output, session) {
   
   # =========================================================
-  # Internal growthcurve aliases (namespace-safe)
+  # growthcurve namespace aliases (stability layer)
   # =========================================================
   
-  # --- Data / constants ---
+  # --- Data ---
   gc_instrument_defaults <- growthcurve:::gc_instrument_defaults
   
-  # --- Logging / diagnostics ---
-  gc_log_block      <- growthcurve:::gc_log_block
-  gc_log            <- growthcurve:::gc_log
-  gc_get_message    <- growthcurve:::gc_get_message
+  # --- Logging ---
+  gc_log_block   <- growthcurve:::gc_log_block
+  gc_log         <- growthcurve:::gc_log
+  gc_get_message <- growthcurve:::gc_get_message
   
-  # --- Runtime / environment ---
+  # --- Runtime ---
   gc_dev_mode       <- growthcurve:::gc_dev_mode
   gc_check_packages <- growthcurve:::gc_check_packages
   
   # --- Core analysis ---
-  run_gc            <- growthcurve:::run_gc
-  gc_save_plots     <- growthcurve:::gc_save_plots
-  gc_write_summaries<- growthcurve:::gc_write_summaries
+  run_gc             <- growthcurve:::run_gc
+  gc_save_plots      <- growthcurve:::gc_save_plots
+  gc_write_summaries <- growthcurve:::gc_write_summaries
   
   # --- File I/O ---
   read_csv_safe     <- growthcurve:::read_csv_safe
   write_csv_safe    <- growthcurve:::write_csv_safe
   read_preview_file <- growthcurve:::read_preview_file
   
-  # --- Design parsing ---
+  # --- Parsing / preview ---
   extract_design_blocks <- growthcurve:::extract_design_blocks
-  
-  # --- Preview system ---
-  build_preview       <- growthcurve:::build_preview
-  build_preview_label <- growthcurve:::build_preview_label
+  build_preview         <- growthcurve:::build_preview
+  build_preview_label   <- growthcurve:::build_preview_label
   
   # --- Utilities ---
   pretty_export_path <- growthcurve:::pretty_export_path
