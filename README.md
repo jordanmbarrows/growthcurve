@@ -1,10 +1,10 @@
 # Growth Curve Analysis Application
 
-A comprehensive Shiny application for analyzing microbial growth curves from plate reader and oCelloscope instruments.
+An interactive Shiny application for analyzing microbial growth curves from plate reader and oCelloscope instruments.
 
 ## Quick Start
 
-```r
+``` r
 if (!requireNamespace("pak", quietly = TRUE)) {
   install.packages("pak")
 }
@@ -18,7 +18,7 @@ run_growthcurve()
 
 ### From GitHub
 
-```r
+``` r
 # Install pak if needed
 install.packages("pak")
 
@@ -28,15 +28,16 @@ pak::pak("jordanmbarrows/growthcurve")
 
 ### Local Installation
 
-1. Clone or download the repository
-```bash
+1.  Clone or download the repository
+
+``` bash
 git clone https://github.com/jordanmbarrows/growthcurve.git
 cd growthcurve
 ```
 
-2. In R/RStudio:
+2.  In R/RStudio:
 
-```r
+``` r
 devtools::install()
 ```
 
@@ -44,7 +45,7 @@ devtools::install()
 
 Once installed, launch the application with:
 
-```r
+``` r
 library(growthcurve)
 run_growthcurve()
 ```
@@ -61,32 +62,36 @@ This opens the interactive Shiny app in your default web browser.
 - **Regional Support**: US and European CSV formats
 - **Instrument Support**: Plate reader and oCelloscope data formats
 
-### Screenshot
+## Screenshot
+
+Example interface for analyzing growth curves:
 
 ![Screenshot](inst/app/www/screenshot.png)
 
 ## Data Requirements
 
 ### Raw Data Files
+
 - CSV format (comma or semicolon delimited)
 - 96-well plate layout compatible
 - Time-series measurements
 
 ### Design Files
+
 - Block-based layout format
 - Must include `Well_type` variable
 - Additional experimental variables (strain, treatment, etc.)
 
 See the User Guide tab in the app for detailed format specifications.
 
-## Quick Start
+## Basic workflow
 
-1. Launch the app: `run_growthcurve()`
-2. Set your working directory in the app
-3. Choose analysis mode (Single plate, Batch, or Aggregate)
-4. Select your data and design files
-5. Configure analysis parameters
-6. Run analysis and export results
+1.  Launch the app: `run_growthcurve()`
+2.  Set your working directory in the app
+3.  Choose analysis mode (Single plate, Batch, or Aggregate)
+4.  Select your data and design files
+5.  Configure analysis parameters
+6.  Run analysis and export results
 
 ## System Requirements
 
@@ -104,4 +109,3 @@ Jordan Barrows
 ## Support
 
 For issues or questions, please open an issue on GitHub.
-"# growthcurve" 
