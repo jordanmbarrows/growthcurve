@@ -554,10 +554,13 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
 }))
 
 server <- function(input, output, session) {
-
-  # ============================================================
-  # ✅ Dev-mode aware helpers (single source of truth)
-  # ============================================================
+  
+  gc_instrument_defaults <- growthcurve:::gc_instrument_defaults
+  gc_log_block           <- growthcurve:::gc_log_block
+  gc_log                 <- growthcurve:::gc_log
+  gc_check_packages      <- growthcurve:::gc_check_packages
+  gc_get_message         <- growthcurve:::gc_get_message
+  read_preview_file      <- growthcurve:::read_preview_file
   
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
@@ -675,7 +678,7 @@ server <- function(input, output, session) {
       )
       
       gc_silent(
-        growthcurve:::gc_log_block(
+        gc_log_block(
           "SHINY ERROR",
           list(
             message   = msg,
@@ -694,7 +697,7 @@ server <- function(input, output, session) {
         error = function(...) "Failed to extract error message"
       )
       
-      growthcurve:::gc_log_block(
+      gc_log_block(
         "GLOBAL PROMISE REJECTION",
         list(
           message   = msg,
@@ -1404,7 +1407,7 @@ server <- function(input, output, session) {
     )
     
     # ✅ DEBUG (safe: no side effects)
-    gc_silent(growthcurve:::gc_log_block("VALIDATED BATCH PAIRS", result_df))
+    gc_silent(gc_log_block("VALIDATED BATCH PAIRS", result_df))
     
     result_df
   })
@@ -1433,14 +1436,14 @@ server <- function(input, output, session) {
   shiny::observeEvent(input$install_yes, {
     removeModal()
     
-    pkgs_before <- growthcurve:::gc_check_packages()
+    pkgs_before <- gc_check_packages()
     missing <- c(pkgs_before$missing, pkgs_before$broken)
     
     tryCatch({
       install.packages(missing)
       
       # ✅ Re-check after installation attempt
-      pkgs_after <- growthcurve:::gc_check_packages()
+      pkgs_after <- gc_check_packages()
       still_missing <- c(pkgs_after$missing, pkgs_after$broken)
       
       if (length(still_missing) == 0) {
@@ -1506,7 +1509,7 @@ server <- function(input, output, session) {
           shiny::tagList(
             p("We couldn't install the required packages."),
             p(paste(
-              "Technical error:", growthcurve:::gc_get_message(e)
+              "Technical error:", gc_get_message(e)
             )),
             p("Please check your internet connection and try again."),
             p("The application cannot continue.")
@@ -1555,7 +1558,7 @@ server <- function(input, output, session) {
   })
   
   session$onFlushed(function() {
-    pkgs <- growthcurve:::gc_check_packages()
+    pkgs <- gc_check_packages()
     missing <- c(pkgs$missing, pkgs$broken)
     
     if (length(missing) > 0) {
@@ -3399,7 +3402,7 @@ B           0   0   1
     batch_pairs_last_valid(df)
     batch_pairs(df)
     
-    growthcurve:::gc_log_block("BATCH PAIRS", df)
+    gc_log_block("BATCH PAIRS", df)
     
   })
   
@@ -3781,7 +3784,7 @@ B           0   0   1
                    }
                    
                    res <- tryCatch({
-                     growthcurve:::gc_log_block(
+                     gc_log_block(
                        "SINGLE RUN PARAMS",
                        list(
                          raw_file = raw_file_path,
@@ -3808,13 +3811,13 @@ B           0   0   1
                      )
                      
                    }, error = function(e = NULL) {
-                     growthcurve:::gc_log_block("SINGLE RUN INTERNAL ERROR",
+                     gc_log_block("SINGLE RUN INTERNAL ERROR",
                                   list(error = e, callstack = sys.calls()))
                      
                      msg <- if (inherits(e, "gc_error")) {
-                       growthcurve:::gc_get_message(e)
+                       gc_get_message(e)
                      } else {
-                       paste("Unexpected error:\n", growthcurve:::gc_get_message(e))
+                       paste("Unexpected error:\n", gc_get_message(e))
                      }
                      
                      showModal(modalDialog(
@@ -3989,7 +3992,7 @@ B           0   0   1
       }
     )
     
-    gc_silent(growthcurve:::gc_log_block("RUN BATCH START", list(n = n, params = params)))
+    gc_silent(gc_log_block("RUN BATCH START", list(n = n, params = params)))
     
     timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
     batch_tag <- if (nzchar(input$batch_prefix)) {
@@ -4050,7 +4053,7 @@ B           0   0   1
         return()
       bs$finished <- TRUE
       
-      growthcurve:::gc_log_block("BATCH FINISH STATE",
+      gc_log_block("BATCH FINISH STATE",
                    list(
                      completed = bs$completed,
                      failures  = bs$failures
@@ -4078,14 +4081,14 @@ B           0   0   1
           })
           
         }, error = function(e = NULL) {
-          growthcurve:::gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
+          gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
         })
       }, delay = 0)
     }
     
     # ── launch_next: schedules the next plate, respecting abort + concurrency ──
     launch_next <- function() {
-      growthcurve:::gc_log(
+      gc_log(
         "Queue:",
         length(bs$queue),
         "| Running:",
@@ -4170,7 +4173,7 @@ B           0   0   1
       }
       
       if (exists("gc_log") && gc_dev_mode()) {
-        try(growthcurve:::gc_log(paste("Worker starting plate", i)), silent = TRUE)
+        try(gc_log(paste("Worker starting plate", i)), silent = TRUE)
       }
       
       tryCatch({
@@ -4203,9 +4206,9 @@ B           0   0   1
           list(
             success = FALSE,
             message = if (inherits(e, "gc_error")) {
-              growthcurve:::gc_get_message(e)
+              gc_get_message(e)
             } else {
-              paste("Unexpected error:", growthcurve:::gc_get_message(e))
+              paste("Unexpected error:", gc_get_message(e))
             },
             plate   = pairs_val$data_file[i]
           )
@@ -4259,7 +4262,7 @@ B           0   0   1
     # ── then: plate finished (success or reported failure) ─────────────────────
     prom <- promises::then(prom, function(result) {
       if (exists("gc_log_block")) {
-        try(growthcurve:::gc_log_block(paste("Plate finished", i)), silent = TRUE)
+        try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
       }
       
       tryCatch({
@@ -4272,7 +4275,7 @@ B           0   0   1
           bs$queue   <- list()
           bs$failures <- c(bs$failures,
                            paste0("Plate ", i, ": ", result$message %||% "unknown error"))
-          growthcurve:::gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
         }
         
         tryCatch(
@@ -4292,7 +4295,7 @@ B           0   0   1
         }
         
       }, error = function(e = NULL) {
-        growthcurve:::gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
+        gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
         bs$aborted  <- TRUE
         bs$queue    <- list()
         bs$running  <- bs$running - 1L
@@ -4303,7 +4306,7 @@ B           0   0   1
     
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
-      growthcurve:::gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
+      gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
       
       tryCatch({
         bs$running   <- bs$running - 1L
@@ -4312,11 +4315,11 @@ B           0   0   1
         bs$queue     <- list()
         bs$failures  <- c(bs$failures,
                           paste0("Plate ", i, ": async system error — ", conditionMessage(e)))
-        growthcurve:::gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
+        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
                      conditionMessage(e))
         maybe_finish_fn()
       }, error = function(e2) {
-        growthcurve:::gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
+        gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
       })
     })
     
