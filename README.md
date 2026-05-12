@@ -11,7 +11,7 @@ A comprehensive Shiny application for analyzing microbial growth curves from pla
 install.packages("devtools")
 
 # Install growthcurve package
-devtools::install_github("jordanmbarrows/growthcurve_app")
+devtools::install_github("jordanmbarrows/growthcurve")
 ```
 
 ### Local Installation
