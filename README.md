@@ -20,7 +20,9 @@ run_growthcurve()
 
 ``` r
 # Install pak if needed
-install.packages("pak")
+if (!requireNamespace("pak", quietly = TRUE)) {
+  install.packages("pak")
+}
 
 # Install growthcurve package
 pak::pak("jordanmbarrows/growthcurve")
@@ -64,7 +66,7 @@ This opens the interactive Shiny app in your default web browser.
 
 ## Screenshot
 
-Example interface for analyzing growth curves:
+Example interface for analyzing microbial growth curves::
 
 ![Screenshot](inst/app/www/screenshot.png)
 
@@ -84,7 +86,7 @@ Example interface for analyzing growth curves:
 
 See the User Guide tab in the app for detailed format specifications.
 
-## Basic workflow
+## Basic Workflow
 
 1.  Launch the app: `run_growthcurve()`
 2.  Set your working directory in the app
@@ -105,6 +107,35 @@ MIT License - See LICENSE file for details
 ## Author
 
 Jordan Barrows
+
+## Acknowledgements
+
+This application relies heavily on the `{gcplyr}` R package for growth curve analysis.
+We gratefully acknowledge the developers of `{gcplyr}` for their work in implementing
+the core analysis methods used here.
+
+## Citation
+
+If you use this tool, please cite the underlying package:
+
+>Blazanin, M. gcplyr: an R package for microbial growth curve data analysis. 
+>BMC Bioinformatics 25, 232 (2024). 
+>https://doi.org/10.1186/s12859-024-05817-3
+
+A BibTeX entry for LaTeX users is
+
+```bibtex
+@Article{,
+  title = {gcplyr: an R package for microbial growth curve data analysis},
+  author = {Michael Blazanin},
+  year = {2024},
+  doi = {10.1186/s12859-024-05817-3},
+  journal = {BMC Bioinformatics},
+  volume = {25},
+  number = {232},
+  note = {version 1.12.0},
+}
+```
 
 ## Support
 
