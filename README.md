@@ -57,7 +57,7 @@ This opens the interactive Shiny app in your default web browser.
 ## Features
 
 - **Single Plate Analysis**: Analyze individual growth curve experiments
-- **Batch Processing**: Process multiple plates automatically
+- **Batch Processing**: Process multiple plates individually
 - **Results Aggregation**: Combine results from multiple runs
 - **Interactive Visualization**: Explore 11 different analysis plots
 - **Quality Control**: Automatic flagging of problematic wells
