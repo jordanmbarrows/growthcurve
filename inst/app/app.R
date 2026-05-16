@@ -60,8 +60,18 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         ),
         
         div(
-          checkboxInput("dark_mode", NULL, value = FALSE),
-          style = "margin-top: 10px;"
+          class = "dark-toggle",
+          
+          tags$input(
+            type = "checkbox",
+            id = "dark_mode"
+          ),
+          
+          tags$label(
+            `for` = "dark_mode",
+            class = "toggle-label",
+            "🌙 Dark"
+          )
         )
       )
     )
@@ -536,6 +546,11 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
            DARK MODE BASE
         ========================= */
         
+.dark-toggle input[type='checkbox'] {
+  display: block;        /* ✅ fixes baseline alignment */
+  margin-top: 2px;       /* ✅ micro-adjust (tweak if needed) */
+}
+        
         body.dark-mode {
           background-color: #1e1e1e !important;
           color: #d4d4d4 !important;
@@ -655,6 +670,55 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         }
         ")
       ),
+    tags$style(HTML("
+.dark-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Hide default checkbox */
+.dark-toggle input[type='checkbox'] {
+  appearance: none;
+  width: 36px;
+  height: 18px;
+  background: #ccc;
+  border-radius: 10px;
+  position: relative;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+/* Toggle knob */
+.dark-toggle input[type='checkbox']::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+/* ON state */
+.dark-toggle input[type='checkbox']:checked {
+  background: #4fc1ff;
+}
+
+.dark-toggle input[type='checkbox']:checked::after {
+  transform: translateX(18px);
+}
+
+/* Label */
+.toggle-label {
+  font-size: 13px;
+}
+")),
     tags$script(
       HTML(
         "
