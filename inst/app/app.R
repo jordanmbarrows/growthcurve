@@ -52,8 +52,17 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
   shiny::tagList(
     titlePanel(
       div(
-        "Growth Curve Analysis",
-        uiOutput("dev_badge")  
+        style = "display:flex; justify-content: space-between; align-items: center;",
+        
+        div(
+          "Growth Curve Analysis",
+          uiOutput("dev_badge")
+        ),
+        
+        div(
+          checkboxInput("dark_mode", NULL, value = FALSE),
+          style = "margin-top: 10px;"
+        )
       )
     )
     ,
@@ -520,7 +529,132 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
           height: 24px;
         }
       "
-    )),
+      )
+    ),
+    tags$style(HTML("
+        /* =========================
+           DARK MODE BASE
+        ========================= */
+        
+        body.dark-mode {
+          background-color: #1e1e1e !important;
+          color: #d4d4d4 !important;
+        }
+        
+        /* Panels */
+        body.dark-mode .well {
+          background-color: #252526 !important;
+          border-color: #333 !important;
+        }
+        
+        /* Headers */
+        body.dark-mode h1,
+        body.dark-mode h2,
+        body.dark-mode h3,
+        body.dark-mode h4 {
+          color: #ffffff !important;
+        }
+        
+        /* Inputs */
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+          background-color: #2d2d2d !important;
+          color: #d4d4d4 !important;
+          border: 1px solid #444 !important;
+        }
+        
+        /* Buttons */
+        body.dark-mode .btn {
+          background-color: #3a3a3a !important;
+          color: #d4d4d4 !important;
+          border: 1px solid #555 !important;
+        }
+        
+        body.dark-mode .btn-success {
+          background-color: #2e7d32 !important;
+        }
+        
+        body.dark-mode .btn-primary {
+          background-color: #1565c0 !important;
+        }
+        
+        /* Tabs */
+        body.dark-mode .nav-tabs {
+          border-bottom: 1px solid #444;
+        }
+        
+        body.dark-mode .nav-tabs > li > a {
+          background-color: #2d2d2d;
+          color: #d4d4d4;
+        }
+        
+        /* Tables */
+        body.dark-mode table {
+          background-color: #252526;
+          color: #d4d4d4;
+        }
+        
+        body.dark-mode th,
+        body.dark-mode td {
+          border-color: #333 !important;
+        }
+        
+        /* Preview tables */
+        body.dark-mode .preview-table table {
+          background-color: #252526;
+        }
+        
+        /* Code blocks */
+        body.dark-mode code {
+          background-color: #2d2d2d;
+          color: #9cdcfe;
+        }
+        
+        /* Details panels */
+        body.dark-mode details summary {
+          background-color: #2d2d2d !important;
+        }
+        
+        /* Modals */
+        body.dark-mode .modal-content {
+          background-color: #252526;
+          color: #d4d4d4;
+        }
+        
+        /* Notifications */
+        body.dark-mode .shiny-notification {
+          background-color: #333;
+          color: #fff;
+        }
+        
+        /* DataTables */
+        body.dark-mode .dataTables_wrapper {
+          color: #d4d4d4;
+        }
+        
+        body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+          color: #d4d4d4 !important;
+        }
+        
+        /* Tooltips */
+        body.dark-mode .tooltip-inner {
+          background-color: #333;
+          color: #fff;
+        }
+        
+        /* Fix hardcoded light backgrounds */
+        body.dark-mode .guide-container pre {
+          background: #2d2d2d !important;
+        }
+        
+        body.dark-mode .batch-design-select {
+          background-color: #2d2d2d !important;
+          color: #d4d4d4 !important;
+          border-color: #555 !important;
+        }
+        ")
+      ),
     tags$script(
       HTML(
         "
@@ -534,6 +668,15 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       "
       )
     ),
+    tags$script(HTML("
+      Shiny.addCustomMessageHandler('toggle_dark_mode', function(on) {
+        if (on) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+      });
+    ")),
     # Debug panel (dev mode only)
     uiOutput("debug_panel"),
     
@@ -771,6 +914,10 @@ server <- function(input, output, session) {
   if (requireNamespace("future", quietly = TRUE)) {
     future::plan(future::sequential)
   }
+  
+  observe({
+    session$sendCustomMessage("toggle_dark_mode", isTRUE(input$dark_mode))
+  })
   
   design_file_choices <- reactive({
     req(input$batch_design_dir)
