@@ -4534,7 +4534,7 @@ B           0   0   1
         
         res <- tryCatch({
           gc_run_quiet_worker(
-            run_gc(
+            growthcurve:::run_gc(
               rawdatafile = pairs_val$data_file[i],
               designfile  = pairs_val$design_file[i],
               hrs         = params$hrs,
@@ -4552,9 +4552,9 @@ B           0   0   1
           list(
             success = FALSE,
             message = if (inherits(e, "gc_error")) {
-              gc_get_message(e)
+              growthcurve:::gc_get_message(e)
             } else {
-              paste("Unexpected error:", gc_get_message(e))
+              paste("Unexpected error:", growthcurve:::gc_get_message(e))
             },
             plate   = pairs_val$data_file[i]
           )
@@ -4582,8 +4582,8 @@ B           0   0   1
                    recursive = TRUE,
                    showWarnings = FALSE)
         
-        gc_save_plots(res$plots, plots_dir)
-        gc_write_summaries(
+        growthcurve:::gc_save_plots(res$plots, plots_dir)
+        growthcurve:::gc_write_summaries(
           core        = res$core,
           params      = res$params,
           instrument  = res$instrument,
