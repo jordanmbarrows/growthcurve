@@ -31,7 +31,6 @@ guide_summary_style <- function() {
   cursor: pointer;
   padding: 6px 8px;
   margin-top: 6px;
-  background-color: #e0e0e0;
   border-radius: 4px;
   font-weight: 600;
   "
@@ -42,10 +41,51 @@ guide_body_style <- function() {
 }
 
 guide_note_style <- function() {
-  "font-size: 0.9em; color: #555;"
+  "font-size: 0.9em; color: inherit;"
 }
 
-ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_ready()) {
+ui <- shiny::fluidPage(
+  shinyjs::useShinyjs(),
+  theme = bslib::bs_theme(version = 3),
+  
+  
+  tags$head(
+    tags$style(HTML("
+    /* Light mode */
+      details summary {
+        background-color: rgba(0,0,0,0.06);
+        padding: 6px 8px;
+        border-radius: 4px;
+      }
+    
+    /* Light mode hover */
+      details summary:hover {
+        background-color: rgba(0,0,0,0.12);
+      }
+      
+    /* Dark mode */
+      .dark-mode details summary {
+        background-color: rgba(255,255,255,0.06);
+      }
+    
+    /* Dark mode hover */
+    .dark-mode details summary:hover {
+      background-color: rgba(255,255,255,0.12);
+    }
+    ")),
+    tags$script(HTML("
+  Shiny.addCustomMessageHandler('set_dark_class', function(on) {
+    if (on) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+  });
+"))
+  ),
+  
+  
+  shiny::tagList(if (!gc_backend_ready()) {
   shiny::verbatimTextOutput("startup_error")
   
 } else {
@@ -58,7 +98,6 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
           "Growth Curve Analysis",
           uiOutput("dev_badge")
         ),
-        
         div(
           class = "dark-toggle",
           
@@ -94,15 +133,8 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       
       tags$details(
         tags$summary(
-          style = "
-                cursor: pointer;
-                padding: 6px 8px;
-                margin-top: 6px;
-                background-color: #e0e0e0;
-                border-radius: 4px;
-                font-weight: 600;
-              ",
-          "ℹ️  How do I copy a folder path?"
+          style = guide_summary_style(),
+          "ℹ️  What folder should I select?"
         ),
         tags$div(
           style = "padding: 8px 4px;",
@@ -138,6 +170,7 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
           ),
           
@@ -154,6 +187,7 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
           )
         )
@@ -238,7 +272,18 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         uiOutput("aggregate_ui")
       )
     ),
-    
+    tags$style(HTML("
+      /* Force equal column widths for guide preview */
+      #design_example_table table {
+        table-layout: fixed;
+      }
+      
+      #design_example_table td {
+        min-width: 70px;
+        text-align: center;
+      }
+      ")
+    ),
     tags$style(HTML(
       "
           .shiny-progress .modal-dialog {
@@ -469,6 +514,50 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         "
       )
     ),
+    tags$style(HTML("
+        /* LIGHT MODE */
+        :root[data-bs-theme='light'] details summary {
+          background-color: red !important;
+        }
+        
+        /* DARK MODE */
+        :root[data-bs-theme='dark'] details summary {
+          background-color: rgba(255,255,255,0.12);
+        }
+        
+        /* HOVER */
+        :root[data-bs-theme='light'] details summary:hover {
+          background-color: rgba(0,0,0,0.12);
+        }
+        
+        :root[data-bs-theme='dark'] details summary:hover {
+          background-color: rgba(255,255,255,0.18);
+        }
+      ")
+    ),
+    tags$style(HTML("
+      /* Theme-aware batch dropdown */
+      .batch-design-select {
+        background-color: inherit;
+        color: inherit;
+        border: 1px solid rgba(100,100,100,0.5);
+      }
+      
+      body.dark-mode .batch-design-select {
+        border: 1px solid rgba(255,255,255,0.5);
+      }
+      ")
+    ),
+    tags$style(HTML("
+      details summary {
+        background-color: rgba(0,0,0,0.04);
+      }
+      
+      body.dark-mode details summary {
+        background-color: rgba(255,255,255,0.06);
+      }
+      ")
+    ),
     tags$style(
       HTML(
         "
@@ -497,6 +586,31 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         }
       "
       )
+    ),
+    tags$style(HTML("
+      /* Light mode: slightly muted */
+      .guide-note {
+        opacity: 0.8;
+      }
+      
+      /* Dark mode: slightly brighter (better readability) */
+      :root[data-bs-theme='dark'] .guide-note {
+        opacity: 0.9;
+      }
+      ")
+    ),
+    tags$style(HTML("
+      /* Dark mode gridline softening (bslib-compatible) */
+      :root[data-bs-theme='dark'] .design-preview-table td,
+      :root[data-bs-theme='dark'] .design-preview-table th {
+        border-color: rgba(255,255,255,0.15) !important;
+      }
+      
+      /* Thick separators */
+      :root[data-bs-theme='dark'] .design-preview-table tr {
+        border-top-color: rgba(255,255,255,0.25) !important;
+      }
+      ")
     ),
     tags$style(
       HTML(
@@ -542,6 +656,45 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       )
     ),
     tags$style(HTML("
+      /* Tabs — make theme-aware */
+      .nav-tabs > li > a {
+        background-color: transparent;
+        color: inherit;
+      }
+      
+      .nav-tabs > li.active > a,
+      .nav-tabs > li.active > a:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+        color: inherit;
+      }
+      
+      /* Dark mode tweak */
+      body.dark-mode .nav-tabs > li.active > a {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+      ")
+     ),
+    tags$style(HTML("
+      .well {
+        background-color: rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+      
+      body.dark-mode .well {
+        background-color: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      ")),
+    tags$style(HTML("
+      /* Fix muted / helper text in dark mode */
+      body.dark-mode .text-muted,
+      body.dark-mode p[style*='color'],
+      body.dark-mode span[style*='color'],
+      body.dark-mode div[style*='color'] {
+        color: inherit !important;
+      }
+      ")),
+    tags$style(HTML("
         /* =========================
            DARK MODE BASE
         ========================= */
@@ -551,80 +704,12 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
   margin-top: 2px;       /* ✅ micro-adjust (tweak if needed) */
 }
         
-        body.dark-mode {
-          background-color: #1e1e1e !important;
-          color: #d4d4d4 !important;
-        }
-        
-        /* Panels */
-        body.dark-mode .well {
-          background-color: #252526 !important;
-          border-color: #333 !important;
-        }
-        
-        /* Headers */
-        body.dark-mode h1,
-        body.dark-mode h2,
-        body.dark-mode h3,
-        body.dark-mode h4 {
-          color: #ffffff !important;
-        }
-        
-        /* Inputs */
-        body.dark-mode input,
-        body.dark-mode select,
-        body.dark-mode textarea {
-          background-color: #2d2d2d !important;
-          color: #d4d4d4 !important;
-          border: 1px solid #444 !important;
-        }
-        
-        /* Buttons */
-        body.dark-mode .btn {
-          background-color: #3a3a3a !important;
-          color: #d4d4d4 !important;
-          border: 1px solid #555 !important;
-        }
-        
-        body.dark-mode .btn-success {
-          background-color: #2e7d32 !important;
-        }
-        
-        body.dark-mode .btn-primary {
-          background-color: #1565c0 !important;
-        }
-        
-        /* Tabs */
-        body.dark-mode .nav-tabs {
-          border-bottom: 1px solid #444;
-        }
-        
-        body.dark-mode .nav-tabs > li > a {
-          background-color: #2d2d2d;
-          color: #d4d4d4;
-        }
-        
-        /* Tables */
-        body.dark-mode table {
-          background-color: #252526;
-          color: #d4d4d4;
-        }
-        
-        body.dark-mode th,
-        body.dark-mode td {
-          border-color: #333 !important;
-        }
-        
         /* Preview tables */
         body.dark-mode .preview-table table {
           background-color: #252526;
         }
         
-        /* Code blocks */
-        body.dark-mode code {
-          background-color: #2d2d2d;
-          color: #9cdcfe;
-        }
+
         
         /* Details panels */
         body.dark-mode details summary {
@@ -635,12 +720,6 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
         body.dark-mode .modal-content {
           background-color: #252526;
           color: #d4d4d4;
-        }
-        
-        /* Notifications */
-        body.dark-mode .shiny-notification {
-          background-color: #333;
-          color: #fff;
         }
         
         /* DataTables */
@@ -732,15 +811,6 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
       "
       )
     ),
-    tags$script(HTML("
-      Shiny.addCustomMessageHandler('toggle_dark_mode', function(on) {
-        if (on) {
-          document.body.classList.add('dark-mode');
-        } else {
-          document.body.classList.remove('dark-mode');
-        }
-      });
-    ")),
     # Debug panel (dev mode only)
     uiOutput("debug_panel"),
     
@@ -798,6 +868,23 @@ server <- function(input, output, session) {
   open_folder        <- growthcurve:::open_folder
   gc_abort           <- growthcurve:::gc_abort
   
+  light_theme <- bslib::bs_theme(
+    version = 3,
+    bg = "#ffffff",
+    fg = "#222222",
+    primary = "#337ab7"
+  )
+  
+  dark_theme <- bslib::bs_theme(
+    version = 3,
+    bg = "#1e1e1e",
+    fg = "#d4d4d4",
+    primary = "#5fd7ff",   # slightly brighter
+    success = "#4caf50",   # brighten green
+    warning = "#ffb74d",   # optional
+    danger  = "#ef5350"    # optional
+  )
+  
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
     
@@ -843,6 +930,13 @@ server <- function(input, output, session) {
     } else {
       ""
     }
+  })
+  
+  observe({
+    session$sendCustomMessage(
+      "set_dark_class",
+      isTRUE(input$dark_mode)
+    )
   })
   
   #Debug panel; add options here as desired
@@ -980,7 +1074,9 @@ server <- function(input, output, session) {
   }
   
   observe({
-    session$sendCustomMessage("toggle_dark_mode", isTRUE(input$dark_mode))
+    session$setCurrentTheme(
+      if (isTRUE(input$dark_mode)) dark_theme else light_theme
+    )
   })
   
   design_file_choices <- reactive({
@@ -1099,7 +1195,7 @@ server <- function(input, output, session) {
     if (wd_set())
       return(NULL)
     
-    tags$div(style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+    tags$div(style = "padding: 20px; border-radius: 6px;",
              h4("Batch processing"),
              p("Please set a working directory to continue."))
     
@@ -1109,7 +1205,7 @@ server <- function(input, output, session) {
     if (wd_set())
       return(NULL)
     
-    tags$div(style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+    tags$div(style = "padding: 20px; border-radius: 6px;",
              h4("Aggregate results"),
              p("Please set a working directory to continue."))
     
@@ -1999,19 +2095,20 @@ server <- function(input, output, session) {
       h3("User guide"),
       
       tags$p(
-        style = "color: #666; margin-bottom: 12px;",
+        style = "margin-bottom: 12px;",
+        class = "guide-note",
         "Guidance on data preparation, file structure, and common pitfalls."
       ),
       
       tags$p(
-        style = "font-style: italic; color: #555;",
+        style = "font-style: italic;",
+        class = "guide-note",
         "New to this app? Start with a single plate before running batch analysis."
       ),
       
       tags$div(
         style = "
     padding: 12px;
-    background-color: #f8f9fa;
     border: 1px solid #e0e0e0;
     border-left: 4px solid #4a90e2;
     border-radius: 6px;
@@ -2051,6 +2148,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Default parameter values are automatically set based on the selected instrument (e.g., plate reader or oCelloscope). You can modify these values at any time."
           ),
           
@@ -2074,6 +2172,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Plate reader and oCelloscope data have different formats and preprocessing requirements, so selecting the correct instrument is essential."
           ),
           
@@ -2141,6 +2240,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Typical values are around 0.03–0.08 for plate reader data, and ~0.01 for oCelloscope data due to lower baseline noise."
           ),
           
@@ -2188,6 +2288,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "If left empty, only a timestamp and single/batch label will be used."
           ),
           
@@ -2218,6 +2319,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "You do not need to configure these manually. If variables are missing or incorrect, check the structure of the design file."
           ),
           
@@ -2246,6 +2348,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "For oCelloscope data, blank correction is not applied because values are already normalized during acquisition."
           ),
           
@@ -2278,6 +2381,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "This does not change your data. It ensures correct delimiter and encoding."
           ),
           
@@ -2295,6 +2399,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "No manual reformatting is required beyond re-saving the file in Excel."
           ),
           
@@ -2378,6 +2483,7 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "The app automatically extracts the correct TANormalized block and formats it for analysis."
           )
         )
@@ -2405,6 +2511,7 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Think of it as a stack of identical 96‑well plates, each labeling a different attribute."
           ),
           
@@ -2467,11 +2574,13 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Every position (e.g., B3) must correspond across all blocks."
           ),
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "The example and preview use different plate layouts and values. Only the structure (block format and alignment) must match — the contents will depend on your experiment."
           ),
           
@@ -2481,6 +2590,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "This preview shows how blocks are stacked and aligned."
           )
         )
@@ -2536,6 +2646,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Tip: Start by editing the template rather than creating a file from scratch."
           ),
           
@@ -2543,6 +2654,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Download the template matching your regional CSV format."
           ),
           
@@ -2612,7 +2724,7 @@ B           0   0   1
       ),
       
       # =========================================================
-      # ⚠️ What happens if something goes wrong?
+      # 🛠️ Troubleshooting
       # =========================================================
       tags$details(
         tags$summary(style = guide_summary_style(), "🛠️ Troubleshooting"),
@@ -2628,6 +2740,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Most issues arise from incorrect file formatting rather than analysis errors."
           )
         )
@@ -2702,7 +2815,7 @@ B           0   0   1
     if (!wd_set()) {
       return(tagList(
         tags$div(
-          style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+          style = "padding: 20px; border-radius: 6px;",
           h4("Single plate analysis"),
           p("Please set a working directory to continue.")
         )
@@ -3009,13 +3122,13 @@ B           0   0   1
           val <- ""
         
         style_parts <- c(
-          "border: 1px solid #e6e6e6;"  # ✅ soft gridlines
+          "border: 1px solid rgba(120,120,120,0.2);"  # ✅ soft gridlines
         )
         
         # ✅ Block header (only first cell)
         if (j == 1 && is_block_header) {
           style_parts <- c(style_parts,
-                           "font-weight: bold; border: 2px solid #666;")
+                           "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
         }
         
         # ✅ Column headers (1–12 row)
@@ -3036,7 +3149,7 @@ B           0   0   1
       # ✅ Thick separator between blocks
       row_style <- ""
       if (is_block_header && i != 1) {
-        row_style <- "border-top: 4px solid #666;"
+        row_style <- "border-top: 4px solid rgba(80,80,80,0.5);"
       }
       
       tags$tr(style = row_style, cells)
@@ -3351,14 +3464,7 @@ B           0   0   1
         
         tags$details(
           tags$summary(
-            style = "
-              cursor: pointer;
-              padding: 6px 8px;
-              margin-top: 6px;
-              background-color: #e0e0e0;
-              border-radius: 4px;
-              font-weight: 600;
-            ",
+            style = guide_summary_style(),
             "ℹ️  What folder should I select?"
           ),
           tags$div(
