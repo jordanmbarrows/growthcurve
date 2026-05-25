@@ -3074,9 +3074,12 @@ B           0   0   1
       selection = "none",
       colnames = c("Include", "Run", "Status"),
       options = list(
+        pageLength = nrow(df),
         dom = "t",
         ordering = FALSE,
-        autoWidth = FALSE
+        autoWidth = FALSE,
+        scrollY = "600px",
+        fixedHeader = TRUE
       ),
       callback = htmlwidgets::JS(
         "
@@ -3794,7 +3797,7 @@ B           0   0   1
     dirs <- list.dirs(path = root,
                       recursive = FALSE,
                       full.names = TRUE)
-    
+
     if (length(dirs) == 0) {
       agg_runs(NULL)
       return()
