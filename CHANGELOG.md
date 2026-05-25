@@ -14,6 +14,7 @@
 - Condensed and removed redundancy from app.R file
 - Added cancellation function to batch mode
 - Updated plate failure behavior in batch mode
+- Updated Aggregate runs selection table to show all directories, rather than just 10
 
 ## [1.0.0] - 2026-05-12
 
