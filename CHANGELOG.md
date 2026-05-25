@@ -12,6 +12,8 @@
 - Improved compatibility with `devtools::load_all()`
 - Added dark mode with in-app toggle
 - Condensed and removed redundancy from app.R file
+- Added cancellation function to batch mode
+- Updated plate failure behavior in batch mode
 
 ## [1.0.0] - 2026-05-12
 

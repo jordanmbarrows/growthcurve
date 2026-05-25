@@ -1057,7 +1057,7 @@ server <- function(input, output, session) {
       label_success <- if (status == "Cancelled") {
         "Processed before cancellation:"
       } else {
-        "Successfully processed plates:"
+        "Successfully processed plate(s):"
       }
       
       processed <- unique(successes)
@@ -1078,7 +1078,7 @@ server <- function(input, output, session) {
       elapsed_sec <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
       elapsed_str <- format_runtime(elapsed_sec)
       
-      clean_failures <- gsub("^Unexpected error:\\s*", "", failures)
+      clean_failures <- gsub("Unexpected error:\\s*", "", failures)
       
       # ✅ --- Build failure UI OUTSIDE modal ---
       failure_ui <- shiny::tagList()
@@ -1093,23 +1093,9 @@ server <- function(input, output, session) {
       }
       
       label_remaining <- if (status == "Cancelled") {
-        "Remaining plates:"
+        "Remaining plate(s):"
       } else {
-        "Not processed:"
-      }
-      
-      # ✅ error messages
-      if (length(clean_failures) > 0) {
-        failure_ui <- tagAppendChildren(
-          failure_ui,
-          tags$hr(),
-          p(strong("Errors:")),
-          tags$ul(
-            lapply(clean_failures, function(x) {
-              tags$li(tags$span(style = "color: #b22222;", x))
-            })
-          )
-        )
+        "The analysis could not be completed for the following plate(s). Please check that your input files are formatted correctly and try again."
       }
       
       # ✅ failures
@@ -3714,13 +3700,10 @@ B           0   0   1
                        paste("Unexpected error:\n", gc_get_message(e))
                      }
                      
+                     
                      showModal(modalDialog(
                        title = "Analysis failed",
-                       shiny::tagList(
-                         p("The analysis could not be completed."),
-                         tags$hr(),
-                         tags$pre(style = "white-space: pre-wrap;", msg)
-                       ),
+                       p("The analysis could not be completed. Please check that your input files are formatted correctly and try again."),
                        easyClose = TRUE
                      ))
                      
