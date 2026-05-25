@@ -3988,9 +3988,10 @@ B           0   0   1
             bs$running   <- bs$running - 1L
             bs$completed <- bs$completed + 1L
             
-            if (!isTRUE(batch_state$progress_open)) 
-              
+            if (!isTRUE(batch_state$progress_open)) {
+              maybe_finish_fn()
               return()
+            }
             
             # ✅ Progress update (safe)
               if (isTRUE(batch_state$progress_open)) {
@@ -4080,7 +4081,9 @@ B           0   0   1
     invisible(prom)
   }
   
-  run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params) {
+  run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params, old_plan) {
+    
+    max_workers <- if (isTRUE(params$parallel)) 2L else 1L
     
     batch_abort(FALSE)
     batch_failures(character(0))
@@ -4108,14 +4111,20 @@ B           0   0   1
     batch_state$progress_open <- TRUE
     
     maybe_finish <- function() {
+      if (isTRUE(bs$finished)) {
+        return()
+      }
+      
       if (bs$completed == n || bs$aborted) {
+        bs$finished <- TRUE   # ✅ lock it
+        
         finish_batch(
           completed_val = bs$completed,
           n = n,
           root_path = root_path,
           batch_start_time = batch_start_time,
           progress = progress,
-          old_plan = NULL,
+          old_plan = old_plan,
           failures = bs$failures,
           all_failed = length(bs$failures) == n,
           all_plate_names = all_plate_names,
@@ -4164,7 +4173,9 @@ B           0   0   1
       )
     }
     
-    launch_next()
+    for (k in seq_len(max_workers)) {
+      launch_next()
+    }
   }
   
   observeEvent(input$run_batch, {
@@ -4190,17 +4201,30 @@ B           0   0   1
     clear_cancel_file(root_path)
     app_locked(TRUE)
     
+    old_plan <- NULL
+    
+    if (requireNamespace("future", quietly = TRUE)) {
+      old_plan <- future::plan()
+      
+      if (isTRUE(input$batch_parallel)) {
+        future::plan(future::multisession, workers = 2)
+      } else {
+        future::plan(future::sequential)
+      }
+    }
+    
     # ✅ CAPTURE REACTIVE VALUES HERE
     region_val <- region_selected()
     
     params <- list(
       hrs        = input$batch_hrs,
-      interval   = input$batch_interval / 60,  # match your single-run convention
+      interval   = input$batch_interval / 60,
       minod      = input$batch_minod,
       maxod      = input$batch_maxod,
       instrument = input$batch_instrument,
       blank_mode = input$batch_blank_mode,
-      prefix     = input$batch_prefix
+      prefix     = input$batch_prefix,
+      parallel   = input$batch_parallel
     )
     
     later::later(function() {
@@ -4210,7 +4234,8 @@ B           0   0   1
         root_path = root_path,
         batch_start_time = batch_start_time,
         region = region_val,
-        params = params
+        params = params,
+        old_plan = old_plan
       )
     }, delay = 0)
   })
@@ -4250,20 +4275,6 @@ B           0   0   1
     
     create_cancel_file(root)
     
-    showModal(
-      modalDialog(
-        title = "Cancelling batch...",
-        tagList(
-          p("Cancellation has been requested."),
-          p("Waiting for the current plate to finish..."),  # ← Better message
-          tags$br(),
-          p(style = "font-size:0.9em; color:#888;",
-            "Current plate may take a few seconds to complete.")
-        ),
-        footer = NULL,  # No button to close — let it auto-close
-        easyClose = FALSE
-      )
-    )
   })
   
   gc_disable_navigation <- function() {
