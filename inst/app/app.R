@@ -3993,36 +3993,30 @@ B           0   0   1
               return()
             
             # ✅ Progress update (safe)
-            tryCatch(
               if (isTRUE(batch_state$progress_open)) {
                 tryCatch(
-                  progress$set(
-                    value  = bs$completed,
-                    detail = paste("Completed", bs$completed, "of", n)
-                  ),
+                  {
+                    current_plate <- min(bs$completed + 1L, n)
+                    
+                    progress$set(
+                      value  = bs$completed,
+                      detail = paste("Running plate", current_plate, "of", n)
+                    )
+                  },
                   error = function(e = NULL) NULL
                 )
               }
-            )
             
-            # ✅ Handle failure → convert into abort
+            # ✅ Handle failure → record failure without exiting analysis
             if (!isTRUE(result$success)) {
-              bs$aborted  <- TRUE
-              bs$queue    <- list()
               bs$failures <- c(
                 bs$failures,
                 paste0("Plate ", i, ": ", result$message %||% "unknown error")
               )
-
+              
               gc_log_block(paste("BATCH FAILURE plate", i), result$message)
             }
-            
-            # ✅ EARLY EXIT if already aborted (e.g. prior failure)
-            if (bs$aborted) {
-              maybe_finish_fn()
-              return()
-            }
-            
+
             # ✅ ✅ UNIFIED cancellation check (IMPORTANT)
             cancel_hit <- cancel_requested(root_path)
             
@@ -4037,11 +4031,12 @@ B           0   0   1
             }
             
             # ✅ ✅ FINAL CONTROL FLOW (single decision point)
-            if (bs$aborted) {
+            if (isTRUE(bs$cancelled)) {
               maybe_finish_fn()
             } else {
               launch_next_fn()
             }
+            
             
           }, error = function(e = NULL) {
             
@@ -4107,7 +4102,7 @@ B           0   0   1
     progress$set(
       value = 0,
       message = "Running batch analysis...",
-      detail = paste("Completed 0 of", n)
+      detail = paste("Running plate 1 of", n)
     )
     
     batch_state$progress_open <- TRUE
