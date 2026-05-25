@@ -1038,17 +1038,30 @@ server <- function(input, output, session) {
                            failures,
                            all_failed,
                            successes,
-                           region) {
+                           all_plate_names,
+                           region,
+                           cancelled) {
     shiny::withReactiveDomain(session, {
       
       # --- determine status ----
       status <- "Yes"
       
-      if (cancel_requested(root_path)) {
+      if (isTRUE(cancelled)) {
         status <- "Cancelled"
       } else if (isTRUE(all_failed)) {
         status <- "Failed"
+      } else if (length(failures) > 0) {
+        status <- "Completed with errors"
       }
+      
+      label_success <- if (status == "Cancelled") {
+        "Processed before cancellation:"
+      } else {
+        "Successfully processed plates:"
+      }
+      
+      processed <- unique(successes)
+      not_processed <- setdiff(all_plate_names, processed)
       
       completed_str <- paste0(completed_val, " of ", n)
       
@@ -1065,6 +1078,8 @@ server <- function(input, output, session) {
       elapsed_sec <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
       elapsed_str <- format_runtime(elapsed_sec)
       
+      clean_failures <- gsub("^Unexpected error:\\s*", "", failures)
+      
       # ✅ --- Build failure UI OUTSIDE modal ---
       failure_ui <- shiny::tagList()
       
@@ -1072,20 +1087,42 @@ server <- function(input, output, session) {
       if (length(successes) > 0) {
         failure_ui <- tagAppendChildren(
           failure_ui,
-          p(strong("Successfully processed plates:")),
+          p(strong(label_success)),
           tags$ul(lapply(successes, tags$li))
         )
       }
       
-      # ✅ failures
-      if (length(failures) > 0) {
+      label_remaining <- if (status == "Cancelled") {
+        "Remaining plates:"
+      } else {
+        "Not processed:"
+      }
+      
+      # ✅ error messages
+      if (length(clean_failures) > 0) {
         failure_ui <- tagAppendChildren(
           failure_ui,
           tags$hr(),
-          p(strong("Failed plates:")),
-          tags$ul(lapply(failures, function(x) {
-            tags$li(tags$code(x))
-          }))
+          p(strong("Errors:")),
+          tags$ul(
+            lapply(clean_failures, function(x) {
+              tags$li(tags$span(style = "color: #b22222;", x))
+            })
+          )
+        )
+      }
+      
+      # ✅ failures
+      if (length(not_processed) > 0) {
+        failure_ui <- tagAppendChildren(
+          failure_ui,
+          tags$hr(),
+          p(strong(label_remaining)),
+          tags$ul(
+            lapply(not_processed, function(x) {
+              tags$li(tags$span(style = "color: #555;", x))
+            })
+          )
         )
       }
       
@@ -1106,10 +1143,22 @@ server <- function(input, output, session) {
           root_path
       )
       
+      list_sep <- " | "
+      
+      processed_str <- if (length(successes) > 0)
+        paste(successes, collapse = list_sep)
+      else
+        ""
+      
+      not_processed_str <- if (length(not_processed) > 0)
+        paste(not_processed, collapse = list_sep)
+      else
+        ""
+      
       # ✅ ---- write batch summary ----
       summary_df <- data.frame(
-        Variable = c("Completed?", "Completed plates"),
-        Value = c(status, completed_str),
+        Variable = c("Completed?", "Completed plates", "Successfully processed plates", "Not processed plates"),
+        Value = c(status, completed_str, processed_str, not_processed_str),
         stringsAsFactors = FALSE
       )
       
@@ -1123,12 +1172,19 @@ server <- function(input, output, session) {
         gc_log_block("FAILED TO WRITE BATCH SUMMARY", conditionMessage(e))
       })
       
+      if (status == "Cancelled") {
+        label_success <- "Processed before cancellation:"
+      } else {
+        label_success <- "Successfully processed plates:"
+      }
+      
       showModal(
         modalDialog(
           title = switch(
             status,
             "Cancelled" = "Batch cancelled",
             "Failed"    = "Batch failed",
+            "Completed with errors" = "Batch completed with errors",
             "Batch analysis complete"
           ),
           
@@ -3914,6 +3970,7 @@ B           0   0   1
       monitor <- function() {
         if (cancel_requested(root_path)) {
           bs$aborted <- TRUE
+          bs$cancelled <- TRUE
           bs$queue   <- list()  # ← DRAIN THE QUEUE IMMEDIATELY
           gc_log("CANCELLATION DETECTED MID-PLATE")
           # Queue will drain naturally when this plate finishes
@@ -3948,13 +4005,21 @@ B           0   0   1
             bs$running   <- bs$running - 1L
             bs$completed <- bs$completed + 1L
             
+            if (!isTRUE(batch_state$progress_open)) 
+              
+              return()
+            
             # ✅ Progress update (safe)
             tryCatch(
-              progress$set(
-                value  = bs$completed,
-                detail = paste("Completed", bs$completed, "of", n)
-              ),
-              error = function(e = NULL) NULL
+              if (isTRUE(batch_state$progress_open)) {
+                tryCatch(
+                  progress$set(
+                    value  = bs$completed,
+                    detail = paste("Completed", bs$completed, "of", n)
+                  ),
+                  error = function(e = NULL) NULL
+                )
+              }
             )
             
             # ✅ Handle failure → convert into abort
@@ -3980,6 +4045,7 @@ B           0   0   1
             
             if (cancel_hit) {
               bs$aborted <- TRUE
+              bs$cancelled <- TRUE
               bs$queue   <- list()
               
               gc_log_block("BATCH CANCEL DETECTED (post-plate)", list(
@@ -4049,6 +4115,9 @@ B           0   0   1
     bs$failures <- character(0)
     bs$successes <- character(0)
     bs$finished <- FALSE
+    bs$cancelled <- FALSE
+    
+    all_plate_names <- basename(pairs_val$data_file)
     
     progress <- Progress$new(session, min = 0, max = n)
     
@@ -4071,8 +4140,10 @@ B           0   0   1
           old_plan = NULL,
           failures = bs$failures,
           all_failed = length(bs$failures) == n,
+          all_plate_names = all_plate_names,
           successes = bs$successes,
-          region = region
+          region = region,
+          cancelled = isTRUE(bs$cancelled)
         )
       }
     }
@@ -4082,6 +4153,7 @@ B           0   0   1
       # ✅ CHECK CANCEL FIRST (before doing anything)
       if (cancel_requested(root_path)) {
         bs$aborted <- TRUE
+        bs$cancelled <- TRUE
         
         gc_log("Batch cancellation detected before launching next job")
         
