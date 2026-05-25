@@ -51,27 +51,168 @@ ui <- shiny::fluidPage(
   
   tags$head(
     tags$style(HTML("
-    /* Light mode */
+    /* ---- Details summary (light/dark) ---- */
       details summary {
-        background-color: rgba(0,0,0,0.06);
+        background-color: rgba(0,0,0,0.04);
         padding: 6px 8px;
         border-radius: 4px;
       }
-    
-    /* Light mode hover */
-      details summary:hover {
-        background-color: rgba(0,0,0,0.12);
+      details summary:hover { background-color: rgba(0,0,0,0.12); }
+
+      /* bslib data-bs-theme dark */
+      :root[data-bs-theme='dark'] details summary       { background-color: rgba(255,255,255,0.12); }
+      :root[data-bs-theme='dark'] details summary:hover { background-color: rgba(255,255,255,0.18); }
+
+      /* html.dark-mode class (set via JS) */
+      html.dark-mode details summary       { background-color: #3c3c3c !important; }
+      html.dark-mode details summary:hover { background-color: #4e4e4e !important; }
+
+    /* ---- Details spacing ---- */
+      details { margin-bottom: 16px; }
+
+    /* ---- Shiny progress ---- */
+      .shiny-progress .modal-dialog { max-width: 300px; }
+
+    /* ---- Stage nav buttons ---- */
+      .stage-nav .btn { margin-right: 6px; min-width: 110px; }
+      .stage-nav .btn.disabled, .stage-nav .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ---- DT select inputs ---- */
+      .dataTables_wrapper select.form-control {
+        border-radius: 4px; border: 1px solid #ccc;
       }
-      
-    /* Dark mode */
-      .dark-mode details summary {
-        background-color: rgba(255,255,255,0.06);
+      .dataTables_wrapper select.form-control:focus {
+        border-color: #66afe9; outline: 0;
+        box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102,175,233,.6);
       }
-    
-    /* Dark mode hover */
-    .dark-mode details summary:hover {
-      background-color: rgba(255,255,255,0.12);
-    }
+
+    /* ---- Batch design select ---- */
+      .batch-design-select {
+        width: 100%; padding: 4px 6px; font-size: 12px;
+        border: 1px solid rgba(100,100,100,0.5); border-radius: 4px;
+        background-color: inherit; color: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .batch-design-select:hover { border-color: #999; }
+      .batch-design-select:focus {
+        border-color: #66afe9; outline: 0;
+        box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 6px rgba(102,175,233,.6);
+        background-color: #f8fbff;
+      }
+      .batch-design-select:disabled { background-color: #f5f5f5; color: #999; cursor: not-allowed; }
+      .batch_match_table td { padding-top: 6px !important; padding-bottom: 6px !important; }
+      html.dark-mode .batch-design-select {
+        background-color: #2d2d2d !important; color: #d4d4d4 !important;
+        border: 1px solid rgba(255,255,255,0.5); border-color: #555 !important;
+      }
+
+    /* ---- Column header tooltips ---- */
+      th span[title] { cursor: help; text-decoration: underline dotted; }
+
+    /* ---- Batch flex layout ---- */
+      .batch-flex { display: flex; align-items: stretch; gap: 24px; margin-bottom: 40px; }
+      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: hidden; }
+      .batch-right { flex: 0 0 480px; max-width: 480px; }
+      .batch-left .dataTables_wrapper { width: 100% !important; overflow-x: auto; }
+      @media (max-width: 1200px) {
+        .batch-flex { flex-direction: column; align-items: stretch; }
+        .batch-left { min-width: 100%; max-width: 100%; overflow: visible; }
+        .batch-right { max-width: 100%; flex: 0 0 auto; }
+      }
+
+    /* ---- Aggregate runs table ---- */
+      #agg_runs_table table.dataTable { table-layout: auto !important; }
+      #agg_runs_table th:first-child, #agg_runs_table td:first-child {
+        width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+        text-align: left !important; padding-left: 8px !important;
+      }
+      #agg_runs_table th:nth-child(2), #agg_runs_table td:nth-child(2) {
+        width: 300px !important; min-width: 300px !important; max-width: 300px !important;
+      }
+      #agg_runs_table th:nth-child(3), #agg_runs_table td:nth-child(3) {
+        width: 220px !important; min-width: 220px !important; max-width: 220px !important;
+      }
+      #agg_runs_table td:first-child { cursor: pointer; user-select: none; font-family: monospace; }
+      #agg_runs_table td:nth-child(2) { white-space: nowrap; }
+      #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
+      #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
+      #agg_runs_table .dataTables_wrapper { max-width: 100% !important; }
+
+    /* ---- Guide / user guide styles ---- */
+      .guide-container { max-width: 900px; margin: 0; padding: 20px; }
+      .guide-container pre { background: #f6f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 13px; }
+      .guide-container h3 { margin-top: 28px; }
+      #user_guide_ui h3 { margin-top: 20px; }
+      #user_guide_ui hr { margin-top: 10px; margin-bottom: 15px; }
+      .guide-note { opacity: 0.8; }
+      :root[data-bs-theme='dark'] .guide-note { opacity: 0.9; }
+      html.dark-mode .guide-container pre { background: #2d2d2d !important; }
+
+    /* ---- Design example table ---- */
+      #design_example_table table { table-layout: fixed; }
+      #design_example_table td { min-width: 70px; text-align: center; }
+
+    /* ---- Preview table ---- */
+      .preview-table table {
+        font-size: 12px; border-collapse: collapse; table-layout: fixed !important;
+        white-space: nowrap; width: max-content;
+      }
+      .preview-table td, .preview-table th {
+        padding: 4px 6px; min-width: 70px; max-width: 70px;
+        text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .preview-table table.expanding td, .preview-table table.expanding th {
+        min-width: 90px; max-width: none;
+      }
+      .preview-table-fixed-rows table tr { height: 24px; }
+      html.dark-mode .preview-table table { background-color: #252526; }
+
+    /* ---- Design preview table (dark mode gridlines) ---- */
+      :root[data-bs-theme='dark'] .design-preview-table td,
+      :root[data-bs-theme='dark'] .design-preview-table th {
+        border-color: rgba(255,255,255,0.15) !important;
+      }
+      :root[data-bs-theme='dark'] .design-preview-table tr {
+        border-top-color: rgba(255,255,255,0.25) !important;
+      }
+
+    /* ---- Tabs ---- */
+      .nav-tabs > li > a { background-color: transparent; color: inherit; }
+      .nav-tabs > li.active > a, .nav-tabs > li.active > a:hover {
+        background-color: rgba(0,0,0,0.08); color: inherit;
+      }
+      html.dark-mode .nav-tabs > li.active > a { background-color: rgba(255,255,255,0.08); }
+
+    /* ---- Well panel ---- */
+      .well { background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); }
+      html.dark-mode .well { background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+
+    /* ---- Dark mode: fix hardcoded color styles ---- */
+      html.dark-mode .text-muted,
+      html.dark-mode p[style*='color'],
+      html.dark-mode span[style*='color'] { color: inherit !important; }
+
+    /* ---- Dark mode: modals, DT, tooltips ---- */
+      html.dark-mode .modal-content { background-color: #252526; color: #d4d4d4; }
+      html.dark-mode .dataTables_wrapper { color: #d4d4d4; }
+      html.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button { color: #d4d4d4 !important; }
+      html.dark-mode .tooltip-inner { background-color: #333; color: #fff; }
+
+    /* ---- Dark toggle ---- */
+      .dark-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+      .dark-toggle input[type='checkbox'] {
+        display: block; margin-top: 2px;
+        appearance: none; width: 36px; height: 18px;
+        background: #ccc; border-radius: 10px;
+        position: relative; outline: none; cursor: pointer; transition: background 0.2s;
+      }
+      .dark-toggle input[type='checkbox']::after {
+        content: ''; width: 14px; height: 14px; background: white;
+        border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.2s;
+      }
+      .dark-toggle input[type='checkbox']:checked { background: #4fc1ff; }
+      .dark-toggle input[type='checkbox']:checked::after { transform: translateX(18px); }
+      .toggle-label { font-size: 13px; }
     ")),
     tags$script(HTML("
   Shiny.addCustomMessageHandler('set_dark_class', function(on) {
@@ -85,722 +226,198 @@ ui <- shiny::fluidPage(
   ),
   
   
-  shiny::tagList(if (!gc_backend_ready()) {
-  shiny::verbatimTextOutput("startup_error")
   
-} else {
-  shiny::tagList(
-    titlePanel(
-      div(
-        style = "display:flex; justify-content: space-between; align-items: center;",
-        
-        div(
-          "Growth Curve Analysis",
-          uiOutput("dev_badge")
-        ),
-        div(
-          class = "dark-toggle",
-          
-          tags$input(
-            type = "checkbox",
-            id = "dark_mode"
-          ),
-          
-          tags$label(
-            `for` = "dark_mode",
-            class = "toggle-label",
-            "🌙 Dark"
-          )
-        )
-      )
-    )
-    ,
+  shiny::tagList(if (!gc_backend_ready()) {
+    shiny::verbatimTextOutput("startup_error")
     
-    wellPanel(
-      h4("Working directory"),
-      textInput(
-        "wd",
-        "Working directory path",
-        value = if (gc_dev_mode())
-          "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
-        else
-          ""
-      ),
-      actionButton("set_wd", "Set working directory"),
-      actionButton("refresh_files", "Refresh files"),
-      shiny::verbatimTextOutput("wd_txt"),
-      
-      
-      tags$details(
-        tags$summary(
-          style = guide_summary_style(),
-          "ℹ️  What folder should I select?"
-        ),
-        tags$div(
-          style = "padding: 8px 4px;",
-          tags$ul(
-            tags$li(strong("RStudio:"), " Files tab → ⚙️ → Copy Path to Clipboard"),
-            tags$li(
-              strong("Windows:"),
-              " Address bar → Ctrl + C (or Shift + Right-click → Copy as path)"
-            ),
-            tags$li(strong("macOS:"), " Option + Right-click → Copy as Pathname"),
-            tags$li(strong("Linux:"), " Right-click → Copy Path / Copy Location")
-          ),
-          tags$p(
-            "Paste the path above and click ",
-            tags$strong("Set working directory"),
-            ". Quoted paths are OK."
-          )
-        )
-      ),
-      
-      tags$details(
-        tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
-        tags$div(
-          style = guide_body_style(),
-          
-          tags$hr(),
-          
-          h4("CSV format (regional settings)"),
-          
-          tags$p("Detected:", tags$strong(
-            textOutput("region_detected_txt", inline = TRUE)
-          )),
-          
-          tags$p(
-            style = guide_note_style(),
-            class = "guide-note",
-            "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
-          ),
-          
-          selectInput(
-            "region_override",
-            "Output format",
-            choices = c(
-              "Auto-detect" = "auto",
-              "US (comma, decimal point)" = "US",
-              "European (semicolon, decimal comma)" = "EU"
-            ),
-            selected = "auto"
-          ),
-          
-          tags$p(
-            style = guide_note_style(),
-            class = "guide-note",
-            "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
-          )
-        )
-      )
-    ),
-    
-    tabsetPanel(
-      tabPanel("User guide", div(uiOutput("user_guide_ui"))),
-      tabPanel("Single plate", uiOutput("single_ui")),
-      tabPanel(
-        "Batch processing",
-        
-        uiOutput("batch_gate"),
-        
+  } else {
+    shiny::tagList(
+      titlePanel(
         div(
-          id = "batch_controls",
+          style = "display:flex; justify-content: space-between; align-items: center;",
           
-          h3("Batch analysis"),
-          
-          hr(),
-          
-          h4("Select instrument"),
-          
-          radioButtons(
-            "batch_instrument",
-            label = NULL,
-            choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
-            selected = "plate_reader",
-            inline = TRUE
+          div(
+            "Growth Curve Analysis",
+            uiOutput("dev_badge")
           ),
-          
-          hr(),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "ℹ️  Directory requirements"),
-            tags$div(style = guide_body_style(), tags$ul(
-              tags$li("Each raw data file must match exactly one design file."),
-              tags$li("Matching is based on a shared identifier in filenames."),
-              tags$li("Each pair is processed independently."),
-              tags$li("If one plate fails, others will still complete.")
-            ))
-          ),
-          
-          selectInput("batch_data_dir", "Raw data directory", choices = NULL),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "👁 Preview raw data (first file)"),
-            tags$div(
-              style = guide_body_style(),
-              textOutput("batch_preview_label"),
-              uiOutput("batch_raw_preview_ui")
+          div(
+            class = "dark-toggle",
+            
+            tags$input(
+              type = "checkbox",
+              id = "dark_mode"
+            ),
+            
+            tags$label(
+              `for` = "dark_mode",
+              class = "toggle-label",
+              "🌙 Dark"
             )
+          )
+        )
+      )
+      ,
+      
+      wellPanel(
+        h4("Working directory"),
+        textInput(
+          "wd",
+          "Working directory path",
+          value = if (gc_dev_mode())
+            "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
+          else
+            ""
+        ),
+        actionButton("set_wd", "Set working directory"),
+        actionButton("refresh_files", "Refresh files"),
+        shiny::verbatimTextOutput("wd_txt"),
+        
+        
+        tags$details(
+          tags$summary(
+            style = guide_summary_style(),
+            "ℹ️  What folder should I select?"
           ),
-          
-          selectInput("batch_design_dir", "Design file directory", choices = NULL),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "🧬 Preview design file (first pair)"),
-            tags$div(style = guide_body_style(), div(
-              class = "preview-table", uiOutput("batch_design_preview")
-            ))
-          ),
+          tags$div(
+            style = "padding: 8px 4px;",
+            tags$ul(
+              tags$li(strong("RStudio:"), " Files tab → ⚙️ → Copy Path to Clipboard"),
+              tags$li(
+                strong("Windows:"),
+                " Address bar → Ctrl + C (or Shift + Right-click → Copy as path)"
+              ),
+              tags$li(strong("macOS:"), " Option + Right-click → Copy as Pathname"),
+              tags$li(strong("Linux:"), " Right-click → Copy Path / Copy Location")
+            ),
+            tags$p(
+              "Paste the path above and click ",
+              tags$strong("Set working directory"),
+              ". Quoted paths are OK."
+            )
+          )
         ),
         
-        uiOutput("batch_ui")  # rest of UI
+        tags$details(
+          tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
+          tags$div(
+            style = guide_body_style(),
+            
+            tags$hr(),
+            
+            h4("CSV format (regional settings)"),
+            
+            tags$p("Detected:", tags$strong(
+              textOutput("region_detected_txt", inline = TRUE)
+            )),
+            
+            tags$p(
+              style = guide_note_style(),
+              class = "guide-note",
+              "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
+            ),
+            
+            selectInput(
+              "region_override",
+              "Output format",
+              choices = c(
+                "Auto-detect" = "auto",
+                "US (comma, decimal point)" = "US",
+                "European (semicolon, decimal comma)" = "EU"
+              ),
+              selected = "auto"
+            ),
+            
+            tags$p(
+              style = guide_note_style(),
+              class = "guide-note",
+              "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
+            )
+          )
+        )
       ),
-      tabPanel(
-        "Aggregate results",
-        
-        uiOutput("aggregate_gate"),
-        
-        div(
-          id = "aggregate_controls",
+      
+      tabsetPanel(
+        tabPanel("User guide", div(uiOutput("user_guide_ui"))),
+        tabPanel("Single plate", uiOutput("single_ui")),
+        tabPanel(
+          "Batch processing",
           
-          h3("Aggregate results"),
+          uiOutput("batch_gate"),
           
-          hr(),
+          div(
+            id = "batch_controls",
+            
+            h3("Batch analysis"),
+            
+            hr(),
+            
+            h4("Select instrument"),
+            
+            radioButtons(
+              "batch_instrument",
+              label = NULL,
+              choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
+              selected = "plate_reader",
+              inline = TRUE
+            ),
+            
+            hr(),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "ℹ️  Directory requirements"),
+              tags$div(style = guide_body_style(), tags$ul(
+                tags$li("Each raw data file must match exactly one design file."),
+                tags$li("Matching is based on a shared identifier in filenames."),
+                tags$li("Each pair is processed independently."),
+                tags$li("If one plate fails, others will still complete.")
+              ))
+            ),
+            
+            selectInput("batch_data_dir", "Raw data directory", choices = NULL),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "👁 Preview raw data (first file)"),
+              tags$div(
+                style = guide_body_style(),
+                textOutput("batch_preview_label"),
+                uiOutput("batch_raw_preview_ui")
+              )
+            ),
+            
+            selectInput("batch_design_dir", "Design file directory", choices = NULL),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "🧬 Preview design file (first pair)"),
+              tags$div(style = guide_body_style(), div(
+                class = "preview-table", uiOutput("batch_design_preview")
+              ))
+            ),
+          ),
           
-          selectInput("agg_dir", "Analysis run directory", choices = NULL)
+          uiOutput("batch_ui")  # rest of UI
         ),
-        
-        uiOutput("aggregate_ui")
-      )
-    ),
-    tags$style(HTML("
-      /* Force equal column widths for guide preview */
-      #design_example_table table {
-        table-layout: fixed;
-      }
-      
-      #design_example_table td {
-        min-width: 70px;
-        text-align: center;
-      }
-      ")
-    ),
-    tags$style(HTML(
-      "
-          .shiny-progress .modal-dialog {
-            max-width: 300px;
-          }
-        "
-    )),
-    
-    tags$style(HTML("
-      details {
-        margin-bottom: 16px;
-      }
-    ")),
-    
-    tags$style(
-      HTML(
-        "
-          .stage-nav .btn {
-            margin-right: 6px;
-            min-width: 110px;
-          }
-
-          .stage-nav .btn.disabled,
-          .stage-nav .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-        "
-      )
-    ),
-    
-    tags$style(
-      HTML(
-        "
-          .dataTables_wrapper select.form-control {
-            border-radius: 4px;
-            border: 1px solid #ccc;
-          }
-
-          .dataTables_wrapper select.form-control:focus {
-            border-color: #66afe9;
-            outline: 0;
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102,175,233,.6);
-          }
-          .batch-design-select {
-            width: 100%;
-            padding: 4px 6px;
-            font-size: 12px;
-
-            border: 1px solid #ccc;
-            border-radius: 4px;
-
-            background-color: #fff;
-            color: #333;
-
-            transition: border-color 0.2s, box-shadow 0.2s;
-          }
-
-          /* Hover */
-          .batch-design-select:hover {
-            border-color: #999;
-          }
-
-          /* Focus (matches your DT styling) */
-          .batch-design-select:focus {
-            border-color: #66afe9;
-            outline: 0;
-            box-shadow:
-              inset 0 1px 1px rgba(0,0,0,.075),
-              0 0 6px rgba(102,175,233,.6);
-          }
-
-          /* Disabled look */
-          .batch-design-select:disabled {
-            background-color: #f5f5f5;
-            color: #999;
-            cursor: not-allowed;
-          }
-
-          .batch_match_table td {
-            padding-top: 6px !important;
-            padding-bottom: 6px !important;
-          }
-
-          .batch-design-select:focus {
-            background-color: #f8fbff;
-          }
-
-        "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-          th span[title] {
-            cursor: help;
-            text-decoration: underline dotted;
-          }
-        "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-         /* =========================================================
-            ✅ BATCH LAYOUT (CORE FIX)
-         ========================================================= */
-
-        .batch-flex {
-          display: flex;
-          align-items: stretch;     /* ✅ prevents reflow jumping */
-          gap: 24px;
-          margin-bottom: 40px;
-        }
-
-        .batch-left {
-          flex: 1 1 0;
-          min-width: 0;             /* ✅ critical for flex stability */
-          max-width: 100%;
-          overflow: hidden;         /* ✅ prevents expansion spike */
-        }
-
-        .batch-right {
-          flex: 0 0 480px;          /* ✅ fixed width → no shifting */
-          max-width: 480px;
-        }
-
-        /* Keep DT contained inside left panel */
-        .batch-left .dataTables_wrapper {
-          width: 100% !important;
-          overflow-x: auto;         /* ✅ scroll instead of expand */
-        }
-
-        /* Responsive fallback */
-        @media (max-width: 1200px) {
-          .batch-flex {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .batch-left {
-            min-width: 100%;
-            max-width: 100%;
-            overflow: visible;   /* ✅ CRITICAL FIX */
-          }
-
-          .batch-right {
-            max-width: 100%;
-            flex: 0 0 auto;
-          }
-        }
-
-        /* =========================================================
-            ✅ DT TABLE BEHAVIOR
-         ========================================================= */
-
-        #agg_runs_table table.dataTable {
-          table-layout: auto !important;
-        }
-
-
-        /* =========================================================
-            ✅ COLUMN STRUCTURE (LOCK WIDTHS FIRST)
-         ========================================================= */
-
-        #agg_runs_table th:first-child,
-        #agg_runs_table td:first-child {
-          width: 60px !important;
-          min-width: 60px !important;
-          max-width: 60px !important;
-          text-align: left !important;
-          padding-left: 8px !important;
-        }
-
-        #agg_runs_table th:nth-child(2),
-        #agg_runs_table td:nth-child(2) {
-          width: 300px !important;
-          min-width: 300px !important;
-          max-width: 300px !important;
-        }
-
-        #agg_runs_table th:nth-child(3),
-        #agg_runs_table td:nth-child(3) {
-          width: 220px !important;
-          min-width: 220px !important;
-          max-width: 220px !important;
-        }
-
-
-        /* =========================================================
-            ✅ CELL CONTENT BEHAVIOR (AFTER WIDTH LOCK)
-         ========================================================= */
-
-        /* Checkbox column */
-        #agg_runs_table td:first-child {
-          cursor: pointer;
-          user-select: none;
-          font-family: monospace;
-        }
-
-        /* Run column */
-        #agg_runs_table td:nth-child(2) {
-          white-space: nowrap;
-        }
-
-        /* Status column */
-        #agg_runs_table td:nth-child(3) {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-family: monospace;
-        }
-
-
-        /* =========================================================
-            ✅ SCROLLING + STABILITY
-         ========================================================= */
-
-        /* Ensure horizontal scrolling instead of layout shift */
-        #agg_runs_table .dataTables_scrollBody {
-          overflow-x: auto;
-        }
-
-        /* Prevent DT wrapper from expanding parent container */
-        #agg_runs_table .dataTables_wrapper {
-          max-width: 100% !important;
-        }
-        "
-      )
-    ),
-    tags$style(HTML("
-        /* LIGHT MODE */
-        :root[data-bs-theme='light'] details summary {
-          background-color: red !important;
-        }
-        
-        /* DARK MODE */
-        :root[data-bs-theme='dark'] details summary {
-          background-color: rgba(255,255,255,0.12);
-        }
-        
-        /* HOVER */
-        :root[data-bs-theme='light'] details summary:hover {
-          background-color: rgba(0,0,0,0.12);
-        }
-        
-        :root[data-bs-theme='dark'] details summary:hover {
-          background-color: rgba(255,255,255,0.18);
-        }
-      ")
-    ),
-    tags$style(HTML("
-      /* Theme-aware batch dropdown */
-      .batch-design-select {
-        background-color: inherit;
-        color: inherit;
-        border: 1px solid rgba(100,100,100,0.5);
-      }
-      
-      body.dark-mode .batch-design-select {
-        border: 1px solid rgba(255,255,255,0.5);
-      }
-      ")
-    ),
-    tags$style(HTML("
-      details summary {
-        background-color: rgba(0,0,0,0.04);
-      }
-      
-      body.dark-mode details summary {
-        background-color: rgba(255,255,255,0.06);
-      }
-      ")
-    ),
-    tags$style(
-      HTML(
-        "
-        .guide-container {
-          max-width: 900px;
-          margin: 0;
-          padding: 20px;
-        }
-        .guide-container pre {
-          background: #f6f8fa;
-          padding: 12px;
-          border-radius: 8px;
-          overflow-x: auto;
-          font-family: monospace;
-          font-size: 13px;
-        }
-        .guide-container h3 {
-          margin-top: 28px;
-        }
-        #user_guide_ui h3 {
-          margin-top: 20px;
-        }
-        #user_guide_ui hr {
-          margin-top: 10px;
-          margin-bottom: 15px;
-        }
-      "
-      )
-    ),
-    tags$style(HTML("
-      /* Light mode: slightly muted */
-      .guide-note {
-        opacity: 0.8;
-      }
-      
-      /* Dark mode: slightly brighter (better readability) */
-      :root[data-bs-theme='dark'] .guide-note {
-        opacity: 0.9;
-      }
-      ")
-    ),
-    tags$style(HTML("
-      /* Dark mode gridline softening (bslib-compatible) */
-      :root[data-bs-theme='dark'] .design-preview-table td,
-      :root[data-bs-theme='dark'] .design-preview-table th {
-        border-color: rgba(255,255,255,0.15) !important;
-      }
-      
-      /* Thick separators */
-      :root[data-bs-theme='dark'] .design-preview-table tr {
-        border-top-color: rgba(255,255,255,0.25) !important;
-      }
-      ")
-    ),
-    tags$style(
-      HTML(
-        "
-        .preview-table table {
-          font-size: 12px;
-          border-collapse: collapse;
-          table-layout: auto;
-          white-space: nowrap;
-        }
-        .preview-table td,
-        .preview-table th {
-          padding: 4px 6px;
-        }
-        .preview-table table {
-          table-layout: fixed !important;
-          width: max-content;
-        }
-
-        .preview-table td,
-        .preview-table th {
-          min-width: 70px;
-          max-width: 70px;
-          text-align: center;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .preview-table table.expanding td,
-        .preview-table table.expanding th {
-          min-width: 90px;
-          max-width: none;
-        }
-      "
-      )
-    ),
-    tags$style(HTML(
-      "
-        .preview-table-fixed-rows table tr {
-          height: 24px;
-        }
-      "
-      )
-    ),
-    tags$style(HTML("
-      /* Tabs — make theme-aware */
-      .nav-tabs > li > a {
-        background-color: transparent;
-        color: inherit;
-      }
-      
-      .nav-tabs > li.active > a,
-      .nav-tabs > li.active > a:hover {
-        background-color: rgba(0, 0, 0, 0.08);
-        color: inherit;
-      }
-      
-      /* Dark mode tweak */
-      body.dark-mode .nav-tabs > li.active > a {
-        background-color: rgba(255, 255, 255, 0.08);
-      }
-      ")
-     ),
-    tags$style(HTML("
-      .well {
-        background-color: rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-      }
-      
-      body.dark-mode .well {
-        background-color: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
-      ")),
-    tags$style(HTML("
-      /* Fix muted / helper text in dark mode */
-      body.dark-mode .text-muted,
-      body.dark-mode p[style*='color'],
-      body.dark-mode span[style*='color'],
-      body.dark-mode div[style*='color'] {
-        color: inherit !important;
-      }
-      ")),
-    tags$style(HTML("
-        /* =========================
-           DARK MODE BASE
-        ========================= */
-        
-.dark-toggle input[type='checkbox'] {
-  display: block;        /* ✅ fixes baseline alignment */
-  margin-top: 2px;       /* ✅ micro-adjust (tweak if needed) */
-}
-        
-        /* Preview tables */
-        body.dark-mode .preview-table table {
-          background-color: #252526;
-        }
-        
-
-        
-        /* Details panels */
-        body.dark-mode details summary {
-          background-color: #2d2d2d !important;
-        }
-        
-        /* Modals */
-        body.dark-mode .modal-content {
-          background-color: #252526;
-          color: #d4d4d4;
-        }
-        
-        /* DataTables */
-        body.dark-mode .dataTables_wrapper {
-          color: #d4d4d4;
-        }
-        
-        body.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
-          color: #d4d4d4 !important;
-        }
-        
-        /* Tooltips */
-        body.dark-mode .tooltip-inner {
-          background-color: #333;
-          color: #fff;
-        }
-        
-        /* Fix hardcoded light backgrounds */
-        body.dark-mode .guide-container pre {
-          background: #2d2d2d !important;
-        }
-        
-        body.dark-mode .batch-design-select {
-          background-color: #2d2d2d !important;
-          color: #d4d4d4 !important;
-          border-color: #555 !important;
-        }
-        ")
+        tabPanel(
+          "Aggregate results",
+          
+          uiOutput("aggregate_gate"),
+          
+          div(
+            id = "aggregate_controls",
+            
+            h3("Aggregate results"),
+            
+            hr(),
+            
+            selectInput("agg_dir", "Analysis run directory", choices = NULL)
+          ),
+          
+          uiOutput("aggregate_ui")
+        )
       ),
-    tags$style(HTML("
-.dark-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-}
-
-/* Hide default checkbox */
-.dark-toggle input[type='checkbox'] {
-  appearance: none;
-  width: 36px;
-  height: 18px;
-  background: #ccc;
-  border-radius: 10px;
-  position: relative;
-  outline: none;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-/* Toggle knob */
-.dark-toggle input[type='checkbox']::after {
-  content: '';
-  width: 14px;
-  height: 14px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s;
-}
-
-/* ON state */
-.dark-toggle input[type='checkbox']:checked {
-  background: #4fc1ff;
-}
-
-.dark-toggle input[type='checkbox']:checked::after {
-  transform: translateX(18px);
-}
-
-/* Label */
-.toggle-label {
-  font-size: 13px;
-}
-")),
-    tags$script(
-      HTML(
-        "
+      
+      tags$script(
+        HTML(
+          "
         Shiny.addCustomMessageHandler('toggle_all_checkboxes', function(value) {
           var checked = (value === 'true');
           document.querySelectorAll('input[id^=\"agg_include_\"]').forEach(function(el) {
@@ -809,14 +426,14 @@ ui <- shiny::fluidPage(
           });
         });
       "
-      )
-    ),
-    # Debug panel (dev mode only)
-    uiOutput("debug_panel"),
-    
-    # ---- App version footer ----
-    div(
-      style = "
+        )
+      ),
+      # Debug panel (dev mode only)
+      uiOutput("debug_panel"),
+      
+      # ---- App version footer ----
+      div(
+        style = "
     position: fixed;
     bottom: 6px;
     right: 10px;
@@ -825,10 +442,10 @@ ui <- shiny::fluidPage(
     z-index: 9999;
     cursor: default;
   ",
-      paste0("GrowthCurve v", gc_app_version())
+        paste0("GrowthCurve v", gc_app_version())
+      )
     )
-  )
-}))
+  }))
 
 server <- function(input, output, session) {
   
@@ -1176,19 +793,11 @@ server <- function(input, output, session) {
   shiny::observe({
     if (wd_set()) {
       shinyjs::show("batch_controls")
-    } else {
-      shinyjs::hide("batch_controls")
-    }
-    
-  })
-  
-  shiny::observe({
-    if (wd_set()) {
       shinyjs::show("aggregate_controls")
     } else {
+      shinyjs::hide("batch_controls")
       shinyjs::hide("aggregate_controls")
     }
-    
   })
   
   output$batch_gate <- shiny::renderUI({
@@ -1315,6 +924,21 @@ server <- function(input, output, session) {
     is.list(x) && identical(x$type, "message")
   }
   
+  preview_warning_box <- function(message) {
+    div(
+      style = "
+        padding: 12px;
+        background-color: #fef3cd;
+        border: 1px solid #f0c040;
+        border-radius: 6px;
+        color: #5a4000;
+        max-width: 600px;
+      ",
+      strong("⚠ "),
+      message
+    )
+  }
+  
   apply_instrument_defaults <- function(session, prefix, instrument) {
     defaults <- gc_instrument_defaults[[instrument]]
     
@@ -1414,10 +1038,10 @@ server <- function(input, output, session) {
         
       } else {
         shiny::tagList(p("Batch completed with some failures."),
-                p(strong("Failed plates:")),
-                tags$ul(lapply(failures, function(x) {
-                  tags$li(tags$code(x))
-                })))
+                       p(strong("Failed plates:")),
+                       tags$ul(lapply(failures, function(x) {
+                         tags$li(tags$code(x))
+                       })))
       }
       
       pretty_path <- tryCatch(
@@ -1450,7 +1074,7 @@ server <- function(input, output, session) {
           easyClose = TRUE,
           
           footer = shiny::tagList(if (!all_failed &&
-                               dir.exists(root_path)) {
+                                      dir.exists(root_path)) {
             actionButton("open_batch_dir", "📂 Open output folder", class = "btn-primary")
           }, modalButton("Close"))
         )
@@ -1465,26 +1089,20 @@ server <- function(input, output, session) {
     })
   }
   
+  open_folder_or_warn <- function(path) {
+    success <- open_folder(path)
+    if (!isTRUE(success))
+      showNotification("Could not open folder automatically. Please open it manually.", type = "warning")
+  }
+  
   shiny::observeEvent(input$open_batch_dir, {
     req(batch_root())
-    
-    success <- open_folder(batch_root())
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(batch_root())
   })
   
   shiny::observeEvent(input$open_agg_dir, {
     req(input$agg_dir)
-    
-    success <- open_folder(input$agg_dir)
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(input$agg_dir)
   })
   
   qc_blank_note <- function(res) {
@@ -1945,15 +1563,9 @@ server <- function(input, output, session) {
   shiny::observe({
     if (!is.null(analysis_result())) {
       shinyjs::enable("export_files")
-    } else {
-      shinyjs::disable("export_files")
-    }
-  })
-  
-  shiny::observe({
-    if (!is.null(analysis_result())) {
       shinyjs::enable("reset_analysis")
     } else {
+      shinyjs::disable("export_files")
       shinyjs::disable("reset_analysis")
     }
   })
@@ -1987,65 +1599,62 @@ server <- function(input, output, session) {
     }
   })
   
-  shiny::observeEvent(list(wd_set(), file_refresh()), {
-    req(wd_set(), wd_path())
-    
-    dirs <- list.dirs(path       = wd_path(),
-                      recursive  = FALSE,
-                      full.names = TRUE)
-    
-    names(dirs) <- basename(dirs)
-    
-    current_data   <- isolate(input$batch_data_dir)
-    current_design <- isolate(input$batch_design_dir)
-    
-    updateSelectInput(
-      session,
-      "batch_data_dir",
-      choices  = dirs,
-      selected = if (!is.null(current_data) &&
-                     current_data %in% dirs)
-        current_data
-      else
-        character(0)
+  build_design_preview_table <- function(df) {
+    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
+    n_blocks <- length(block_starts)
+    row_block_id <- rep(NA, nrow(df))
+    for (k in seq_along(block_starts)) {
+      start <- block_starts[k]
+      end   <- if (k < n_blocks) block_starts[k + 1] - 1 else nrow(df)
+      row_block_id[start:end] <- k
+    }
+    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
+      is_block_header <- (i - 1) %% 10 == 0
+      cells <- lapply(seq_len(ncol(df)), function(j) {
+        val <- df[i, j]
+        if (is.na(val)) val <- ""
+        style_parts <- c("border: 1px solid rgba(120,120,120,0.2);")
+        if (j == 1 && is_block_header)
+          style_parts <- c(style_parts, "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
+        if (is_block_header && j > 1)
+          style_parts <- c(style_parts, "font-weight: bold;")
+        if (j == 1 && !is_block_header)
+          style_parts <- c(style_parts, "font-weight: 500;")
+        tags$td(style = paste(style_parts, collapse = " "), val)
+      })
+      row_style <- if (is_block_header && i != 1) "border-top: 4px solid rgba(80,80,80,0.5);" else ""
+      tags$tr(style = row_style, cells)
+    })
+    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
+    tags$table(
+      class = paste("design-preview-table", if (needs_expand) "expanding" else ""),
+      style = "border-collapse: collapse;",
+      tags$tbody(rows)
     )
-    
-    updateSelectInput(
-      session,
-      "batch_design_dir",
-      choices  = dirs,
-      selected = if (!is.null(current_design) &&
-                     current_design %in% dirs)
-        current_design
-      else
-        character(0)
-    )
-    
-  }, ignoreInit = TRUE)
+  }
   
   shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
-    dirs <- list.dirs(path       = wd_path(),
-                      recursive  = FALSE,
-                      full.names = TRUE)
-    
+    dirs <- list.dirs(path = wd_path(), recursive = FALSE, full.names = TRUE)
     names(dirs) <- basename(dirs)
     
-    # ✅ Preserve current selection
-    current <- isolate(input$agg_dir)
+    current_data   <- isolate(input$batch_data_dir)
+    current_design <- isolate(input$batch_design_dir)
+    current_agg    <- isolate(input$agg_dir)
     
-    updateSelectInput(
-      session,
-      "agg_dir",
-      choices  = dirs,
-      selected = if (!is.null(current) &&
-                     current %in% dirs)
-        current
-      else
-        character(0)
+    updateSelectInput(session, "batch_data_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_data) && current_data %in% dirs) current_data else character(0)
     )
-    
+    updateSelectInput(session, "batch_design_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_design) && current_design %in% dirs) current_design else character(0)
+    )
+    updateSelectInput(session, "agg_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_agg) && current_agg %in% dirs) current_agg else character(0)
+    )
   }, ignoreInit = TRUE)
   
   shiny::observeEvent(input$agg_select_all, {
@@ -2762,48 +2371,19 @@ B           0   0   1
     
   })
   
-  output$download_template_us <- downloadHandler(
-    filename = function() {
-      "design_template_us.csv"
-    },
-    content = function(file) {
-      
-      path <- system.file(
-        "app/templates",
-        "design_template_us.csv",
-        package = "growthcurve"
-      )
-      
-      # fallback for development
-      if (path == "") {
-        path <- file.path("templates", "design_template_us.csv")
+  make_template_handler <- function(filename) {
+    downloadHandler(
+      filename = function() filename,
+      content  = function(file) {
+        path <- system.file("app/templates", filename, package = "growthcurve")
+        if (path == "") path <- file.path("templates", filename)
+        file.copy(from = path, to = file, overwrite = TRUE)
       }
-      
-      file.copy(from = path, to = file, overwrite = TRUE)
-    }
-  )
+    )
+  }
   
-  
-  output$download_template_eu <- downloadHandler(
-    filename = function() {
-      "design_template_eu.csv"
-    },
-    content = function(file) {
-      
-      path <- system.file(
-        "app/templates",
-        "design_template_eu.csv",
-        package = "growthcurve"
-      )
-      
-      # fallback for development
-      if (path == "") {
-        path <- file.path("templates", "design_template_eu.csv")
-      }
-      
-      file.copy(from = path, to = file, overwrite = TRUE)
-    }
-  )
+  output$download_template_us <- make_template_handler("design_template_us.csv")
+  output$download_template_eu <- make_template_handler("design_template_eu.csv")
   
   output$stage_ready <- reactive({
     !is.null(analysis_result())
@@ -3063,20 +2643,7 @@ B           0   0   1
     
     # ✅ Case 1: warning / message
     if (is_preview_message(result)) {
-      return(
-        div(
-          style = "
-          padding: 12px;
-          background-color: #fff3cd;
-          border: 1px solid #ffeeba;
-          border-radius: 6px;
-          color: #856404;
-          max-width: 600px;
-        ",
-          strong("⚠ "),
-          result$message
-        )
-      )
+      return(preview_warning_box(result$message))
     }
     
     # ✅ Case 2: render table
@@ -3087,85 +2654,11 @@ B           0   0   1
   
   output$design_preview <- shiny::renderUI({
     req(input$design_file, wd_path())
-    
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
-    
     df <- read_preview_file(file, nrows = 100)
-    
     req(df)
-    
-    # Detect block starts (first column non-empty rows)
-    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
-    
-    n_blocks <- length(block_starts)
-    
-    row_block_id <- rep(NA, nrow(df))
-    
-    for (k in seq_along(block_starts)) {
-      start <- block_starts[k]
-      end <- if (k < n_blocks)
-        block_starts[k + 1] - 1
-      else
-        nrow(df)
-      row_block_id[start:end] <- k
-    }
-    
-    # Build HTML table manually
-    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      block_id <- row_block_id[i]
-      is_block_header <- (i - 1) %% 10 == 0
-      
-      cells <- lapply(seq_len(ncol(df)), function(j) {
-        val <- df[i, j]
-        if (is.na(val))
-          val <- ""
-        
-        style_parts <- c(
-          "border: 1px solid rgba(120,120,120,0.2);"  # ✅ soft gridlines
-        )
-        
-        # ✅ Block header (only first cell)
-        if (j == 1 && is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
-        }
-        
-        # ✅ Column headers (1–12 row)
-        if (is_block_header && j > 1) {
-          style_parts <- c(style_parts, "font-weight: bold;")
-        }
-        
-        # ✅ Row labels (A–H)
-        if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts, "font-weight: 500;")
-        }
-        
-        style <- paste(style_parts, collapse = " ")
-        
-        tags$td(style = style, val)
-      })
-      
-      # ✅ Thick separator between blocks
-      row_style <- ""
-      if (is_block_header && i != 1) {
-        row_style <- "border-top: 4px solid rgba(80,80,80,0.5);"
-      }
-      
-      tags$tr(style = row_style, cells)
-    })
-    
-    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
-    
-    tags$table(
-      class = paste("design-preview-table", if (needs_expand)
-        "expanding"
-        else
-          ""),
-      style = "border-collapse: collapse;",
-      tags$tbody(rows)
-    )
-    
+    build_design_preview_table(df)
   })
   
   output$batch_ui <- shiny::renderUI({
@@ -3233,20 +2726,7 @@ B           0   0   1
     if (input$batch_instrument == "ocelloscope" &&
         (is.null(input$batch_design_dir) ||
          !nzchar(input$batch_design_dir))) {
-      return(
-        div(
-          style = "
-        padding: 12px;
-        background-color: #fff3cd;
-        border: 1px solid #ffeeba;
-        border-radius: 6px;
-        color: #856404;
-        max-width: 600px;
-      ",
-          strong("⚠ "),
-          "Select a design directory to preview oCelloscope data."
-        )
-      )
+      return(preview_warning_box("Select a design directory to preview oCelloscope data."))
     }
     
     # Optional design
@@ -3270,20 +2750,7 @@ B           0   0   1
     result <- unwrap_preview(batch_preview_raw())
     
     if (is_preview_message(result)) {
-      return(
-        div(
-          style = "
-          padding: 12px;
-          background-color: #fff3cd;
-          border: 1px solid #ffeeba;
-          border-radius: 6px;
-          color: #856404;
-          max-width: 600px;
-        ",
-          strong("⚠ "),
-          result$message
-        )
-      )
+      return(preview_warning_box(result$message))
     }
     
     # ✅ Table
@@ -3367,88 +2834,14 @@ B           0   0   1
   })
   
   output$batch_design_preview <- shiny::renderUI({
-    # ✅ Only require design directory (NOT matching logic)
     req(input$batch_design_dir)
-    
     files <- list.files(input$batch_design_dir, full.names = TRUE)
-    if (length(files) == 0)
-      return(NULL)
-    
+    if (length(files) == 0) return(NULL)
     file <- files[1]
     req(!is.na(file), file.exists(file))
-    
-    # ✅ Read preview
     df <- read_preview_file(file, nrows = 100)
     req(df)
-    
-    # ✅ Detect block starts
-    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
-    n_blocks <- length(block_starts)
-    
-    row_block_id <- rep(NA, nrow(df))
-    
-    for (k in seq_along(block_starts)) {
-      start <- block_starts[k]
-      end <- if (k < n_blocks)
-        block_starts[k + 1] - 1
-      else
-        nrow(df)
-      row_block_id[start:end] <- k
-    }
-    
-    # ✅ Build styled table
-    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      block_id <- row_block_id[i]
-      is_block_header <- (i - 1) %% 10 == 0
-      
-      cells <- lapply(seq_len(ncol(df)), function(j) {
-        val <- df[i, j]
-        if (is.na(val))
-          val <- ""
-        
-        style_parts <- c("border: 1px solid #e6e6e6;")
-        
-        # ✅ Block header (first column)
-        if (j == 1 && is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold; border: 2px solid #666;")
-        }
-        
-        # ✅ Column headers (1–12)
-        if (is_block_header && j > 1) {
-          style_parts <- c(style_parts, "font-weight: bold;")
-        }
-        
-        # ✅ Row labels (A–H)
-        if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts, "font-weight: 500;")
-        }
-        
-        style <- paste(style_parts, collapse = " ")
-        
-        tags$td(style = style, val)
-      })
-      
-      # ✅ Thick separator between blocks
-      row_style <- ""
-      if (is_block_header && i != 1) {
-        row_style <- "border-top: 4px solid #666;"
-      }
-      
-      tags$tr(style = row_style, cells)
-    })
-    
-    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
-    
-    tags$table(
-      class = paste("design-preview-table", if (needs_expand)
-        "expanding"
-        else
-          ""),
-      style = "border-collapse: collapse;",
-      tags$tbody(rows)
-    )
-    
+    build_design_preview_table(df)
   })
   
   output$aggregate_ui <- shiny::renderUI({
@@ -4367,10 +3760,6 @@ B           0   0   1
     else
       1L
     
-    if (workers > 1 && !inherits(future::plan(), "multisession")) {
-      future::plan(future::multisession, workers = workers)
-    }
-    
     if (requireNamespace("future", quietly = TRUE)) {
       if (workers > 1L) {
         future::plan(future::multisession, workers = workers)
@@ -4523,7 +3912,7 @@ B           0   0   1
       }
       
       tryCatch({
-
+        
         fname     <- basename(pairs_val$data_file[i])
         plate_tag <- tools::file_path_sans_ext(fname)
         plate_dir   <- file.path(root_path, plate_tag)
@@ -4841,13 +4230,7 @@ B           0   0   1
   
   shiny::observeEvent(input$open_export_dir, {
     req(last_export_dir())
-    
-    success <- open_folder(last_export_dir())
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(last_export_dir())
   })
   
   shiny::observe({
