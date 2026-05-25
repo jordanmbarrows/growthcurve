@@ -44,10 +44,10 @@ guide_note_style <- function() {
   "font-size: 0.9em; color: inherit;"
 }
 
+# ---- UI ----
 ui <- shiny::fluidPage(
   shinyjs::useShinyjs(),
   theme = bslib::bs_theme(version = 3),
-  
   
   tags$head(
     tags$style(HTML("
@@ -447,6 +447,7 @@ ui <- shiny::fluidPage(
     )
   }))
 
+# ---- server ----
 server <- function(input, output, session) {
   
   # =========================================================
@@ -982,6 +983,24 @@ server <- function(input, output, session) {
     )
   }
   
+  get_cancel_file <- function(root_path) {
+    file.path(root_path, "_CANCEL_BATCH")
+  }
+  
+  create_cancel_file <- function(root_path) {
+    path <- get_cancel_file(root_path)
+    file.create(path)
+  }
+  
+  cancel_requested <- function(root_path) {
+    file.exists(get_cancel_file(root_path))
+  }
+  
+  clear_cancel_file <- function(root_path) {
+    path <- get_cancel_file(root_path)
+    if (file.exists(path)) file.remove(path)
+  }
+  
   advance_stage <- function() {
     idx <- match(current_stage(), stage_order)
     if (!is.na(idx) && idx < length(stage_order)) {
@@ -1017,8 +1036,21 @@ server <- function(input, output, session) {
                            progress,
                            old_plan,
                            failures,
-                           all_failed) {
+                           all_failed,
+                           region) {
     shiny::withReactiveDomain(session, {
+      
+      # --- determine status ----
+      status <- "Yes"
+      
+      if (cancel_requested(root_path)) {
+        status <- "Cancelled"
+      } else if (isTRUE(all_failed)) {
+        status <- "Failed"
+      }
+      
+      completed_str <- paste0(completed_val, " of ", n)
+      
       # --- Close progress ---
       if (isTRUE(batch_state$progress_open)) {
         progress$close()
@@ -1050,9 +1082,31 @@ server <- function(input, output, session) {
           root_path
       )
       
+      # ✅ ---- write batch summary ----
+      summary_df <- data.frame(
+        Variable = c("Completed?", "Completed plates"),
+        Value = c(status, completed_str),
+        stringsAsFactors = FALSE
+      )
+      
+      tryCatch({
+        write_csv_safe(
+          summary_df,
+          file.path(root_path, "batch_run_summary.csv"),
+          region = region
+        )
+      }, error = function(e) {
+        gc_log_block("FAILED TO WRITE BATCH SUMMARY", conditionMessage(e))
+      })
+      
       showModal(
         modalDialog(
-          title = "Batch analysis complete",
+          title = switch(
+            status,
+            "Cancelled" = "Batch cancelled",
+            "Failed"    = "Batch failed",
+            "Batch analysis complete"
+          ),
           
           shiny::tagList(
             failure_ui,
@@ -1079,6 +1133,8 @@ server <- function(input, output, session) {
           }, modalButton("Close"))
         )
       )
+      
+      clear_cancel_file(root_path)
       
       # --- Restore future plan ---
       if (!is.null(old_plan) &&
@@ -1656,6 +1712,14 @@ server <- function(input, output, session) {
                       selected = if (!is.null(current_agg) && current_agg %in% dirs) current_agg else character(0)
     )
   }, ignoreInit = TRUE)
+  
+  shiny::observe({
+    if (app_locked()) {
+      shinyjs::enable("cancel_batch")
+    } else {
+      shinyjs::disable("cancel_batch")
+    }
+  })
   
   shiny::observeEvent(input$agg_select_all, {
     req(agg_runs())
@@ -3084,7 +3148,12 @@ B           0   0   1
           )
         ),
         
-        actionButton("how_to_stop", "⚠️ How to stop a running batch", class = "btn-warning")
+        actionButton(
+          "cancel_batch",
+          "Cancel batch",
+          class = "btn-warning"
+        ),
+        
       )
     )
   })
@@ -3683,202 +3752,6 @@ B           0   0   1
     
   })
   
-  shiny::observeEvent(input$run_batch, {
-    region <- region_selected()
-    
-    batch_abort(FALSE)
-    
-    # Hard guard: reject run if any pair is not fully matched
-    pairs_check <- tryCatch(
-      validated_pairs_cached(),
-      error = function(e = NULL)
-        NULL
-    )
-    if (is.null(pairs_check) || nrow(pairs_check) == 0 ||
-        !all(pairs_check$status == "✅ matched")) {
-      showModal(modalDialog(
-        title = "Cannot run batch",
-        p("All file pairs must be matched and valid before running."),
-        p("Check the table above for rows marked ❌ or ⚠️."),
-        easyClose = TRUE
-      ))
-      return(NULL)
-    }
-    
-    batch_failures(character(0))
-    
-    req(validated_pairs_cached(),
-        nrow(validated_pairs_cached()) > 0)
-    
-    pairs_val      <- validated_pairs_cached()
-    n              <- nrow(pairs_val)
-    batch_start_time <- Sys.time()
-    old_plan       <- if (requireNamespace("future", quietly = TRUE))
-      future::plan()
-    else
-      NULL
-    
-    params <- list(
-      hrs        = input$batch_hrs,
-      interval   = input$batch_interval / 60,
-      minod      = input$batch_minod,
-      maxod      = input$batch_maxod,
-      instrument = input$batch_instrument,
-      blank_mode = if (input$batch_instrument == "ocelloscope") {
-        "none"
-      } else {
-        input$batch_blank_mode
-      }
-    )
-    
-    gc_silent(gc_log_block("RUN BATCH START", list(n = n, params = params)))
-    
-    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-    batch_tag <- if (nzchar(input$batch_prefix)) {
-      paste0(timestamp, "_", input$batch_prefix, "_batch")
-    } else {
-      paste0(timestamp, "_batch")
-    }
-    root_path <- file.path(wd_path(), "Analysis", batch_tag)
-    batch_root(root_path)
-    
-    app_locked(TRUE)
-    
-    # ── Single source of truth ──────────────────────────────────────────────────
-    bs <- new.env(parent = emptyenv())
-    bs$queue     <- as.list(seq_len(n))   # plates yet to launch
-    bs$running   <- 0L                    # plates currently in flight
-    bs$completed <- 0L                    # plates fully done (success or fail)
-    bs$aborted   <- FALSE                 # latched TRUE on first failure
-    bs$failures  <- character(0)          # collected synchronously
-    bs$finished  <- FALSE                 # finish_batch called exactly once
-    # ────────────────────────────────────────────────────────────────────────────
-    
-    workers <- if (isTRUE(input$batch_parallel) &&
-                   batch_can_parallel())
-      2L
-    else
-      1L
-    
-    if (requireNamespace("future", quietly = TRUE)) {
-      if (workers > 1L) {
-        future::plan(future::multisession, workers = workers)
-      } else {
-        future::plan(future::sequential)
-      }
-    }
-    
-    progress <- Progress$new(session, min = 0, max = n)
-    batch_state$progress_open <- TRUE
-    tryCatch(
-      progress$set(
-        message = "Batch analysis running",
-        detail = "Starting…",
-        value = 0
-      ),
-      error = function(e = NULL)
-        NULL
-    )
-    
-    # ── maybe_finish: called after every plate completes ───────────────────────
-    maybe_finish <- function() {
-      if (bs$running > 0 || length(bs$queue) > 0)
-        return()
-      if (bs$finished)
-        return()
-      bs$finished <- TRUE
-      
-      gc_log_block("BATCH FINISH STATE",
-                   list(
-                     completed = bs$completed,
-                     failures  = bs$failures
-                   ))
-      
-      later::later(function() {
-        tryCatch({
-          # ── Only attempt cleanup if every plate failed ──
-          all_failed <- (length(bs$failures) == n)
-          
-          finish_batch(
-            completed_val    = bs$completed,
-            n                = n,
-            root_path        = root_path,
-            batch_start_time = batch_start_time,
-            progress         = progress,
-            old_plan         = old_plan,
-            failures         = bs$failures,
-            all_failed       = all_failed
-          )
-          
-          shiny::withReactiveDomain(session, {
-            batch_failures(bs$failures)
-            app_locked(FALSE)
-          })
-          
-        }, error = function(e = NULL) {
-          gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
-        })
-      }, delay = 0)
-    }
-    
-    # ── launch_next: schedules the next plate, respecting abort + concurrency ──
-    launch_next <- function() {
-      gc_log(
-        "Queue:",
-        length(bs$queue),
-        "| Running:",
-        bs$running,
-        "| Completed:",
-        bs$completed
-      )
-      
-      if (bs$aborted || length(bs$queue) == 0) {
-        # If everything that was running has now finished, wrap up
-        if (bs$running == 0)
-          maybe_finish()
-        return()
-      }
-      
-      if (bs$running >= workers) {
-        later::later(launch_next, delay = 0.2)
-        return()
-      }
-      
-      i         <- bs$queue[[1]]
-      bs$queue  <- if (length(bs$queue) > 1)
-        bs$queue[-1]
-      else
-        list()
-      bs$running <- bs$running + 1L
-      
-      tryCatch(
-        progress$set(
-          value  = bs$completed,
-          detail = paste("Completed", bs$completed, "of", n, "| Running plate", i)
-        ),
-        error = function(e = NULL)
-          NULL
-      )
-      
-      run_one_plate_future(
-        i         = i,
-        pairs_val = pairs_val,
-        params    = params,
-        root_path = root_path,
-        bs        = bs,
-        # pass the env directly — no closure capture issues
-        session   = session,
-        progress  = progress,
-        n         = n,
-        launch_next_fn = launch_next,
-        maybe_finish_fn = maybe_finish
-      )
-    }
-    
-    launch_next()
-  })
-  
-  
   # ── run_one_plate_future ──────────────────────────────────────────────────────
   # All mutable state lives in `bs` (the env passed in). No <<- needed.
   run_one_plate_future <- function(i,
@@ -3890,13 +3763,14 @@ B           0   0   1
                                    progress,
                                    n,
                                    launch_next_fn,
-                                   maybe_finish_fn) {
+                                   maybe_finish_fn,
+                                   region) {
     future_globals <- list(
       i         = i,
       pairs_val = pairs_val,
       params    = params,
       root_path = root_path,
-      region    = region_selected()
+      region    = region
     )
     
     prom <- promises::future_promise(expr = {
@@ -3959,6 +3833,15 @@ B           0   0   1
           )
         }
         
+        # --- cancellation check before writing outputs ----
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         dir.create(root_path,
                    recursive = TRUE,
                    showWarnings = FALSE)
@@ -3994,51 +3877,100 @@ B           0   0   1
     globals = future_globals,
     seed = TRUE)
     
+    start_cancellation_monitor <- function(root_path, bs, maybe_finish_fn) {
+      monitor <- function() {
+        if (cancel_requested(root_path)) {
+          bs$aborted <- TRUE
+          bs$queue   <- list()  # ← DRAIN THE QUEUE IMMEDIATELY
+          gc_log("CANCELLATION DETECTED MID-PLATE")
+          # Queue will drain naturally when this plate finishes
+          maybe_finish_fn()  # Trigger finish check
+          return()  # Stop monitoring
+        }
+        later::later(monitor, delay = 1)  # Check every second
+      }
+      later::later(monitor, delay = 1)
+    }
+    
+    start_cancellation_monitor(root_path, bs, maybe_finish_fn)
+    
     # ── then: plate finished (success or reported failure) ─────────────────────
     prom <- promises::then(prom, function(result) {
+      
       if (exists("gc_log_block")) {
         try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
       }
       
       tryCatch({
+        
+        # ✅ Update counters FIRST
         bs$running   <- bs$running - 1L
         bs$completed <- bs$completed + 1L
         
-        if (!isTRUE(result$success)) {
-          # Latch abort, drain queue, record failure — all synchronous
-          bs$aborted <- TRUE
-          bs$queue   <- list()
-          bs$failures <- c(bs$failures,
-                           paste0("Plate ", i, ": ", result$message %||% "unknown error"))
-          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
-        }
-        
+        # ✅ Progress update (safe)
         tryCatch(
           progress$set(
             value  = bs$completed,
             detail = paste("Completed", bs$completed, "of", n)
           ),
-          error = function(e = NULL)
-            NULL
+          error = function(e = NULL) NULL
         )
         
-        # Either launch the next plate or finish up
-        if (!bs$aborted) {
-          launch_next_fn()
-        } else {
+        # ✅ EARLY EXIT if already aborted (e.g. prior failure)
+        if (bs$aborted) {
           maybe_finish_fn()
+          return()
+        }
+        
+        # ✅ Handle failure → convert into abort
+        if (!isTRUE(result$success)) {
+          bs$aborted  <- TRUE
+          bs$queue    <- list()
+          bs$failures <- c(
+            bs$failures,
+            paste0("Plate ", i, ": ", result$message %||% "unknown error")
+          )
+          
+          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+        }
+        
+        # ✅ ✅ UNIFIED cancellation check (IMPORTANT)
+        cancel_hit <- cancel_requested(root_path)
+        
+        if (cancel_hit) {
+          bs$aborted <- TRUE
+          bs$queue   <- list()
+          
+          gc_log_block("BATCH CANCEL DETECTED (post-plate)", list(
+            completed = bs$completed
+          ))
+        }
+        
+        # ✅ ✅ FINAL CONTROL FLOW (single decision point)
+        if (bs$aborted) {
+          maybe_finish_fn()
+        } else {
+          launch_next_fn()
         }
         
       }, error = function(e = NULL) {
+        
         gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
+        
+        # ✅ Ensure consistent state even on crash
         bs$aborted  <- TRUE
         bs$queue    <- list()
-        bs$running  <- bs$running - 1L
-        bs$failures <- c(bs$failures, paste0("Plate ", i, ": then-handler crash"))
+        bs$running  <- max(0L, bs$running - 1L)
+        
+        bs$failures <- c(
+          bs$failures,
+          paste0("Plate ", i, ": then-handler crash")
+        )
+        
         maybe_finish_fn()
       })
     })
-    
+
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
       gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
@@ -4060,6 +3992,117 @@ B           0   0   1
     
     invisible(prom)
   }
+  
+  run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params) {
+    
+    batch_abort(FALSE)
+    batch_failures(character(0))
+    
+    bs <- new.env(parent = emptyenv())
+    bs$queue <- as.list(seq_len(n))
+    bs$running <- 0L
+    bs$completed <- 0L
+    bs$aborted <- FALSE
+    bs$failures <- character(0)
+    bs$finished <- FALSE
+    
+    progress <- Progress$new(session, min = 0, max = n)
+    batch_state$progress_open <- TRUE
+    
+    maybe_finish <- function() {
+      if (bs$completed == n || bs$aborted) {
+        finish_batch(
+          completed_val = bs$completed,
+          n = n,
+          root_path = root_path,
+          batch_start_time = batch_start_time,
+          progress = progress,
+          old_plan = NULL,
+          failures = bs$failures,
+          all_failed = length(bs$failures) == n,
+          region = region
+        )
+      }
+    }
+    
+    launch_next <- function() {
+      
+      # ✅ CHECK CANCEL FIRST (before doing anything)
+      if (cancel_requested(root_path)) {
+        bs$aborted <- TRUE
+        
+        gc_log("Batch cancellation detected before launching next job")
+        
+        maybe_finish()
+        return()
+      }
+      
+      # ✅ If nothing left to do → finish
+      if (length(bs$queue) == 0) {
+        maybe_finish()
+        return()
+      }
+      
+      i <- bs$queue[[1]]
+      bs$queue <- bs$queue[-1]
+      bs$running <- bs$running + 1L
+      
+      run_one_plate_future(
+        i = i,
+        pairs_val = pairs_val,
+        params = params,
+        root_path = root_path,
+        bs = bs,
+        session = session,
+        progress = progress,
+        n = n,
+        launch_next_fn = launch_next,
+        maybe_finish_fn = maybe_finish,
+        region = region
+      )
+    }
+    
+    launch_next()
+  }
+  
+  observeEvent(input$run_batch, {
+    req(validated_pairs_cached(), nrow(validated_pairs_cached()) > 0)
+    
+    pairs_val <- validated_pairs_cached()
+    n <- nrow(pairs_val)
+    batch_start_time <- Sys.time()
+    
+    root_path <- file.path(wd_path(), "Analysis", format(Sys.time(), "%Y%m%d_%H%M%S"))
+    dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
+    
+    batch_root(root_path)
+    clear_cancel_file(root_path)
+    app_locked(TRUE)
+    
+    # ✅ CAPTURE REACTIVE VALUES HERE
+    region_val <- region_selected()
+    
+    params <- list(
+      hrs        = input$batch_hrs,
+      interval   = input$batch_interval / 60,  # match your single-run convention
+      minod      = input$batch_minod,
+      maxod      = input$batch_maxod,
+      instrument = input$batch_instrument,
+      blank_mode = input$batch_blank_mode,
+      prefix     = input$batch_prefix
+    )
+    
+    later::later(function() {
+      run_batch_async(
+        pairs_val = pairs_val,
+        n = n,
+        root_path = root_path,
+        batch_start_time = batch_start_time,
+        region = region_val,
+        params = params
+      )
+    }, delay = 0)
+  })
   
   shiny::observeEvent(input$prev_stage, {
     retreat_stage()
@@ -4083,46 +4126,31 @@ B           0   0   1
   })
   
   
-  shiny::observeEvent(input$how_to_stop, {
+  observeEvent(input$cancel_batch, {
+    
+    gc_log_block("CANCEL BUTTON CLICKED", list(
+      batch_root_val = batch_root(),
+      root_exists = dir.exists(batch_root())
+    ))
+    
+    req(batch_root())
+    
+    root <- batch_root()
+    
+    create_cancel_file(root)
+    
     showModal(
       modalDialog(
-        title = "How to stop a running batch",
-        shiny::tagList(
-          p(
-            "Once a batch has started, it cannot be cancelled from within the app. ",
-            "The analysis will run to completion even if you close the browser tab."
-          ),
-          tags$hr(),
-          p(strong("To stop a running batch:")),
-          tags$ol(
-            tags$li(
-              "In RStudio, go to ",
-              tags$strong("Session → Terminate R"),
-              " to kill the process immediately."
-            ),
-            tags$li(
-              "Alternatively, click the ",
-              tags$strong("Stop"),
-              " button (🟥) in the RStudio Console toolbar."
-            ),
-            tags$li(
-              "As a last resort, press ",
-              tags$strong("Ctrl+C"),
-              " (Windows/Linux) or ",
-              tags$strong("Cmd+C"),
-              " (Mac) in the Console."
-            )
-          ),
-          tags$hr(),
-          p(
-            style = "font-size: 0.9em; color: #888;",
-            "Note: Any plates that finished before termination will have their ",
-            "output files intact. Only the plate that was actively running at ",
-            "the time of termination may be incomplete."
-          )
+        title = "Cancelling batch...",
+        tagList(
+          p("Cancellation has been requested."),
+          p("Waiting for the current plate to finish..."),  # ← Better message
+          tags$br(),
+          p(style = "font-size:0.9em; color:#888;",
+            "Current plate may take a few seconds to complete.")
         ),
-        easyClose = TRUE,
-        footer = modalButton("Close")
+        footer = NULL,  # No button to close — let it auto-close
+        easyClose = FALSE
       )
     )
   })
@@ -4368,6 +4396,6 @@ B           0   0   1
   
 }
 
-
+# ---- app ----
 app <- shiny::shinyApp(ui = ui, server = server)
 app
