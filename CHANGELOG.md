@@ -11,6 +11,7 @@
 - Resolved `"argument 'e' is missing"` crashes
 - Improved compatibility with `devtools::load_all()`
 - Added dark mode with in-app toggle
+- Condensed and removed redundancy from app.R file
 
 ## [1.0.0] - 2026-05-12
 
