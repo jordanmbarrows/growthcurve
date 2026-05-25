@@ -1037,6 +1037,7 @@ server <- function(input, output, session) {
                            old_plan,
                            failures,
                            all_failed,
+                           successes,
                            region) {
     shiny::withReactiveDomain(session, {
       
@@ -1065,15 +1066,38 @@ server <- function(input, output, session) {
       elapsed_str <- format_runtime(elapsed_sec)
       
       # ✅ --- Build failure UI OUTSIDE modal ---
-      failure_ui <- if (length(failures) == 0) {
-        p("All plates were processed successfully.")
-        
-      } else {
-        shiny::tagList(p("Batch completed with some failures."),
-                       p(strong("Failed plates:")),
-                       tags$ul(lapply(failures, function(x) {
-                         tags$li(tags$code(x))
-                       })))
+      failure_ui <- shiny::tagList()
+      
+      # ✅ successes
+      if (length(successes) > 0) {
+        failure_ui <- tagAppendChildren(
+          failure_ui,
+          p(strong("Successfully processed plates:")),
+          tags$ul(lapply(successes, tags$li))
+        )
+      }
+      
+      # ✅ failures
+      if (length(failures) > 0) {
+        failure_ui <- tagAppendChildren(
+          failure_ui,
+          tags$hr(),
+          p(strong("Failed plates:")),
+          tags$ul(lapply(failures, function(x) {
+            tags$li(tags$code(x))
+          }))
+        )
+      }
+      
+      if (length(successes) == 0) {
+        if (completed_val > 0) {
+          failure_ui <- tagList(
+            p(paste("Processed", completed_val, "plate(s) before stopping.")),
+            p("Plate names could not be recovered.")
+          )
+        } else {
+          failure_ui <- p("No plates were processed.")
+        }
       }
       
       pretty_path <- tryCatch(
@@ -3154,6 +3178,11 @@ B           0   0   1
           class = "btn-warning"
         ),
         
+      ),
+      
+      tags$p(
+        style = "font-size: 0.9em; color: #666; margin-top: 6px;",
+        "Note: Cancelling a batch will stop the analysis after the current plate finishes processing."
       )
     )
   })
@@ -3167,7 +3196,8 @@ B           0   0   1
     # ✅ Only proceed if BOTH are selected AND non-empty
     req(
       !is.null(input$batch_data_dir),
-      nzchar(input$batch_data_dir),!is.null(input$batch_design_dir),
+      nzchar(input$batch_data_dir),
+      !is.null(input$batch_design_dir),
       nzchar(input$batch_design_dir)
     )
     
@@ -3765,6 +3795,9 @@ B           0   0   1
                                    launch_next_fn,
                                    maybe_finish_fn,
                                    region) {
+    
+    plate_name <- basename(pairs_val$data_file[i])
+    
     future_globals <- list(
       i         = i,
       pairs_val = pairs_val,
@@ -3895,81 +3928,91 @@ B           0   0   1
     start_cancellation_monitor(root_path, bs, maybe_finish_fn)
     
     # ── then: plate finished (success or reported failure) ─────────────────────
-    prom <- promises::then(prom, function(result) {
-      
-      if (exists("gc_log_block")) {
-        try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
-      }
-      
-      tryCatch({
+    prom <- promises::then(
+      prom, local({
+        plate_name <- plate_name   # force capture
         
-        # ✅ Update counters FIRST
-        bs$running   <- bs$running - 1L
-        bs$completed <- bs$completed + 1L
-        
-        # ✅ Progress update (safe)
-        tryCatch(
-          progress$set(
-            value  = bs$completed,
-            detail = paste("Completed", bs$completed, "of", n)
-          ),
-          error = function(e = NULL) NULL
-        )
-        
-        # ✅ EARLY EXIT if already aborted (e.g. prior failure)
-        if (bs$aborted) {
-          maybe_finish_fn()
-          return()
-        }
-        
-        # ✅ Handle failure → convert into abort
-        if (!isTRUE(result$success)) {
-          bs$aborted  <- TRUE
-          bs$queue    <- list()
-          bs$failures <- c(
-            bs$failures,
-            paste0("Plate ", i, ": ", result$message %||% "unknown error")
-          )
+        function(result) {
           
-          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
-        }
-        
-        # ✅ ✅ UNIFIED cancellation check (IMPORTANT)
-        cancel_hit <- cancel_requested(root_path)
-        
-        if (cancel_hit) {
-          bs$aborted <- TRUE
-          bs$queue   <- list()
+          if (isTRUE(result$success)) {
+            bs$successes <- c(bs$successes, plate_name)
+          }
           
-          gc_log_block("BATCH CANCEL DETECTED (post-plate)", list(
-            completed = bs$completed
-          ))
-        }
-        
-        # ✅ ✅ FINAL CONTROL FLOW (single decision point)
-        if (bs$aborted) {
-          maybe_finish_fn()
-        } else {
-          launch_next_fn()
-        }
-        
-      }, error = function(e = NULL) {
-        
-        gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
-        
-        # ✅ Ensure consistent state even on crash
-        bs$aborted  <- TRUE
-        bs$queue    <- list()
-        bs$running  <- max(0L, bs$running - 1L)
-        
-        bs$failures <- c(
-          bs$failures,
-          paste0("Plate ", i, ": then-handler crash")
-        )
-        
-        maybe_finish_fn()
-      })
-    })
+          if (exists("gc_log_block")) {
+            try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
+          }
+          
+          tryCatch({
+            
+            # ✅ Update counters FIRST
+            bs$running   <- bs$running - 1L
+            bs$completed <- bs$completed + 1L
+            
+            # ✅ Progress update (safe)
+            tryCatch(
+              progress$set(
+                value  = bs$completed,
+                detail = paste("Completed", bs$completed, "of", n)
+              ),
+              error = function(e = NULL) NULL
+            )
+            
+            # ✅ Handle failure → convert into abort
+            if (!isTRUE(result$success)) {
+              bs$aborted  <- TRUE
+              bs$queue    <- list()
+              bs$failures <- c(
+                bs$failures,
+                paste0("Plate ", i, ": ", result$message %||% "unknown error")
+              )
+
+              gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+            }
+            
+            # ✅ EARLY EXIT if already aborted (e.g. prior failure)
+            if (bs$aborted) {
+              maybe_finish_fn()
+              return()
+            }
+            
+            # ✅ ✅ UNIFIED cancellation check (IMPORTANT)
+            cancel_hit <- cancel_requested(root_path)
+            
+            if (cancel_hit) {
+              bs$aborted <- TRUE
+              bs$queue   <- list()
+              
+              gc_log_block("BATCH CANCEL DETECTED (post-plate)", list(
+                completed = bs$completed
+              ))
+            }
+            
+            # ✅ ✅ FINAL CONTROL FLOW (single decision point)
+            if (bs$aborted) {
+              maybe_finish_fn()
+            } else {
+              launch_next_fn()
+            }
+            
+          }, error = function(e = NULL) {
+            
+            gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
+            
+            # ✅ Ensure consistent state even on crash
+            bs$aborted  <- TRUE
+            bs$queue    <- list()
+            bs$running  <- max(0L, bs$running - 1L)
+            
+            bs$failures <- c(
+              bs$failures,
+              paste0("Plate ", i, ": then-handler crash")
+            )
+            
+            maybe_finish_fn()
+            })
+          }
+        })
+      )
 
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
@@ -4004,9 +4047,17 @@ B           0   0   1
     bs$completed <- 0L
     bs$aborted <- FALSE
     bs$failures <- character(0)
+    bs$successes <- character(0)
     bs$finished <- FALSE
     
     progress <- Progress$new(session, min = 0, max = n)
+    
+    progress$set(
+      value = 0,
+      message = "Running batch analysis...",
+      detail = paste("Completed 0 of", n)
+    )
+    
     batch_state$progress_open <- TRUE
     
     maybe_finish <- function() {
@@ -4020,6 +4071,7 @@ B           0   0   1
           old_plan = NULL,
           failures = bs$failures,
           all_failed = length(bs$failures) == n,
+          successes = bs$successes,
           region = region
         )
       }
@@ -4072,7 +4124,16 @@ B           0   0   1
     n <- nrow(pairs_val)
     batch_start_time <- Sys.time()
     
-    root_path <- file.path(wd_path(), "Analysis", format(Sys.time(), "%Y%m%d_%H%M%S"))
+    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    
+    batch_tag <- if (nzchar(input$batch_prefix %||% "")) {
+      paste0(timestamp, "_", input$batch_prefix, "_batch")
+    } else {
+      paste0(timestamp, "_batch")
+    }
+    
+    root_path <- file.path(wd_path(), "Analysis", batch_tag)
+    
     dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
     
     batch_root(root_path)
