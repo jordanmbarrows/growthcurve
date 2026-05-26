@@ -902,7 +902,10 @@ server <- function(input, output, session) {
               tags$li("Dismiss this dialog and close the app."),
               tags$li(HTML("Restart your R session: in RStudio, click <strong>Session</strong> in the top menu, then <strong>Restart R</strong>. If you are not using RStudio, close and reopen R.")),
               tags$li("Paste the following into your R console and press Enter:"),
-              tags$pre(sprintf('remotes::install_github("jordanmbarrows/growthcurve@v%s")', info$latest)),
+              tags$pre(sprintf(
+                'if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+                remotes::install_github("jordanmbarrows/growthcurve@v%s")', info$latest
+              )),
               tags$li(HTML("Initialize the package by running: <code>library(growthcurve)</code>")),
               tags$li(HTML("Relaunch the app by running: <code>run_growthcurve()</code>"))
             ),
