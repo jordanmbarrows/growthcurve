@@ -314,7 +314,7 @@ ui <- shiny::fluidPage(
         tags$p(
           style = guide_note_style(),
           class = "guide-note",
-          "Controls how exported CSV files and plots are written."
+          "Controls how preview tables are displayed and how exported CSV files and plots are formatted."
         )
       ),
       
@@ -836,33 +836,53 @@ server <- function(input, output, session) {
   }
   
   format_preview_df <- function(df, region) {
-    if (is.null(df) || !is.data.frame(df))
+    if (is.null(df) || !is.data.frame(df)) {
       return(df)
+    }
     
-    df[] <- lapply(df, function(col) {
-      # Try numeric conversion
-      num <- suppressWarnings(as.numeric(col))
+    df_out <- df
+    
+    for (j in seq_along(df_out)) {
+      col <- df_out[[j]]
       
-      # If conversion fails → leave column as-is
-      if (all(is.na(num))) {
-        return(ifelse(is.na(col), "", col))
+      # ---- CASE 1: numeric ----
+      if (is.numeric(col)) {
+        
+        formatted <- format(col, scientific = FALSE, trim = TRUE)
+        
+        if (region == "EU") {
+          formatted <- gsub("\\.", ",", formatted)
+        }
+        
+        df_out[[j]] <- formatted
       }
       
-      # Format WITHOUT padding
-      formatted <- ifelse(is.na(num), "", as.character(signif(num, digits = 6)))
-      
-      # Replace decimal separator if EU
-      if (region == "EU") {
-        formatted <- gsub("\\.", ",", formatted)
+      # ---- CASE 2: numeric-like character ----
+      else if (is.character(col)) {
+        
+        suppressWarnings({
+          numeric_test <- as.numeric(col)
+        })
+        
+        # Only convert if all non-empty values are numeric
+        is_numeric_like <- all(
+          is.na(col) | col == "" | !is.na(numeric_test)
+        )
+        
+        if (is_numeric_like) {
+          
+          formatted <- col
+          
+          if (region == "EU") {
+            formatted <- gsub("\\.", ",", formatted)
+          }
+          
+          df_out[[j]] <- formatted
+        }
       }
-      
-      # Replace NA values explicitly
-      formatted[is.na(num)] <- ""
-      
-      formatted
-    })
+    }
     
-    df
+    df_out
   }
   
   unwrap_preview <- function(res) {
@@ -1390,7 +1410,7 @@ server <- function(input, output, session) {
   output$design_example_table <- shiny::renderTable({
     df <- design_example()
     req(df)
-    
+    df <- format_preview_df(df, region_selected())
     df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = FALSE, na = "")
@@ -2717,13 +2737,24 @@ B           0   0   1
   )
   
   output$single_raw_preview_table <- shiny::renderTable({
+    
     result <- single_preview_data()
+    req(result)
     
     if (is_preview_message(result)) {
       return(NULL)
     }
     
-    format_preview_df(result$data, region_selected())
+    print(sapply(df, class))
+    
+    df <- result$data
+    
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
+    df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
@@ -2757,6 +2788,7 @@ B           0   0   1
     req(file.exists(file))
     df <- read_preview_file(file, nrows = 100)
     req(df)
+    df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
   
@@ -2862,6 +2894,8 @@ B           0   0   1
   output$batch_raw_preview_table <- shiny::renderTable({
     req(input$batch_data_dir)
     
+    format_preview_df(df, region_selected())
+    
     files <- list.files(input$batch_data_dir, full.names = TRUE)
     if (length(files) == 0)
       return(NULL)
@@ -2940,6 +2974,7 @@ B           0   0   1
     req(!is.na(file), file.exists(file))
     df <- read_preview_file(file, nrows = 100)
     req(df)
+    df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
   
