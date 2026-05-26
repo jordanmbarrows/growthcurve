@@ -19,6 +19,9 @@
 - Fixed issue where European regional formatting was misinterpreting scientific notation for preview tables
 - Updated imports in DESCRIPTION
 - Correct inconsistency between GitHub tags and package DESCRIPTION version
+- Cleaned up documentation
+- Added `check_for_updates()` to NAMESPACE
+- Replaced obsolete `APP_CONFIG$region` calls in `growthcurve_system.R` with updated `gc_app_config()$region`
 
 ## [1.0.2] - 2026-05-26
 
