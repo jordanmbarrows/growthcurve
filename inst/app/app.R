@@ -906,7 +906,7 @@ server <- function(input, output, session) {
   observe({
     later::later(function() {
       shiny::withReactiveDomain(session, {
-        current_version <- as.character(utils::packageVersion("growthcurve"))
+        current_version <- "0.0.1" # as.character(utils::packageVersion("growthcurve"))
         
         info <- tryCatch(
           suppressWarnings(
@@ -939,8 +939,8 @@ server <- function(input, output, session) {
     removeModal()
     
     showModal(modalDialog(
-      title = "Installing update...",
-      p("Please wait. The app will close when installation is complete."),
+      title = paste0("Installing update v", info$latest),
+      p("Please wait..."),
       footer = NULL,
       easyClose = FALSE
     ))
@@ -967,11 +967,15 @@ server <- function(input, output, session) {
       showModal(modalDialog(
         title = "Update complete",
         p(paste0("growthcurve v", info$latest, " has been installed.")),
-        p("Please relaunch the app to use the new version."),
+        tags$ol(
+          tags$li("Click 'Close app' below."),
+          tags$li("Restart your R session (Session -> Restart R in RStudio, or close and reopen R)."),
+          tags$li(HTML("Run <code>library(growthcurve)</code> and then <code>run_growthcurve()</code> to relaunch."))
+        ),
         footer = actionButton("gc_close_after_update", "Close app", class = "btn-primary"),
         easyClose = FALSE
       ))
-    } else {
+      } else {
       showModal(modalDialog(
         title = "Update failed",
         p("The installation did not complete successfully."),
