@@ -527,17 +527,20 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
   
   is_occo <- is_ocelloscope(rawdatafile)
   
-  if (format == "plate_reader" && is_occo) {
-    gc_abort(
-      "Selected instrument = plate_reader, but the file appears to be oCelloscope format."
-    )
-  }
+  format_mismatch <- (
+    (format == "plate_reader" && is_occo) ||
+      (format == "ocelloscope" && !is_occo)
+  )
   
-  if (format == "ocelloscope" && !is_occo) {
-    gc_abort(
-      "Selected instrument = ocelloscope, but the file does not appear to be in oCelloscope format."
-    )
-  }
+  if (format_mismatch) {
+    message(
+      sprintf(
+        "[DEBUG] Format mismatch: selected = %s, detected_ocelloscope = %s",
+        format,
+        is_occo
+        )
+      )
+    }
   
   if (format == "plate_reader") {
     

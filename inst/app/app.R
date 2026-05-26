@@ -3737,8 +3737,13 @@ B           0   0   1
                      )
                      
                    }, error = function(e = NULL) {
-                     gc_log_block("SINGLE RUN INTERNAL ERROR",
-                                  list(error = e, callstack = sys.calls()))
+                     gc_log_block(
+                       "SINGLE RUN INTERNAL ERROR",
+                       list(
+                         error = e$message,
+                         class = class(e)[1]
+                       )
+                     )
                      
                      msg <- if (inherits(e, "gc_error")) {
                        gc_get_message(e)
