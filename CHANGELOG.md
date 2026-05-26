@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## [1.0.1] - 2026-05-26
+
 ### Internal improvements & bug fixes
 - Moved helper functions into `R/` directory
 - Fixed namespace resolution issues in Shiny runtime
@@ -10,6 +14,11 @@
 - Hardened error handlers against missing conditions
 - Resolved `"argument 'e' is missing"` crashes
 - Improved compatibility with `devtools::load_all()`
+- Added dark mode with in-app toggle
+- Condensed and removed redundancy from app.R file
+- Added cancellation function to batch mode
+- Updated plate failure behavior in batch mode
+- Updated Aggregate runs selection table to show all directories
 
 ## [1.0.0] - 2026-05-12
 

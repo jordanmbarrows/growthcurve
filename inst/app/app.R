@@ -31,7 +31,6 @@ guide_summary_style <- function() {
   cursor: pointer;
   padding: 6px 8px;
   margin-top: 6px;
-  background-color: #e0e0e0;
   border-radius: 4px;
   font-weight: 600;
   "
@@ -42,488 +41,383 @@ guide_body_style <- function() {
 }
 
 guide_note_style <- function() {
-  "font-size: 0.9em; color: #555;"
+  "font-size: 0.9em; color: inherit;"
 }
 
-ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_ready()) {
-  shiny::verbatimTextOutput("startup_error")
+# ---- UI ----
+ui <- shiny::fluidPage(
+  shinyjs::useShinyjs(),
+  theme = bslib::bs_theme(version = 3),
   
-} else {
-  shiny::tagList(
-    titlePanel(
-      div(
-        "Growth Curve Analysis",
-        uiOutput("dev_badge")  
-      )
-    )
-    ,
-    
-    wellPanel(
-      h4("Working directory"),
-      textInput(
-        "wd",
-        "Working directory path",
-        value = if (gc_dev_mode())
-          "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
-        else
-          ""
-      ),
-      actionButton("set_wd", "Set working directory"),
-      actionButton("refresh_files", "Refresh files"),
-      shiny::verbatimTextOutput("wd_txt"),
-      
-      
-      tags$details(
-        tags$summary(
-          style = "
-                cursor: pointer;
-                padding: 6px 8px;
-                margin-top: 6px;
-                background-color: #e0e0e0;
-                border-radius: 4px;
-                font-weight: 600;
-              ",
-          "ℹ️  How do I copy a folder path?"
-        ),
-        tags$div(
-          style = "padding: 8px 4px;",
-          tags$ul(
-            tags$li(strong("RStudio:"), " Files tab → ⚙️ → Copy Path to Clipboard"),
-            tags$li(
-              strong("Windows:"),
-              " Address bar → Ctrl + C (or Shift + Right-click → Copy as path)"
-            ),
-            tags$li(strong("macOS:"), " Option + Right-click → Copy as Pathname"),
-            tags$li(strong("Linux:"), " Right-click → Copy Path / Copy Location")
-          ),
-          tags$p(
-            "Paste the path above and click ",
-            tags$strong("Set working directory"),
-            ". Quoted paths are OK."
-          )
-        )
-      ),
-      
-      tags$details(
-        tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
-        tags$div(
-          style = guide_body_style(),
-          
-          tags$hr(),
-          
-          h4("CSV format (regional settings)"),
-          
-          tags$p("Detected:", tags$strong(
-            textOutput("region_detected_txt", inline = TRUE)
-          )),
-          
-          tags$p(
-            style = guide_note_style(),
-            "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
-          ),
-          
-          selectInput(
-            "region_override",
-            "Output format",
-            choices = c(
-              "Auto-detect" = "auto",
-              "US (comma, decimal point)" = "US",
-              "European (semicolon, decimal comma)" = "EU"
-            ),
-            selected = "auto"
-          ),
-          
-          tags$p(
-            style = guide_note_style(),
-            "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
-          )
-        )
-      )
-    ),
-    
-    tabsetPanel(
-      tabPanel("User guide", div(uiOutput("user_guide_ui"))),
-      tabPanel("Single plate", uiOutput("single_ui")),
-      tabPanel(
-        "Batch processing",
-        
-        uiOutput("batch_gate"),
-        
-        div(
-          id = "batch_controls",
-          
-          h3("Batch analysis"),
-          
-          hr(),
-          
-          h4("Select instrument"),
-          
-          radioButtons(
-            "batch_instrument",
-            label = NULL,
-            choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
-            selected = "plate_reader",
-            inline = TRUE
-          ),
-          
-          hr(),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "ℹ️  Directory requirements"),
-            tags$div(style = guide_body_style(), tags$ul(
-              tags$li("Each raw data file must match exactly one design file."),
-              tags$li("Matching is based on a shared identifier in filenames."),
-              tags$li("Each pair is processed independently."),
-              tags$li("If one plate fails, others will still complete.")
-            ))
-          ),
-          
-          selectInput("batch_data_dir", "Raw data directory", choices = NULL),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "👁 Preview raw data (first file)"),
-            tags$div(
-              style = guide_body_style(),
-              textOutput("batch_preview_label"),
-              uiOutput("batch_raw_preview_ui")
-            )
-          ),
-          
-          selectInput("batch_design_dir", "Design file directory", choices = NULL),
-          
-          tags$details(
-            tags$summary(style = guide_summary_style(), "🧬 Preview design file (first pair)"),
-            tags$div(style = guide_body_style(), div(
-              class = "preview-table", uiOutput("batch_design_preview")
-            ))
-          ),
-        ),
-        
-        uiOutput("batch_ui")  # rest of UI
-      ),
-      tabPanel(
-        "Aggregate results",
-        
-        uiOutput("aggregate_gate"),
-        
-        div(
-          id = "aggregate_controls",
-          
-          h3("Aggregate results"),
-          
-          hr(),
-          
-          selectInput("agg_dir", "Analysis run directory", choices = NULL)
-        ),
-        
-        uiOutput("aggregate_ui")
-      )
-    ),
-    
-    tags$style(HTML(
-      "
-          .shiny-progress .modal-dialog {
-            max-width: 300px;
-          }
-        "
-    )),
-    
+  tags$head(
     tags$style(HTML("
-      details {
-        margin-bottom: 16px;
+    /* ---- Details summary (light/dark) ---- */
+      details summary {
+        background-color: rgba(0,0,0,0.04);
+        padding: 6px 8px;
+        border-radius: 4px;
       }
+      details summary:hover { background-color: rgba(0,0,0,0.12); }
+
+      /* bslib data-bs-theme dark */
+      :root[data-bs-theme='dark'] details summary       { background-color: rgba(255,255,255,0.12); }
+      :root[data-bs-theme='dark'] details summary:hover { background-color: rgba(255,255,255,0.18); }
+
+      /* html.dark-mode class (set via JS) */
+      html.dark-mode details summary       { background-color: #3c3c3c !important; }
+      html.dark-mode details summary:hover { background-color: #4e4e4e !important; }
+
+    /* ---- Details spacing ---- */
+      details { margin-bottom: 16px; }
+
+    /* ---- Shiny progress ---- */
+      .shiny-progress .modal-dialog { max-width: 300px; }
+
+    /* ---- Stage nav buttons ---- */
+      .stage-nav .btn { margin-right: 6px; min-width: 110px; }
+      .stage-nav .btn.disabled, .stage-nav .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ---- DT select inputs ---- */
+      .dataTables_wrapper select.form-control {
+        border-radius: 4px; border: 1px solid #ccc;
+      }
+      .dataTables_wrapper select.form-control:focus {
+        border-color: #66afe9; outline: 0;
+        box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102,175,233,.6);
+      }
+
+    /* ---- Batch design select ---- */
+      .batch-design-select {
+        width: 100%; padding: 4px 6px; font-size: 12px;
+        border: 1px solid rgba(100,100,100,0.5); border-radius: 4px;
+        background-color: inherit; color: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .batch-design-select:hover { border-color: #999; }
+      .batch-design-select:focus {
+        border-color: #66afe9; outline: 0;
+        box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 6px rgba(102,175,233,.6);
+        background-color: #f8fbff;
+      }
+      .batch-design-select:disabled { background-color: #f5f5f5; color: #999; cursor: not-allowed; }
+      .batch_match_table td { padding-top: 6px !important; padding-bottom: 6px !important; }
+      html.dark-mode .batch-design-select {
+        background-color: #2d2d2d !important; color: #d4d4d4 !important;
+        border: 1px solid rgba(255,255,255,0.5); border-color: #555 !important;
+      }
+
+    /* ---- Column header tooltips ---- */
+      th span[title] { cursor: help; text-decoration: underline dotted; }
+
+    /* ---- Batch flex layout ---- */
+      .batch-flex { display: flex; align-items: stretch; gap: 24px; margin-bottom: 40px; }
+      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: hidden; }
+      .batch-right { flex: 0 0 480px; max-width: 480px; }
+      .batch-left .dataTables_wrapper { width: 100% !important; overflow-x: auto; }
+      @media (max-width: 1200px) {
+        .batch-flex { flex-direction: column; align-items: stretch; }
+        .batch-left { min-width: 100%; max-width: 100%; overflow: visible; }
+        .batch-right { max-width: 100%; flex: 0 0 auto; }
+      }
+
+    /* ---- Aggregate runs table ---- */
+      #agg_runs_table table.dataTable { table-layout: auto !important; }
+      #agg_runs_table th:first-child, #agg_runs_table td:first-child {
+        width: 60px !important; min-width: 60px !important; max-width: 60px !important;
+        text-align: left !important; padding-left: 8px !important;
+      }
+      #agg_runs_table th:nth-child(2), #agg_runs_table td:nth-child(2) {
+        width: 300px !important; min-width: 300px !important; max-width: 300px !important;
+      }
+      #agg_runs_table th:nth-child(3), #agg_runs_table td:nth-child(3) {
+        width: 220px !important; min-width: 220px !important; max-width: 220px !important;
+      }
+      #agg_runs_table td:first-child { cursor: pointer; user-select: none; font-family: monospace; }
+      #agg_runs_table td:nth-child(2) { white-space: nowrap; }
+      #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
+      #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
+      #agg_runs_table .dataTables_wrapper { max-width: 100% !important; }
+
+    /* ---- Guide / user guide styles ---- */
+      .guide-container { max-width: 900px; margin: 0; padding: 20px; }
+      .guide-container pre { background: #f6f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 13px; }
+      .guide-container h3 { margin-top: 28px; }
+      #user_guide_ui h3 { margin-top: 20px; }
+      #user_guide_ui hr { margin-top: 10px; margin-bottom: 15px; }
+      .guide-note { opacity: 0.8; }
+      :root[data-bs-theme='dark'] .guide-note { opacity: 0.9; }
+      html.dark-mode .guide-container pre { background: #2d2d2d !important; }
+
+    /* ---- Design example table ---- */
+      #design_example_table table { table-layout: fixed; }
+      #design_example_table td { min-width: 70px; text-align: center; }
+
+    /* ---- Preview table ---- */
+      .preview-table table {
+        font-size: 12px; border-collapse: collapse; table-layout: fixed !important;
+        white-space: nowrap; width: max-content;
+      }
+      .preview-table td, .preview-table th {
+        padding: 4px 6px; min-width: 70px; max-width: 70px;
+        text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .preview-table table.expanding td, .preview-table table.expanding th {
+        min-width: 90px; max-width: none;
+      }
+      .preview-table-fixed-rows table tr { height: 24px; }
+      html.dark-mode .preview-table table { background-color: #252526; }
+
+    /* ---- Design preview table (dark mode gridlines) ---- */
+      :root[data-bs-theme='dark'] .design-preview-table td,
+      :root[data-bs-theme='dark'] .design-preview-table th {
+        border-color: rgba(255,255,255,0.15) !important;
+      }
+      :root[data-bs-theme='dark'] .design-preview-table tr {
+        border-top-color: rgba(255,255,255,0.25) !important;
+      }
+
+    /* ---- Tabs ---- */
+      .nav-tabs > li > a { background-color: transparent; color: inherit; }
+      .nav-tabs > li.active > a, .nav-tabs > li.active > a:hover {
+        background-color: rgba(0,0,0,0.08); color: inherit;
+      }
+      html.dark-mode .nav-tabs > li.active > a { background-color: rgba(255,255,255,0.08); }
+
+    /* ---- Well panel ---- */
+      .well { background-color: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); }
+      html.dark-mode .well { background-color: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+
+    /* ---- Dark mode: fix hardcoded color styles ---- */
+      html.dark-mode .text-muted,
+      html.dark-mode p[style*='color'],
+      html.dark-mode span[style*='color'] { color: inherit !important; }
+
+    /* ---- Dark mode: modals, DT, tooltips ---- */
+      html.dark-mode .modal-content { background-color: #252526; color: #d4d4d4; }
+      html.dark-mode .dataTables_wrapper { color: #d4d4d4; }
+      html.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button { color: #d4d4d4 !important; }
+      html.dark-mode .tooltip-inner { background-color: #333; color: #fff; }
+
+    /* ---- Dark toggle ---- */
+      .dark-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+      .dark-toggle input[type='checkbox'] {
+        display: block; margin-top: 2px;
+        appearance: none; width: 36px; height: 18px;
+        background: #ccc; border-radius: 10px;
+        position: relative; outline: none; cursor: pointer; transition: background 0.2s;
+      }
+      .dark-toggle input[type='checkbox']::after {
+        content: ''; width: 14px; height: 14px; background: white;
+        border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.2s;
+      }
+      .dark-toggle input[type='checkbox']:checked { background: #4fc1ff; }
+      .dark-toggle input[type='checkbox']:checked::after { transform: translateX(18px); }
+      .toggle-label { font-size: 13px; }
     ")),
+    tags$script(HTML("
+  Shiny.addCustomMessageHandler('set_dark_class', function(on) {
+    if (on) {
+      document.documentElement.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+    }
+  });
+"))
+  ),
+  
+  
+  
+  shiny::tagList(if (!gc_backend_ready()) {
+    shiny::verbatimTextOutput("startup_error")
     
-    tags$style(
-      HTML(
-        "
-          .stage-nav .btn {
-            margin-right: 6px;
-            min-width: 110px;
-          }
-
-          .stage-nav .btn.disabled,
-          .stage-nav .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-        "
+  } else {
+    shiny::tagList(
+      titlePanel(
+        div(
+          style = "display:flex; justify-content: space-between; align-items: center;",
+          
+          div(
+            "Growth Curve Analysis",
+            uiOutput("dev_badge")
+          ),
+          div(
+            class = "dark-toggle",
+            
+            tags$input(
+              type = "checkbox",
+              id = "dark_mode"
+            ),
+            
+            tags$label(
+              `for` = "dark_mode",
+              class = "toggle-label",
+              "🌙 Dark"
+            )
+          )
+        )
       )
-    ),
-    
-    tags$style(
-      HTML(
-        "
-          .dataTables_wrapper select.form-control {
-            border-radius: 4px;
-            border: 1px solid #ccc;
-          }
-
-          .dataTables_wrapper select.form-control:focus {
-            border-color: #66afe9;
-            outline: 0;
-            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgba(102,175,233,.6);
-          }
-          .batch-design-select {
-            width: 100%;
-            padding: 4px 6px;
-            font-size: 12px;
-
-            border: 1px solid #ccc;
-            border-radius: 4px;
-
-            background-color: #fff;
-            color: #333;
-
-            transition: border-color 0.2s, box-shadow 0.2s;
-          }
-
-          /* Hover */
-          .batch-design-select:hover {
-            border-color: #999;
-          }
-
-          /* Focus (matches your DT styling) */
-          .batch-design-select:focus {
-            border-color: #66afe9;
-            outline: 0;
-            box-shadow:
-              inset 0 1px 1px rgba(0,0,0,.075),
-              0 0 6px rgba(102,175,233,.6);
-          }
-
-          /* Disabled look */
-          .batch-design-select:disabled {
-            background-color: #f5f5f5;
-            color: #999;
-            cursor: not-allowed;
-          }
-
-          .batch_match_table td {
-            padding-top: 6px !important;
-            padding-bottom: 6px !important;
-          }
-
-          .batch-design-select:focus {
-            background-color: #f8fbff;
-          }
-
-        "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-          th span[title] {
-            cursor: help;
-            text-decoration: underline dotted;
-          }
-        "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-         /* =========================================================
-            ✅ BATCH LAYOUT (CORE FIX)
-         ========================================================= */
-
-        .batch-flex {
-          display: flex;
-          align-items: stretch;     /* ✅ prevents reflow jumping */
-          gap: 24px;
-          margin-bottom: 40px;
-        }
-
-        .batch-left {
-          flex: 1 1 0;
-          min-width: 0;             /* ✅ critical for flex stability */
-          max-width: 100%;
-          overflow: hidden;         /* ✅ prevents expansion spike */
-        }
-
-        .batch-right {
-          flex: 0 0 480px;          /* ✅ fixed width → no shifting */
-          max-width: 480px;
-        }
-
-        /* Keep DT contained inside left panel */
-        .batch-left .dataTables_wrapper {
-          width: 100% !important;
-          overflow-x: auto;         /* ✅ scroll instead of expand */
-        }
-
-        /* Responsive fallback */
-        @media (max-width: 1200px) {
-          .batch-flex {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .batch-left {
-            min-width: 100%;
-            max-width: 100%;
-            overflow: visible;   /* ✅ CRITICAL FIX */
-          }
-
-          .batch-right {
-            max-width: 100%;
-            flex: 0 0 auto;
-          }
-        }
-
-        /* =========================================================
-            ✅ DT TABLE BEHAVIOR
-         ========================================================= */
-
-        #agg_runs_table table.dataTable {
-          table-layout: auto !important;
-        }
-
-
-        /* =========================================================
-            ✅ COLUMN STRUCTURE (LOCK WIDTHS FIRST)
-         ========================================================= */
-
-        #agg_runs_table th:first-child,
-        #agg_runs_table td:first-child {
-          width: 60px !important;
-          min-width: 60px !important;
-          max-width: 60px !important;
-          text-align: left !important;
-          padding-left: 8px !important;
-        }
-
-        #agg_runs_table th:nth-child(2),
-        #agg_runs_table td:nth-child(2) {
-          width: 300px !important;
-          min-width: 300px !important;
-          max-width: 300px !important;
-        }
-
-        #agg_runs_table th:nth-child(3),
-        #agg_runs_table td:nth-child(3) {
-          width: 220px !important;
-          min-width: 220px !important;
-          max-width: 220px !important;
-        }
-
-
-        /* =========================================================
-            ✅ CELL CONTENT BEHAVIOR (AFTER WIDTH LOCK)
-         ========================================================= */
-
-        /* Checkbox column */
-        #agg_runs_table td:first-child {
-          cursor: pointer;
-          user-select: none;
-          font-family: monospace;
-        }
-
-        /* Run column */
-        #agg_runs_table td:nth-child(2) {
-          white-space: nowrap;
-        }
-
-        /* Status column */
-        #agg_runs_table td:nth-child(3) {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-family: monospace;
-        }
-
-
-        /* =========================================================
-            ✅ SCROLLING + STABILITY
-         ========================================================= */
-
-        /* Ensure horizontal scrolling instead of layout shift */
-        #agg_runs_table .dataTables_scrollBody {
-          overflow-x: auto;
-        }
-
-        /* Prevent DT wrapper from expanding parent container */
-        #agg_runs_table .dataTables_wrapper {
-          max-width: 100% !important;
-        }
-        "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-        .guide-container {
-          max-width: 900px;
-          margin: 0;
-          padding: 20px;
-        }
-        .guide-container pre {
-          background: #f6f8fa;
-          padding: 12px;
-          border-radius: 8px;
-          overflow-x: auto;
-          font-family: monospace;
-          font-size: 13px;
-        }
-        .guide-container h3 {
-          margin-top: 28px;
-        }
-        #user_guide_ui h3 {
-          margin-top: 20px;
-        }
-        #user_guide_ui hr {
-          margin-top: 10px;
-          margin-bottom: 15px;
-        }
-      "
-      )
-    ),
-    tags$style(
-      HTML(
-        "
-        .preview-table table {
-          font-size: 12px;
-          border-collapse: collapse;
-          table-layout: auto;
-          white-space: nowrap;
-        }
-        .preview-table td,
-        .preview-table th {
-          padding: 4px 6px;
-        }
-        .preview-table table {
-          table-layout: fixed !important;
-          width: max-content;
-        }
-
-        .preview-table td,
-        .preview-table th {
-          min-width: 70px;
-          max-width: 70px;
-          text-align: center;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .preview-table table.expanding td,
-        .preview-table table.expanding th {
-          min-width: 90px;
-          max-width: none;
-        }
-      "
-      )
-    ),
-    tags$style(HTML(
-      "
-        .preview-table-fixed-rows table tr {
-          height: 24px;
-        }
-      "
-    )),
-    tags$script(
-      HTML(
-        "
+      ,
+      
+      wellPanel(
+        h4("Working directory"),
+        textInput(
+          "wd",
+          "Working directory path",
+          value = if (gc_dev_mode())
+            "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
+          else
+            ""
+        ),
+        actionButton("set_wd", "Set working directory"),
+        actionButton("refresh_files", "Refresh files"),
+        shiny::verbatimTextOutput("wd_txt"),
+        
+        
+        tags$details(
+          tags$summary(
+            style = guide_summary_style(),
+            "ℹ️  What folder should I select?"
+          ),
+          tags$div(
+            style = "padding: 8px 4px;",
+            tags$ul(
+              tags$li(strong("RStudio:"), " Files tab → ⚙️ → Copy Path to Clipboard"),
+              tags$li(
+                strong("Windows:"),
+                " Address bar → Ctrl + C (or Shift + Right-click → Copy as path)"
+              ),
+              tags$li(strong("macOS:"), " Option + Right-click → Copy as Pathname"),
+              tags$li(strong("Linux:"), " Right-click → Copy Path / Copy Location")
+            ),
+            tags$p(
+              "Paste the path above and click ",
+              tags$strong("Set working directory"),
+              ". Quoted paths are OK."
+            )
+          )
+        ),
+        
+        tags$details(
+          tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
+          tags$div(
+            style = guide_body_style(),
+            
+            tags$hr(),
+            
+            h4("CSV format (regional settings)"),
+            
+            tags$p("Detected:", tags$strong(
+              textOutput("region_detected_txt", inline = TRUE)
+            )),
+            
+            tags$p(
+              style = guide_note_style(),
+              class = "guide-note",
+              "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
+            ),
+            
+            selectInput(
+              "region_override",
+              "Output format",
+              choices = c(
+                "Auto-detect" = "auto",
+                "US (comma, decimal point)" = "US",
+                "European (semicolon, decimal comma)" = "EU"
+              ),
+              selected = "auto"
+            ),
+            
+            tags$p(
+              style = guide_note_style(),
+              class = "guide-note",
+              "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
+            )
+          )
+        )
+      ),
+      
+      tabsetPanel(
+        tabPanel("User guide", div(uiOutput("user_guide_ui"))),
+        tabPanel("Single plate", uiOutput("single_ui")),
+        tabPanel(
+          "Batch processing",
+          
+          uiOutput("batch_gate"),
+          
+          div(
+            id = "batch_controls",
+            
+            h3("Batch analysis"),
+            
+            hr(),
+            
+            h4("Select instrument"),
+            
+            radioButtons(
+              "batch_instrument",
+              label = NULL,
+              choices = c("Plate reader" = "plate_reader", "oCelloscope"  = "ocelloscope"),
+              selected = "plate_reader",
+              inline = TRUE
+            ),
+            
+            hr(),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "ℹ️  Directory requirements"),
+              tags$div(style = guide_body_style(), tags$ul(
+                tags$li("Each raw data file must match exactly one design file."),
+                tags$li("Matching is based on a shared identifier in filenames."),
+                tags$li("Each pair is processed independently."),
+                tags$li("If one plate fails, others will still complete.")
+              ))
+            ),
+            
+            selectInput("batch_data_dir", "Raw data directory", choices = NULL),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "👁 Preview raw data (first file)"),
+              tags$div(
+                style = guide_body_style(),
+                textOutput("batch_preview_label"),
+                uiOutput("batch_raw_preview_ui")
+              )
+            ),
+            
+            selectInput("batch_design_dir", "Design file directory", choices = NULL),
+            
+            tags$details(
+              tags$summary(style = guide_summary_style(), "🧬 Preview design file (first pair)"),
+              tags$div(style = guide_body_style(), div(
+                class = "preview-table", uiOutput("batch_design_preview")
+              ))
+            ),
+          ),
+          
+          uiOutput("batch_ui")  # rest of UI
+        ),
+        tabPanel(
+          "Aggregate results",
+          
+          uiOutput("aggregate_gate"),
+          
+          div(
+            id = "aggregate_controls",
+            
+            h3("Aggregate results"),
+            
+            hr(),
+            
+            selectInput("agg_dir", "Analysis run directory", choices = NULL)
+          ),
+          
+          uiOutput("aggregate_ui")
+        )
+      ),
+      
+      tags$script(
+        HTML(
+          "
         Shiny.addCustomMessageHandler('toggle_all_checkboxes', function(value) {
           var checked = (value === 'true');
           document.querySelectorAll('input[id^=\"agg_include_\"]').forEach(function(el) {
@@ -532,14 +426,14 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
           });
         });
       "
-      )
-    ),
-    # Debug panel (dev mode only)
-    uiOutput("debug_panel"),
-    
-    # ---- App version footer ----
-    div(
-      style = "
+        )
+      ),
+      # Debug panel (dev mode only)
+      uiOutput("debug_panel"),
+      
+      # ---- App version footer ----
+      div(
+        style = "
     position: fixed;
     bottom: 6px;
     right: 10px;
@@ -548,11 +442,12 @@ ui <- shiny::fluidPage(shinyjs::useShinyjs(), shiny::tagList(if (!gc_backend_rea
     z-index: 9999;
     cursor: default;
   ",
-      paste0("GrowthCurve v", gc_app_version())
+        paste0("GrowthCurve v", gc_app_version())
+      )
     )
-  )
-}))
+  }))
 
+# ---- server ----
 server <- function(input, output, session) {
   
   # =========================================================
@@ -590,6 +485,23 @@ server <- function(input, output, session) {
   pretty_export_path <- growthcurve:::pretty_export_path
   open_folder        <- growthcurve:::open_folder
   gc_abort           <- growthcurve:::gc_abort
+  
+  light_theme <- bslib::bs_theme(
+    version = 3,
+    bg = "#ffffff",
+    fg = "#222222",
+    primary = "#337ab7"
+  )
+  
+  dark_theme <- bslib::bs_theme(
+    version = 3,
+    bg = "#1e1e1e",
+    fg = "#d4d4d4",
+    primary = "#5fd7ff",   # slightly brighter
+    success = "#4caf50",   # brighten green
+    warning = "#ffb74d",   # optional
+    danger  = "#ef5350"    # optional
+  )
   
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
@@ -636,6 +548,13 @@ server <- function(input, output, session) {
     } else {
       ""
     }
+  })
+  
+  observe({
+    session$sendCustomMessage(
+      "set_dark_class",
+      isTRUE(input$dark_mode)
+    )
   })
   
   #Debug panel; add options here as desired
@@ -772,6 +691,12 @@ server <- function(input, output, session) {
     future::plan(future::sequential)
   }
   
+  observe({
+    session$setCurrentTheme(
+      if (isTRUE(input$dark_mode)) dark_theme else light_theme
+    )
+  })
+  
   design_file_choices <- reactive({
     req(input$batch_design_dir)
     
@@ -869,26 +794,18 @@ server <- function(input, output, session) {
   shiny::observe({
     if (wd_set()) {
       shinyjs::show("batch_controls")
-    } else {
-      shinyjs::hide("batch_controls")
-    }
-    
-  })
-  
-  shiny::observe({
-    if (wd_set()) {
       shinyjs::show("aggregate_controls")
     } else {
+      shinyjs::hide("batch_controls")
       shinyjs::hide("aggregate_controls")
     }
-    
   })
   
   output$batch_gate <- shiny::renderUI({
     if (wd_set())
       return(NULL)
     
-    tags$div(style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+    tags$div(style = "padding: 20px; border-radius: 6px;",
              h4("Batch processing"),
              p("Please set a working directory to continue."))
     
@@ -898,7 +815,7 @@ server <- function(input, output, session) {
     if (wd_set())
       return(NULL)
     
-    tags$div(style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+    tags$div(style = "padding: 20px; border-radius: 6px;",
              h4("Aggregate results"),
              p("Please set a working directory to continue."))
     
@@ -1008,6 +925,21 @@ server <- function(input, output, session) {
     is.list(x) && identical(x$type, "message")
   }
   
+  preview_warning_box <- function(message) {
+    div(
+      style = "
+        padding: 12px;
+        background-color: #fef3cd;
+        border: 1px solid #f0c040;
+        border-radius: 6px;
+        color: #5a4000;
+        max-width: 600px;
+      ",
+      strong("⚠ "),
+      message
+    )
+  }
+  
   apply_instrument_defaults <- function(session, prefix, instrument) {
     defaults <- gc_instrument_defaults[[instrument]]
     
@@ -1051,6 +983,24 @@ server <- function(input, output, session) {
     )
   }
   
+  get_cancel_file <- function(root_path) {
+    file.path(root_path, "_CANCEL_BATCH")
+  }
+  
+  create_cancel_file <- function(root_path) {
+    path <- get_cancel_file(root_path)
+    file.create(path)
+  }
+  
+  cancel_requested <- function(root_path) {
+    file.exists(get_cancel_file(root_path))
+  }
+  
+  clear_cancel_file <- function(root_path) {
+    path <- get_cancel_file(root_path)
+    if (file.exists(path)) file.remove(path)
+  }
+  
   advance_stage <- function() {
     idx <- match(current_stage(), stage_order)
     if (!is.na(idx) && idx < length(stage_order)) {
@@ -1086,8 +1036,35 @@ server <- function(input, output, session) {
                            progress,
                            old_plan,
                            failures,
-                           all_failed) {
+                           all_failed,
+                           successes,
+                           all_plate_names,
+                           region,
+                           cancelled) {
     shiny::withReactiveDomain(session, {
+      
+      # --- determine status ----
+      status <- "Yes"
+      
+      if (isTRUE(cancelled)) {
+        status <- "Cancelled"
+      } else if (isTRUE(all_failed)) {
+        status <- "Failed"
+      } else if (length(failures) > 0) {
+        status <- "Completed with errors"
+      }
+      
+      label_success <- if (status == "Cancelled") {
+        "Processed before cancellation:"
+      } else {
+        "Successfully processed plate(s):"
+      }
+      
+      processed <- unique(successes)
+      not_processed <- setdiff(all_plate_names, processed)
+      
+      completed_str <- paste0(completed_val, " of ", n)
+      
       # --- Close progress ---
       if (isTRUE(batch_state$progress_open)) {
         progress$close()
@@ -1101,16 +1078,49 @@ server <- function(input, output, session) {
       elapsed_sec <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
       elapsed_str <- format_runtime(elapsed_sec)
       
+      clean_failures <- gsub("Unexpected error:\\s*", "", failures)
+      
       # ✅ --- Build failure UI OUTSIDE modal ---
-      failure_ui <- if (length(failures) == 0) {
-        p("All plates were processed successfully.")
-        
+      failure_ui <- shiny::tagList()
+      
+      # ✅ successes
+      if (length(successes) > 0) {
+        failure_ui <- tagAppendChildren(
+          failure_ui,
+          p(strong(label_success)),
+          tags$ul(lapply(successes, tags$li))
+        )
+      }
+      
+      label_remaining <- if (status == "Cancelled") {
+        "Remaining plate(s):"
       } else {
-        shiny::tagList(p("Batch completed with some failures."),
-                p(strong("Failed plates:")),
-                tags$ul(lapply(failures, function(x) {
-                  tags$li(tags$code(x))
-                })))
+        "The analysis could not be completed for the following plate(s). Please check that your input files are formatted correctly and try again."
+      }
+      
+      # ✅ failures
+      if (length(not_processed) > 0) {
+        failure_ui <- tagAppendChildren(
+          failure_ui,
+          tags$hr(),
+          p(strong(label_remaining)),
+          tags$ul(
+            lapply(not_processed, function(x) {
+              tags$li(tags$span(style = "color: #555;", x))
+            })
+          )
+        )
+      }
+      
+      if (length(successes) == 0) {
+        if (completed_val > 0) {
+          failure_ui <- tagList(
+            p(paste("Processed", completed_val, "plate(s) before stopping.")),
+            p("Plate names could not be recovered.")
+          )
+        } else {
+          failure_ui <- p("No plates were processed.")
+        }
       }
       
       pretty_path <- tryCatch(
@@ -1119,9 +1129,50 @@ server <- function(input, output, session) {
           root_path
       )
       
+      list_sep <- " | "
+      
+      processed_str <- if (length(successes) > 0)
+        paste(successes, collapse = list_sep)
+      else
+        ""
+      
+      not_processed_str <- if (length(not_processed) > 0)
+        paste(not_processed, collapse = list_sep)
+      else
+        ""
+      
+      # ✅ ---- write batch summary ----
+      summary_df <- data.frame(
+        Variable = c("Completed?", "Completed plates", "Successfully processed plates", "Not processed plates"),
+        Value = c(status, completed_str, processed_str, not_processed_str),
+        stringsAsFactors = FALSE
+      )
+      
+      tryCatch({
+        write_csv_safe(
+          summary_df,
+          file.path(root_path, "batch_run_summary.csv"),
+          region = region
+        )
+      }, error = function(e) {
+        gc_log_block("FAILED TO WRITE BATCH SUMMARY", conditionMessage(e))
+      })
+      
+      if (status == "Cancelled") {
+        label_success <- "Processed before cancellation:"
+      } else {
+        label_success <- "Successfully processed plates:"
+      }
+      
       showModal(
         modalDialog(
-          title = "Batch analysis complete",
+          title = switch(
+            status,
+            "Cancelled" = "Batch cancelled",
+            "Failed"    = "Batch failed",
+            "Completed with errors" = "Batch completed with errors",
+            "Batch analysis complete"
+          ),
           
           shiny::tagList(
             failure_ui,
@@ -1143,11 +1194,13 @@ server <- function(input, output, session) {
           easyClose = TRUE,
           
           footer = shiny::tagList(if (!all_failed &&
-                               dir.exists(root_path)) {
+                                      dir.exists(root_path)) {
             actionButton("open_batch_dir", "📂 Open output folder", class = "btn-primary")
           }, modalButton("Close"))
         )
       )
+      
+      clear_cancel_file(root_path)
       
       # --- Restore future plan ---
       if (!is.null(old_plan) &&
@@ -1158,26 +1211,20 @@ server <- function(input, output, session) {
     })
   }
   
+  open_folder_or_warn <- function(path) {
+    success <- open_folder(path)
+    if (!isTRUE(success))
+      showNotification("Could not open folder automatically. Please open it manually.", type = "warning")
+  }
+  
   shiny::observeEvent(input$open_batch_dir, {
     req(batch_root())
-    
-    success <- open_folder(batch_root())
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(batch_root())
   })
   
   shiny::observeEvent(input$open_agg_dir, {
     req(input$agg_dir)
-    
-    success <- open_folder(input$agg_dir)
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(input$agg_dir)
   })
   
   qc_blank_note <- function(res) {
@@ -1638,15 +1685,9 @@ server <- function(input, output, session) {
   shiny::observe({
     if (!is.null(analysis_result())) {
       shinyjs::enable("export_files")
-    } else {
-      shinyjs::disable("export_files")
-    }
-  })
-  
-  shiny::observe({
-    if (!is.null(analysis_result())) {
       shinyjs::enable("reset_analysis")
     } else {
+      shinyjs::disable("export_files")
       shinyjs::disable("reset_analysis")
     }
   })
@@ -1680,66 +1721,71 @@ server <- function(input, output, session) {
     }
   })
   
-  shiny::observeEvent(list(wd_set(), file_refresh()), {
-    req(wd_set(), wd_path())
-    
-    dirs <- list.dirs(path       = wd_path(),
-                      recursive  = FALSE,
-                      full.names = TRUE)
-    
-    names(dirs) <- basename(dirs)
-    
-    current_data   <- isolate(input$batch_data_dir)
-    current_design <- isolate(input$batch_design_dir)
-    
-    updateSelectInput(
-      session,
-      "batch_data_dir",
-      choices  = dirs,
-      selected = if (!is.null(current_data) &&
-                     current_data %in% dirs)
-        current_data
-      else
-        character(0)
+  build_design_preview_table <- function(df) {
+    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
+    n_blocks <- length(block_starts)
+    row_block_id <- rep(NA, nrow(df))
+    for (k in seq_along(block_starts)) {
+      start <- block_starts[k]
+      end   <- if (k < n_blocks) block_starts[k + 1] - 1 else nrow(df)
+      row_block_id[start:end] <- k
+    }
+    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
+      is_block_header <- (i - 1) %% 10 == 0
+      cells <- lapply(seq_len(ncol(df)), function(j) {
+        val <- df[i, j]
+        if (is.na(val)) val <- ""
+        style_parts <- c("border: 1px solid rgba(120,120,120,0.2);")
+        if (j == 1 && is_block_header)
+          style_parts <- c(style_parts, "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
+        if (is_block_header && j > 1)
+          style_parts <- c(style_parts, "font-weight: bold;")
+        if (j == 1 && !is_block_header)
+          style_parts <- c(style_parts, "font-weight: 500;")
+        tags$td(style = paste(style_parts, collapse = " "), val)
+      })
+      row_style <- if (is_block_header && i != 1) "border-top: 4px solid rgba(80,80,80,0.5);" else ""
+      tags$tr(style = row_style, cells)
+    })
+    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
+    tags$table(
+      class = paste("design-preview-table", if (needs_expand) "expanding" else ""),
+      style = "border-collapse: collapse;",
+      tags$tbody(rows)
     )
-    
-    updateSelectInput(
-      session,
-      "batch_design_dir",
-      choices  = dirs,
-      selected = if (!is.null(current_design) &&
-                     current_design %in% dirs)
-        current_design
-      else
-        character(0)
-    )
-    
-  }, ignoreInit = TRUE)
+  }
   
   shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
-    dirs <- list.dirs(path       = wd_path(),
-                      recursive  = FALSE,
-                      full.names = TRUE)
-    
+    dirs <- list.dirs(path = wd_path(), recursive = FALSE, full.names = TRUE)
     names(dirs) <- basename(dirs)
     
-    # ✅ Preserve current selection
-    current <- isolate(input$agg_dir)
+    current_data   <- isolate(input$batch_data_dir)
+    current_design <- isolate(input$batch_design_dir)
+    current_agg    <- isolate(input$agg_dir)
     
-    updateSelectInput(
-      session,
-      "agg_dir",
-      choices  = dirs,
-      selected = if (!is.null(current) &&
-                     current %in% dirs)
-        current
-      else
-        character(0)
+    updateSelectInput(session, "batch_data_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_data) && current_data %in% dirs) current_data else character(0)
     )
-    
+    updateSelectInput(session, "batch_design_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_design) && current_design %in% dirs) current_design else character(0)
+    )
+    updateSelectInput(session, "agg_dir",
+                      choices  = dirs,
+                      selected = if (!is.null(current_agg) && current_agg %in% dirs) current_agg else character(0)
+    )
   }, ignoreInit = TRUE)
+  
+  shiny::observe({
+    if (app_locked()) {
+      shinyjs::enable("cancel_batch")
+    } else {
+      shinyjs::disable("cancel_batch")
+    }
+  })
   
   shiny::observeEvent(input$agg_select_all, {
     req(agg_runs())
@@ -1788,19 +1834,20 @@ server <- function(input, output, session) {
       h3("User guide"),
       
       tags$p(
-        style = "color: #666; margin-bottom: 12px;",
+        style = "margin-bottom: 12px;",
+        class = "guide-note",
         "Guidance on data preparation, file structure, and common pitfalls."
       ),
       
       tags$p(
-        style = "font-style: italic; color: #555;",
+        style = "font-style: italic;",
+        class = "guide-note",
         "New to this app? Start with a single plate before running batch analysis."
       ),
       
       tags$div(
         style = "
     padding: 12px;
-    background-color: #f8f9fa;
     border: 1px solid #e0e0e0;
     border-left: 4px solid #4a90e2;
     border-radius: 6px;
@@ -1840,6 +1887,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Default parameter values are automatically set based on the selected instrument (e.g., plate reader or oCelloscope). You can modify these values at any time."
           ),
           
@@ -1863,6 +1911,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Plate reader and oCelloscope data have different formats and preprocessing requirements, so selecting the correct instrument is essential."
           ),
           
@@ -1930,6 +1979,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Typical values are around 0.03–0.08 for plate reader data, and ~0.01 for oCelloscope data due to lower baseline noise."
           ),
           
@@ -1977,6 +2027,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "If left empty, only a timestamp and single/batch label will be used."
           ),
           
@@ -2007,6 +2058,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "You do not need to configure these manually. If variables are missing or incorrect, check the structure of the design file."
           ),
           
@@ -2035,6 +2087,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "For oCelloscope data, blank correction is not applied because values are already normalized during acquisition."
           ),
           
@@ -2067,6 +2120,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "This does not change your data. It ensures correct delimiter and encoding."
           ),
           
@@ -2084,6 +2138,7 @@ server <- function(input, output, session) {
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "No manual reformatting is required beyond re-saving the file in Excel."
           ),
           
@@ -2167,6 +2222,7 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "The app automatically extracts the correct TANormalized block and formats it for analysis."
           )
         )
@@ -2194,6 +2250,7 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Think of it as a stack of identical 96‑well plates, each labeling a different attribute."
           ),
           
@@ -2256,11 +2313,13 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Every position (e.g., B3) must correspond across all blocks."
           ),
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "The example and preview use different plate layouts and values. Only the structure (block format and alignment) must match — the contents will depend on your experiment."
           ),
           
@@ -2270,6 +2329,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "This preview shows how blocks are stacked and aligned."
           )
         )
@@ -2325,6 +2385,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Tip: Start by editing the template rather than creating a file from scratch."
           ),
           
@@ -2332,6 +2393,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Download the template matching your regional CSV format."
           ),
           
@@ -2401,7 +2463,7 @@ B           0   0   1
       ),
       
       # =========================================================
-      # ⚠️ What happens if something goes wrong?
+      # 🛠️ Troubleshooting
       # =========================================================
       tags$details(
         tags$summary(style = guide_summary_style(), "🛠️ Troubleshooting"),
@@ -2417,6 +2479,7 @@ B           0   0   1
           
           tags$p(
             style = guide_note_style(),
+            class = "guide-note",
             "Most issues arise from incorrect file formatting rather than analysis errors."
           )
         )
@@ -2438,48 +2501,19 @@ B           0   0   1
     
   })
   
-  output$download_template_us <- downloadHandler(
-    filename = function() {
-      "design_template_us.csv"
-    },
-    content = function(file) {
-      
-      path <- system.file(
-        "app/templates",
-        "design_template_us.csv",
-        package = "growthcurve"
-      )
-      
-      # fallback for development
-      if (path == "") {
-        path <- file.path("templates", "design_template_us.csv")
+  make_template_handler <- function(filename) {
+    downloadHandler(
+      filename = function() filename,
+      content  = function(file) {
+        path <- system.file("app/templates", filename, package = "growthcurve")
+        if (path == "") path <- file.path("templates", filename)
+        file.copy(from = path, to = file, overwrite = TRUE)
       }
-      
-      file.copy(from = path, to = file, overwrite = TRUE)
-    }
-  )
+    )
+  }
   
-  
-  output$download_template_eu <- downloadHandler(
-    filename = function() {
-      "design_template_eu.csv"
-    },
-    content = function(file) {
-      
-      path <- system.file(
-        "app/templates",
-        "design_template_eu.csv",
-        package = "growthcurve"
-      )
-      
-      # fallback for development
-      if (path == "") {
-        path <- file.path("templates", "design_template_eu.csv")
-      }
-      
-      file.copy(from = path, to = file, overwrite = TRUE)
-    }
-  )
+  output$download_template_us <- make_template_handler("design_template_us.csv")
+  output$download_template_eu <- make_template_handler("design_template_eu.csv")
   
   output$stage_ready <- reactive({
     !is.null(analysis_result())
@@ -2491,7 +2525,7 @@ B           0   0   1
     if (!wd_set()) {
       return(tagList(
         tags$div(
-          style = "padding: 20px; background-color: #f8f9fa; border-radius: 6px;",
+          style = "padding: 20px; border-radius: 6px;",
           h4("Single plate analysis"),
           p("Please set a working directory to continue.")
         )
@@ -2739,20 +2773,7 @@ B           0   0   1
     
     # ✅ Case 1: warning / message
     if (is_preview_message(result)) {
-      return(
-        div(
-          style = "
-          padding: 12px;
-          background-color: #fff3cd;
-          border: 1px solid #ffeeba;
-          border-radius: 6px;
-          color: #856404;
-          max-width: 600px;
-        ",
-          strong("⚠ "),
-          result$message
-        )
-      )
+      return(preview_warning_box(result$message))
     }
     
     # ✅ Case 2: render table
@@ -2763,85 +2784,11 @@ B           0   0   1
   
   output$design_preview <- shiny::renderUI({
     req(input$design_file, wd_path())
-    
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
-    
     df <- read_preview_file(file, nrows = 100)
-    
     req(df)
-    
-    # Detect block starts (first column non-empty rows)
-    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
-    
-    n_blocks <- length(block_starts)
-    
-    row_block_id <- rep(NA, nrow(df))
-    
-    for (k in seq_along(block_starts)) {
-      start <- block_starts[k]
-      end <- if (k < n_blocks)
-        block_starts[k + 1] - 1
-      else
-        nrow(df)
-      row_block_id[start:end] <- k
-    }
-    
-    # Build HTML table manually
-    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      block_id <- row_block_id[i]
-      is_block_header <- (i - 1) %% 10 == 0
-      
-      cells <- lapply(seq_len(ncol(df)), function(j) {
-        val <- df[i, j]
-        if (is.na(val))
-          val <- ""
-        
-        style_parts <- c(
-          "border: 1px solid #e6e6e6;"  # ✅ soft gridlines
-        )
-        
-        # ✅ Block header (only first cell)
-        if (j == 1 && is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold; border: 2px solid #666;")
-        }
-        
-        # ✅ Column headers (1–12 row)
-        if (is_block_header && j > 1) {
-          style_parts <- c(style_parts, "font-weight: bold;")
-        }
-        
-        # ✅ Row labels (A–H)
-        if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts, "font-weight: 500;")
-        }
-        
-        style <- paste(style_parts, collapse = " ")
-        
-        tags$td(style = style, val)
-      })
-      
-      # ✅ Thick separator between blocks
-      row_style <- ""
-      if (is_block_header && i != 1) {
-        row_style <- "border-top: 4px solid #666;"
-      }
-      
-      tags$tr(style = row_style, cells)
-    })
-    
-    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
-    
-    tags$table(
-      class = paste("design-preview-table", if (needs_expand)
-        "expanding"
-        else
-          ""),
-      style = "border-collapse: collapse;",
-      tags$tbody(rows)
-    )
-    
+    build_design_preview_table(df)
   })
   
   output$batch_ui <- shiny::renderUI({
@@ -2909,20 +2856,7 @@ B           0   0   1
     if (input$batch_instrument == "ocelloscope" &&
         (is.null(input$batch_design_dir) ||
          !nzchar(input$batch_design_dir))) {
-      return(
-        div(
-          style = "
-        padding: 12px;
-        background-color: #fff3cd;
-        border: 1px solid #ffeeba;
-        border-radius: 6px;
-        color: #856404;
-        max-width: 600px;
-      ",
-          strong("⚠ "),
-          "Select a design directory to preview oCelloscope data."
-        )
-      )
+      return(preview_warning_box("Select a design directory to preview oCelloscope data."))
     }
     
     # Optional design
@@ -2946,20 +2880,7 @@ B           0   0   1
     result <- unwrap_preview(batch_preview_raw())
     
     if (is_preview_message(result)) {
-      return(
-        div(
-          style = "
-          padding: 12px;
-          background-color: #fff3cd;
-          border: 1px solid #ffeeba;
-          border-radius: 6px;
-          color: #856404;
-          max-width: 600px;
-        ",
-          strong("⚠ "),
-          result$message
-        )
-      )
+      return(preview_warning_box(result$message))
     }
     
     # ✅ Table
@@ -3043,88 +2964,14 @@ B           0   0   1
   })
   
   output$batch_design_preview <- shiny::renderUI({
-    # ✅ Only require design directory (NOT matching logic)
     req(input$batch_design_dir)
-    
     files <- list.files(input$batch_design_dir, full.names = TRUE)
-    if (length(files) == 0)
-      return(NULL)
-    
+    if (length(files) == 0) return(NULL)
     file <- files[1]
     req(!is.na(file), file.exists(file))
-    
-    # ✅ Read preview
     df <- read_preview_file(file, nrows = 100)
     req(df)
-    
-    # ✅ Detect block starts
-    block_starts <- which(df[[1]] != "" & !is.na(df[[1]]))
-    n_blocks <- length(block_starts)
-    
-    row_block_id <- rep(NA, nrow(df))
-    
-    for (k in seq_along(block_starts)) {
-      start <- block_starts[k]
-      end <- if (k < n_blocks)
-        block_starts[k + 1] - 1
-      else
-        nrow(df)
-      row_block_id[start:end] <- k
-    }
-    
-    # ✅ Build styled table
-    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      block_id <- row_block_id[i]
-      is_block_header <- (i - 1) %% 10 == 0
-      
-      cells <- lapply(seq_len(ncol(df)), function(j) {
-        val <- df[i, j]
-        if (is.na(val))
-          val <- ""
-        
-        style_parts <- c("border: 1px solid #e6e6e6;")
-        
-        # ✅ Block header (first column)
-        if (j == 1 && is_block_header) {
-          style_parts <- c(style_parts,
-                           "font-weight: bold; border: 2px solid #666;")
-        }
-        
-        # ✅ Column headers (1–12)
-        if (is_block_header && j > 1) {
-          style_parts <- c(style_parts, "font-weight: bold;")
-        }
-        
-        # ✅ Row labels (A–H)
-        if (j == 1 && !is_block_header) {
-          style_parts <- c(style_parts, "font-weight: 500;")
-        }
-        
-        style <- paste(style_parts, collapse = " ")
-        
-        tags$td(style = style, val)
-      })
-      
-      # ✅ Thick separator between blocks
-      row_style <- ""
-      if (is_block_header && i != 1) {
-        row_style <- "border-top: 4px solid #666;"
-      }
-      
-      tags$tr(style = row_style, cells)
-    })
-    
-    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
-    
-    tags$table(
-      class = paste("design-preview-table", if (needs_expand)
-        "expanding"
-        else
-          ""),
-      style = "border-collapse: collapse;",
-      tags$tbody(rows)
-    )
-    
+    build_design_preview_table(df)
   })
   
   output$aggregate_ui <- shiny::renderUI({
@@ -3140,14 +2987,7 @@ B           0   0   1
         
         tags$details(
           tags$summary(
-            style = "
-              cursor: pointer;
-              padding: 6px 8px;
-              margin-top: 6px;
-              background-color: #e0e0e0;
-              border-radius: 4px;
-              font-weight: 600;
-            ",
+            style = guide_summary_style(),
             "ℹ️  What folder should I select?"
           ),
           tags$div(
@@ -3234,9 +3074,12 @@ B           0   0   1
       selection = "none",
       colnames = c("Include", "Run", "Status"),
       options = list(
+        pageLength = nrow(df),
         dom = "t",
         ordering = FALSE,
-        autoWidth = FALSE
+        autoWidth = FALSE,
+        scrollY = "600px",
+        fixedHeader = TRUE
       ),
       callback = htmlwidgets::JS(
         "
@@ -3374,7 +3217,17 @@ B           0   0   1
           )
         ),
         
-        actionButton("how_to_stop", "⚠️ How to stop a running batch", class = "btn-warning")
+        actionButton(
+          "cancel_batch",
+          "Cancel batch",
+          class = "btn-warning"
+        ),
+        
+      ),
+      
+      tags$p(
+        style = "font-size: 0.9em; color: #666; margin-top: 6px;",
+        "Note: Cancelling a batch will stop the analysis after the current plate finishes processing."
       )
     )
   })
@@ -3388,7 +3241,8 @@ B           0   0   1
     # ✅ Only proceed if BOTH are selected AND non-empty
     req(
       !is.null(input$batch_data_dir),
-      nzchar(input$batch_data_dir),!is.null(input$batch_design_dir),
+      nzchar(input$batch_data_dir),
+      !is.null(input$batch_design_dir),
       nzchar(input$batch_design_dir)
     )
     
@@ -3849,13 +3703,10 @@ B           0   0   1
                        paste("Unexpected error:\n", gc_get_message(e))
                      }
                      
+                     
                      showModal(modalDialog(
                        title = "Analysis failed",
-                       shiny::tagList(
-                         p("The analysis could not be completed."),
-                         tags$hr(),
-                         tags$pre(style = "white-space: pre-wrap;", msg)
-                       ),
+                       p("The analysis could not be completed. Please check that your input files are formatted correctly and try again."),
                        easyClose = TRUE
                      ))
                      
@@ -3946,7 +3797,7 @@ B           0   0   1
     dirs <- list.dirs(path = root,
                       recursive = FALSE,
                       full.names = TRUE)
-    
+
     if (length(dirs) == 0) {
       agg_runs(NULL)
       return()
@@ -3973,206 +3824,6 @@ B           0   0   1
     
   })
   
-  shiny::observeEvent(input$run_batch, {
-    region <- region_selected()
-    
-    batch_abort(FALSE)
-    
-    # Hard guard: reject run if any pair is not fully matched
-    pairs_check <- tryCatch(
-      validated_pairs_cached(),
-      error = function(e = NULL)
-        NULL
-    )
-    if (is.null(pairs_check) || nrow(pairs_check) == 0 ||
-        !all(pairs_check$status == "✅ matched")) {
-      showModal(modalDialog(
-        title = "Cannot run batch",
-        p("All file pairs must be matched and valid before running."),
-        p("Check the table above for rows marked ❌ or ⚠️."),
-        easyClose = TRUE
-      ))
-      return(NULL)
-    }
-    
-    batch_failures(character(0))
-    
-    req(validated_pairs_cached(),
-        nrow(validated_pairs_cached()) > 0)
-    
-    pairs_val      <- validated_pairs_cached()
-    n              <- nrow(pairs_val)
-    batch_start_time <- Sys.time()
-    old_plan       <- if (requireNamespace("future", quietly = TRUE))
-      future::plan()
-    else
-      NULL
-    
-    params <- list(
-      hrs        = input$batch_hrs,
-      interval   = input$batch_interval / 60,
-      minod      = input$batch_minod,
-      maxod      = input$batch_maxod,
-      instrument = input$batch_instrument,
-      blank_mode = if (input$batch_instrument == "ocelloscope") {
-        "none"
-      } else {
-        input$batch_blank_mode
-      }
-    )
-    
-    gc_silent(gc_log_block("RUN BATCH START", list(n = n, params = params)))
-    
-    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-    batch_tag <- if (nzchar(input$batch_prefix)) {
-      paste0(timestamp, "_", input$batch_prefix, "_batch")
-    } else {
-      paste0(timestamp, "_batch")
-    }
-    root_path <- file.path(wd_path(), "Analysis", batch_tag)
-    batch_root(root_path)
-    
-    app_locked(TRUE)
-    
-    # ── Single source of truth ──────────────────────────────────────────────────
-    bs <- new.env(parent = emptyenv())
-    bs$queue     <- as.list(seq_len(n))   # plates yet to launch
-    bs$running   <- 0L                    # plates currently in flight
-    bs$completed <- 0L                    # plates fully done (success or fail)
-    bs$aborted   <- FALSE                 # latched TRUE on first failure
-    bs$failures  <- character(0)          # collected synchronously
-    bs$finished  <- FALSE                 # finish_batch called exactly once
-    # ────────────────────────────────────────────────────────────────────────────
-    
-    workers <- if (isTRUE(input$batch_parallel) &&
-                   batch_can_parallel())
-      2L
-    else
-      1L
-    
-    if (workers > 1 && !inherits(future::plan(), "multisession")) {
-      future::plan(future::multisession, workers = workers)
-    }
-    
-    if (requireNamespace("future", quietly = TRUE)) {
-      if (workers > 1L) {
-        future::plan(future::multisession, workers = workers)
-      } else {
-        future::plan(future::sequential)
-      }
-    }
-    
-    progress <- Progress$new(session, min = 0, max = n)
-    batch_state$progress_open <- TRUE
-    tryCatch(
-      progress$set(
-        message = "Batch analysis running",
-        detail = "Starting…",
-        value = 0
-      ),
-      error = function(e = NULL)
-        NULL
-    )
-    
-    # ── maybe_finish: called after every plate completes ───────────────────────
-    maybe_finish <- function() {
-      if (bs$running > 0 || length(bs$queue) > 0)
-        return()
-      if (bs$finished)
-        return()
-      bs$finished <- TRUE
-      
-      gc_log_block("BATCH FINISH STATE",
-                   list(
-                     completed = bs$completed,
-                     failures  = bs$failures
-                   ))
-      
-      later::later(function() {
-        tryCatch({
-          # ── Only attempt cleanup if every plate failed ──
-          all_failed <- (length(bs$failures) == n)
-          
-          finish_batch(
-            completed_val    = bs$completed,
-            n                = n,
-            root_path        = root_path,
-            batch_start_time = batch_start_time,
-            progress         = progress,
-            old_plan         = old_plan,
-            failures         = bs$failures,
-            all_failed       = all_failed
-          )
-          
-          shiny::withReactiveDomain(session, {
-            batch_failures(bs$failures)
-            app_locked(FALSE)
-          })
-          
-        }, error = function(e = NULL) {
-          gc_log_block("MAYBE_FINISH ERROR", conditionMessage(e))
-        })
-      }, delay = 0)
-    }
-    
-    # ── launch_next: schedules the next plate, respecting abort + concurrency ──
-    launch_next <- function() {
-      gc_log(
-        "Queue:",
-        length(bs$queue),
-        "| Running:",
-        bs$running,
-        "| Completed:",
-        bs$completed
-      )
-      
-      if (bs$aborted || length(bs$queue) == 0) {
-        # If everything that was running has now finished, wrap up
-        if (bs$running == 0)
-          maybe_finish()
-        return()
-      }
-      
-      if (bs$running >= workers) {
-        later::later(launch_next, delay = 0.2)
-        return()
-      }
-      
-      i         <- bs$queue[[1]]
-      bs$queue  <- if (length(bs$queue) > 1)
-        bs$queue[-1]
-      else
-        list()
-      bs$running <- bs$running + 1L
-      
-      tryCatch(
-        progress$set(
-          value  = bs$completed,
-          detail = paste("Completed", bs$completed, "of", n, "| Running plate", i)
-        ),
-        error = function(e = NULL)
-          NULL
-      )
-      
-      run_one_plate_future(
-        i         = i,
-        pairs_val = pairs_val,
-        params    = params,
-        root_path = root_path,
-        bs        = bs,
-        # pass the env directly — no closure capture issues
-        session   = session,
-        progress  = progress,
-        n         = n,
-        launch_next_fn = launch_next,
-        maybe_finish_fn = maybe_finish
-      )
-    }
-    
-    launch_next()
-  })
-  
-  
   # ── run_one_plate_future ──────────────────────────────────────────────────────
   # All mutable state lives in `bs` (the env passed in). No <<- needed.
   run_one_plate_future <- function(i,
@@ -4184,13 +3835,17 @@ B           0   0   1
                                    progress,
                                    n,
                                    launch_next_fn,
-                                   maybe_finish_fn) {
+                                   maybe_finish_fn,
+                                   region) {
+    
+    plate_name <- basename(pairs_val$data_file[i])
+    
     future_globals <- list(
       i         = i,
       pairs_val = pairs_val,
       params    = params,
       root_path = root_path,
-      region    = region_selected()
+      region    = region
     )
     
     prom <- promises::future_promise(expr = {
@@ -4206,7 +3861,7 @@ B           0   0   1
       }
       
       tryCatch({
-
+        
         fname     <- basename(pairs_val$data_file[i])
         plate_tag <- tools::file_path_sans_ext(fname)
         plate_dir   <- file.path(root_path, plate_tag)
@@ -4217,7 +3872,7 @@ B           0   0   1
         
         res <- tryCatch({
           gc_run_quiet_worker(
-            run_gc(
+            growthcurve:::run_gc(
               rawdatafile = pairs_val$data_file[i],
               designfile  = pairs_val$design_file[i],
               hrs         = params$hrs,
@@ -4235,9 +3890,9 @@ B           0   0   1
           list(
             success = FALSE,
             message = if (inherits(e, "gc_error")) {
-              gc_get_message(e)
+              growthcurve:::gc_get_message(e)
             } else {
-              paste("Unexpected error:", gc_get_message(e))
+              paste("Unexpected error:", growthcurve:::gc_get_message(e))
             },
             plate   = pairs_val$data_file[i]
           )
@@ -4253,6 +3908,15 @@ B           0   0   1
           )
         }
         
+        # --- cancellation check before writing outputs ----
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         dir.create(root_path,
                    recursive = TRUE,
                    showWarnings = FALSE)
@@ -4265,8 +3929,8 @@ B           0   0   1
                    recursive = TRUE,
                    showWarnings = FALSE)
         
-        gc_save_plots(res$plots, plots_dir)
-        gc_write_summaries(
+        growthcurve:::gc_save_plots(res$plots, plots_dir)
+        growthcurve:::gc_write_summaries(
           core        = res$core,
           params      = res$params,
           instrument  = res$instrument,
@@ -4288,51 +3952,116 @@ B           0   0   1
     globals = future_globals,
     seed = TRUE)
     
-    # ── then: plate finished (success or reported failure) ─────────────────────
-    prom <- promises::then(prom, function(result) {
-      if (exists("gc_log_block")) {
-        try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
-      }
-      
-      tryCatch({
-        bs$running   <- bs$running - 1L
-        bs$completed <- bs$completed + 1L
-        
-        if (!isTRUE(result$success)) {
-          # Latch abort, drain queue, record failure — all synchronous
+    start_cancellation_monitor <- function(root_path, bs, maybe_finish_fn) {
+      monitor <- function() {
+        if (cancel_requested(root_path)) {
           bs$aborted <- TRUE
-          bs$queue   <- list()
-          bs$failures <- c(bs$failures,
-                           paste0("Plate ", i, ": ", result$message %||% "unknown error"))
-          gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+          bs$cancelled <- TRUE
+          bs$queue   <- list()  # ← DRAIN THE QUEUE IMMEDIATELY
+          gc_log("CANCELLATION DETECTED MID-PLATE")
+          # Queue will drain naturally when this plate finishes
+          maybe_finish_fn()  # Trigger finish check
+          return()  # Stop monitoring
         }
-        
-        tryCatch(
-          progress$set(
-            value  = bs$completed,
-            detail = paste("Completed", bs$completed, "of", n)
-          ),
-          error = function(e = NULL)
-            NULL
-        )
-        
-        # Either launch the next plate or finish up
-        if (!bs$aborted) {
-          launch_next_fn()
-        } else {
-          maybe_finish_fn()
-        }
-        
-      }, error = function(e = NULL) {
-        gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
-        bs$aborted  <- TRUE
-        bs$queue    <- list()
-        bs$running  <- bs$running - 1L
-        bs$failures <- c(bs$failures, paste0("Plate ", i, ": then-handler crash"))
-        maybe_finish_fn()
-      })
-    })
+        later::later(monitor, delay = 1)  # Check every second
+      }
+      later::later(monitor, delay = 1)
+    }
     
+    start_cancellation_monitor(root_path, bs, maybe_finish_fn)
+    
+    # ── then: plate finished (success or reported failure) ─────────────────────
+    prom <- promises::then(
+      prom, local({
+        plate_name <- plate_name   # force capture
+        
+        function(result) {
+          
+          if (isTRUE(result$success)) {
+            bs$successes <- c(bs$successes, plate_name)
+          }
+          
+          if (exists("gc_log_block")) {
+            try(gc_log_block(paste("Plate finished", i)), silent = TRUE)
+          }
+          
+          tryCatch({
+            
+            # ✅ Update counters FIRST
+            bs$running   <- bs$running - 1L
+            bs$completed <- bs$completed + 1L
+            
+            if (!isTRUE(batch_state$progress_open)) {
+              maybe_finish_fn()
+              return()
+            }
+            
+            # ✅ Progress update (safe)
+              if (isTRUE(batch_state$progress_open)) {
+                tryCatch(
+                  {
+                    current_plate <- min(bs$completed + 1L, n)
+                    
+                    progress$set(
+                      value  = bs$completed,
+                      detail = paste("Running plate", current_plate, "of", n)
+                    )
+                  },
+                  error = function(e = NULL) NULL
+                )
+              }
+            
+            # ✅ Handle failure → record failure without exiting analysis
+            if (!isTRUE(result$success)) {
+              bs$failures <- c(
+                bs$failures,
+                paste0("Plate ", i, ": ", result$message %||% "unknown error")
+              )
+              
+              gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+            }
+
+            # ✅ ✅ UNIFIED cancellation check (IMPORTANT)
+            cancel_hit <- cancel_requested(root_path)
+            
+            if (cancel_hit) {
+              bs$aborted <- TRUE
+              bs$cancelled <- TRUE
+              bs$queue   <- list()
+              
+              gc_log_block("BATCH CANCEL DETECTED (post-plate)", list(
+                completed = bs$completed
+              ))
+            }
+            
+            # ✅ ✅ FINAL CONTROL FLOW (single decision point)
+            if (isTRUE(bs$cancelled)) {
+              maybe_finish_fn()
+            } else {
+              launch_next_fn()
+            }
+            
+            
+          }, error = function(e = NULL) {
+            
+            gc_log_block("THEN HANDLER ERROR", conditionMessage(e))
+            
+            # ✅ Ensure consistent state even on crash
+            bs$aborted  <- TRUE
+            bs$queue    <- list()
+            bs$running  <- max(0L, bs$running - 1L)
+            
+            bs$failures <- c(
+              bs$failures,
+              paste0("Plate ", i, ": then-handler crash")
+            )
+            
+            maybe_finish_fn()
+            })
+          }
+        })
+      )
+
     # ── catch: promise itself rejected (system/async error) ───────────────────
     prom <- promises::catch(prom, function(e) {
       gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
@@ -4354,6 +4083,165 @@ B           0   0   1
     
     invisible(prom)
   }
+  
+  run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params, old_plan) {
+    
+    max_workers <- if (isTRUE(params$parallel)) 2L else 1L
+    
+    batch_abort(FALSE)
+    batch_failures(character(0))
+    
+    bs <- new.env(parent = emptyenv())
+    bs$queue <- as.list(seq_len(n))
+    bs$running <- 0L
+    bs$completed <- 0L
+    bs$aborted <- FALSE
+    bs$failures <- character(0)
+    bs$successes <- character(0)
+    bs$finished <- FALSE
+    bs$cancelled <- FALSE
+    
+    all_plate_names <- basename(pairs_val$data_file)
+    
+    progress <- Progress$new(session, min = 0, max = n)
+    
+    progress$set(
+      value = 0,
+      message = "Running batch analysis...",
+      detail = paste("Running plate 1 of", n)
+    )
+    
+    batch_state$progress_open <- TRUE
+    
+    maybe_finish <- function() {
+      if (isTRUE(bs$finished)) {
+        return()
+      }
+      
+      if (bs$completed == n || bs$aborted) {
+        bs$finished <- TRUE   # ✅ lock it
+        
+        finish_batch(
+          completed_val = bs$completed,
+          n = n,
+          root_path = root_path,
+          batch_start_time = batch_start_time,
+          progress = progress,
+          old_plan = old_plan,
+          failures = bs$failures,
+          all_failed = length(bs$failures) == n,
+          all_plate_names = all_plate_names,
+          successes = bs$successes,
+          region = region,
+          cancelled = isTRUE(bs$cancelled)
+        )
+      }
+    }
+    
+    launch_next <- function() {
+      
+      # ✅ CHECK CANCEL FIRST (before doing anything)
+      if (cancel_requested(root_path)) {
+        bs$aborted <- TRUE
+        bs$cancelled <- TRUE
+        
+        gc_log("Batch cancellation detected before launching next job")
+        
+        maybe_finish()
+        return()
+      }
+      
+      # ✅ If nothing left to do → finish
+      if (length(bs$queue) == 0) {
+        maybe_finish()
+        return()
+      }
+      
+      i <- bs$queue[[1]]
+      bs$queue <- bs$queue[-1]
+      bs$running <- bs$running + 1L
+      
+      run_one_plate_future(
+        i = i,
+        pairs_val = pairs_val,
+        params = params,
+        root_path = root_path,
+        bs = bs,
+        session = session,
+        progress = progress,
+        n = n,
+        launch_next_fn = launch_next,
+        maybe_finish_fn = maybe_finish,
+        region = region
+      )
+    }
+    
+    for (k in seq_len(max_workers)) {
+      launch_next()
+    }
+  }
+  
+  observeEvent(input$run_batch, {
+    req(validated_pairs_cached(), nrow(validated_pairs_cached()) > 0)
+    
+    pairs_val <- validated_pairs_cached()
+    n <- nrow(pairs_val)
+    batch_start_time <- Sys.time()
+    
+    timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    
+    batch_tag <- if (nzchar(input$batch_prefix %||% "")) {
+      paste0(timestamp, "_", input$batch_prefix, "_batch")
+    } else {
+      paste0(timestamp, "_batch")
+    }
+    
+    root_path <- file.path(wd_path(), "Analysis", batch_tag)
+    
+    dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
+    
+    batch_root(root_path)
+    clear_cancel_file(root_path)
+    app_locked(TRUE)
+    
+    old_plan <- NULL
+    
+    if (requireNamespace("future", quietly = TRUE)) {
+      old_plan <- future::plan()
+      
+      if (isTRUE(input$batch_parallel)) {
+        future::plan(future::multisession, workers = 2)
+      } else {
+        future::plan(future::sequential)
+      }
+    }
+    
+    # ✅ CAPTURE REACTIVE VALUES HERE
+    region_val <- region_selected()
+    
+    params <- list(
+      hrs        = input$batch_hrs,
+      interval   = input$batch_interval / 60,
+      minod      = input$batch_minod,
+      maxod      = input$batch_maxod,
+      instrument = input$batch_instrument,
+      blank_mode = input$batch_blank_mode,
+      prefix     = input$batch_prefix,
+      parallel   = input$batch_parallel
+    )
+    
+    later::later(function() {
+      run_batch_async(
+        pairs_val = pairs_val,
+        n = n,
+        root_path = root_path,
+        batch_start_time = batch_start_time,
+        region = region_val,
+        params = params,
+        old_plan = old_plan
+      )
+    }, delay = 0)
+  })
   
   shiny::observeEvent(input$prev_stage, {
     retreat_stage()
@@ -4377,48 +4265,19 @@ B           0   0   1
   })
   
   
-  shiny::observeEvent(input$how_to_stop, {
-    showModal(
-      modalDialog(
-        title = "How to stop a running batch",
-        shiny::tagList(
-          p(
-            "Once a batch has started, it cannot be cancelled from within the app. ",
-            "The analysis will run to completion even if you close the browser tab."
-          ),
-          tags$hr(),
-          p(strong("To stop a running batch:")),
-          tags$ol(
-            tags$li(
-              "In RStudio, go to ",
-              tags$strong("Session → Terminate R"),
-              " to kill the process immediately."
-            ),
-            tags$li(
-              "Alternatively, click the ",
-              tags$strong("Stop"),
-              " button (🟥) in the RStudio Console toolbar."
-            ),
-            tags$li(
-              "As a last resort, press ",
-              tags$strong("Ctrl+C"),
-              " (Windows/Linux) or ",
-              tags$strong("Cmd+C"),
-              " (Mac) in the Console."
-            )
-          ),
-          tags$hr(),
-          p(
-            style = "font-size: 0.9em; color: #888;",
-            "Note: Any plates that finished before termination will have their ",
-            "output files intact. Only the plate that was actively running at ",
-            "the time of termination may be incomplete."
-          )
-        ),
-        easyClose = TRUE,
-        footer = modalButton("Close")
-      )
-    )
+  observeEvent(input$cancel_batch, {
+    
+    gc_log_block("CANCEL BUTTON CLICKED", list(
+      batch_root_val = batch_root(),
+      root_exists = dir.exists(batch_root())
+    ))
+    
+    req(batch_root())
+    
+    root <- batch_root()
+    
+    create_cancel_file(root)
+    
   })
   
   gc_disable_navigation <- function() {
@@ -4524,13 +4383,7 @@ B           0   0   1
   
   shiny::observeEvent(input$open_export_dir, {
     req(last_export_dir())
-    
-    success <- open_folder(last_export_dir())
-    
-    if (!isTRUE(success)) {
-      showNotification("Could not open folder automatically. Please open it manually.",
-                       type = "warning")
-    }
+    open_folder_or_warn(last_export_dir())
   })
   
   shiny::observe({
@@ -4668,6 +4521,6 @@ B           0   0   1
   
 }
 
-
+# ---- app ----
 app <- shiny::shinyApp(ui = ui, server = server)
 app
