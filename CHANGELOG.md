@@ -9,6 +9,7 @@
 ### Improvements
 - Added check update function to see if the current version matches the most recent on Github
  - Prompts user to install the latest one if not
+ - Automatically installs if user chooses and instructs user how to start the new version
 - Generalized run failure message and improved console log output (dev mode only)
 
 ### Fixes
