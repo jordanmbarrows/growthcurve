@@ -881,7 +881,7 @@ server <- function(input, output, session) {
     df_out
   }
   
-  observe(TRUE, {
+  observeEvent(TRUE, {
     later::later(function() {
       shiny::withReactiveDomain(session, {
         current_version <-  "0.0.1" # gc_app_version()
