@@ -2,7 +2,17 @@
 
 ## Unreleased
 
+-
 
+## [1.0.2] - 2026-05-26
+
+### Improvements
+- Simplified global control over regional settings for previews and exports (US vs European)
+  - Now more obvious with radio buttons under working directory select
+- Made preview tables responsive to regional settings in real time to match exported files
+
+### Fixes 
+- Disabled Cancel button in batch mode when not running analysis
 
 ## [1.0.1] - 2026-05-26
 
