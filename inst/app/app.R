@@ -272,7 +272,6 @@ ui <- shiny::fluidPage(
         actionButton("refresh_files", "Refresh files"),
         shiny::verbatimTextOutput("wd_txt"),
         
-        
         tags$details(
           tags$summary(
             style = guide_summary_style(),
@@ -297,42 +296,25 @@ ui <- shiny::fluidPage(
           )
         ),
         
-        tags$details(
-          tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
-          tags$div(
-            style = guide_body_style(),
-            
-            tags$hr(),
-            
-            h4("CSV format (regional settings)"),
-            
-            tags$p("Detected:", tags$strong(
-              textOutput("region_detected_txt", inline = TRUE)
-            )),
-            
-            tags$p(
-              style = guide_note_style(),
-              class = "guide-note",
-              "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
-            ),
-            
-            selectInput(
-              "region_override",
-              "Output format",
-              choices = c(
-                "Auto-detect" = "auto",
-                "US (comma, decimal point)" = "US",
-                "European (semicolon, decimal comma)" = "EU"
-              ),
-              selected = "auto"
-            ),
-            
-            tags$p(
-              style = guide_note_style(),
-              class = "guide-note",
-              "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
-            )
-          )
+        tags$hr(),
+        
+        h4("Export format"),
+        
+        radioButtons(
+          "region_override",
+          label = NULL,
+          choices = c(
+            "US (1.23, CSV uses comma)" = "US",
+            "European (1,23, CSV uses semicolon)" = "EU"
+          ),
+          selected = gc_app_config()$region,
+          inline = TRUE
+        ),
+        
+        tags$p(
+          style = guide_note_style(),
+          class = "guide-note",
+          "Controls how exported CSV files and plots are written."
         )
       ),
       
@@ -668,7 +650,7 @@ server <- function(input, output, session) {
     path.expand(path)
   }
   
-  region_selected <- reactiveVal(gc_app_config()$region)
+  region_selected <- reactive({input$region_override %||% gc_app_config()$region})
   wd_set <- reactiveVal(FALSE)
   wd_path <- reactiveVal(NULL)
   file_refresh <- reactiveVal(0)
@@ -740,19 +722,6 @@ server <- function(input, output, session) {
   
   output$wd_ready <- reactive({
     wd_set()
-  })
-  
-  shiny::observe({
-    req(input$region_override)
-    
-    if (input$region_override == "auto") {
-      # re-detect default (what you initialized from)
-      region_selected(gc_app_config()$region)
-      
-    } else {
-      region_selected(input$region_override)
-      
-    }
   })
   
   output$region_detected_txt <- shiny::renderText({
