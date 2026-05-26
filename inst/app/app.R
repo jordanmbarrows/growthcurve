@@ -3124,6 +3124,12 @@ B           0   0   1
     # ✅ drop unwanted column if present
     df <- df[, setdiff(names(df), "source_file"), drop = FALSE]
     
+    # ✅ APPLY FORMAT HERE
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
     DT::datatable(
       head(df, 100),
       options = list(pageLength = 10, scrollX = TRUE),
