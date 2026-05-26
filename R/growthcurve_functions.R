@@ -1,6 +1,6 @@
 # ============================================================
 # growthcurve_functions.R
-# Growth Curve Analysis – Shiny-Safe Backend
+# Growth Curve Analysis - Shiny-Safe Backend
 #
 # Purpose:
 #   Provides deterministic, batch-capable growth curve
@@ -13,7 +13,7 @@
 # ============================================================
 
 # ============================================================
-# ⚠️ CSV PARSING RULE
+# CSV PARSING RULE
 #
 # All CSV reading MUST go through read_csv_safe().
 # No direct read.csv(), read.table(), or delimiter detection allowed.
@@ -29,23 +29,23 @@ extract_well_names <- function(colnames_vec) {
 
 get_design_wells <- function(design_file) {
   
-  # ✅ Read via safe parser ONLY (single source of truth)
+  #  Read via safe parser ONLY (single source of truth)
   df <- read_csv_safe(design_file, header = FALSE)
   
-  # ✅ Extract first column as text for detection
+  #  Extract first column as text for detection
   col1 <- trimws(as.character(df[[1]]))
   
-  # ✅ Find Well_type row INSIDE parsed data
+  #  Find Well_type row INSIDE parsed data
   start_idx <- base::grep("^\\s*Well_type\\b", col1, ignore.case = TRUE)[1]
   
   if (is.na(start_idx)) {
     gc_abort("Well_type block not found in design file.")
   }
   
-  # ✅ Extract rows A–H relative to parsed table
+  #  Extract rows A-H relative to parsed table
   mat <- df[(start_idx + 1):(start_idx + 8), , drop = FALSE]
   
-  # ✅ Clean whitespace
+  #  Clean whitespace
   mat[] <- lapply(mat, function(x) trimws(as.character(x)))
   
   rows <- mat[[1]]
@@ -163,7 +163,7 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   n <- nrow(df)
   
   # ----------------------------------------------------------
-  # 1. TIME — ALWAYS MINUTES HERE (single source)
+  # 1. TIME - ALWAYS MINUTES HERE (single source)
   # ----------------------------------------------------------
   if (!is.null(interval)) {
     time_min <- seq(0, by = interval * 60, length.out = n)
@@ -173,7 +173,7 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   
   
   # ----------------------------------------------------------
-  # 2. EXTRACT RAW MATRIX ✅ FIXED HERE
+  # 2. EXTRACT RAW MATRIX
   # ----------------------------------------------------------
   mat <- df  
   
@@ -217,7 +217,6 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   
   mat <- mat[, keep, drop = FALSE]
 
-  # ✅ IMPORTANT: subset wells consistently
   wells <- wells[keep]
   
   # ----------------------------------------------------------
@@ -246,7 +245,7 @@ is_ocelloscope <- function(file) {
   # Count repeated Time headers
   n_headers <- sum(base::grepl("^Time \\(seconds\\)", lines))
   
-  # If multiple → multi-block → oCelloscope
+  # If multiple > multi-block > oCelloscope
   n_headers > 1
 }
 
@@ -307,7 +306,7 @@ build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
 
 build_preview_label <- function(file, preview_result, instrument = NULL) {
   
-  # ✅ Do NOT show label if preview is message
+  #  Do NOT show label if preview is message
   if (inherits(preview_result, "preview_message")) {
     return(NULL)
   }
@@ -315,7 +314,7 @@ build_preview_label <- function(file, preview_result, instrument = NULL) {
   if (is_ocelloscope(file)) {
     return(paste(
       "Preview: extracted growth data (oCelloscope)",
-      "— time values use selected interval"
+      "- time values use selected interval"
     ))
   }
   
@@ -325,7 +324,7 @@ build_preview_label <- function(file, preview_result, instrument = NULL) {
 # ------------------------------------------------------------
 # Package bootstrap helper
 # Runs once when functions.R is sourced (i.e. at Shiny startup,
-# not inside run_gc). Safe to call repeatedly — install only
+# not inside run_gc). Safe to call repeatedly - install only
 # happens when a package is genuinely absent.
 # ------------------------------------------------------------
 
@@ -523,7 +522,7 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
   format <- match.arg(format, c("plate_reader", "ocelloscope"))
   
   # ----------------------------------------------------------
-  # ✅ SAFETY: detect file/instrument mismatch
+  #  SAFETY: detect file/instrument mismatch
   # ----------------------------------------------------------
   
   is_occo <- is_ocelloscope(rawdatafile)
@@ -550,7 +549,7 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
     # ---- TEMP FILE (gcplyr requires file input) ----
     tmp_file <- tempfile(fileext = ".csv")
     
-    # ✅ Ensure cleanup ALWAYS happens
+    #  Ensure cleanup ALWAYS happens
     on.exit(unlink(tmp_file), add = TRUE)
     
     utils::write.csv(df_raw, tmp_file, row.names = FALSE)
@@ -593,10 +592,10 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
 
     df <- format_ocelloscope_data(df, designfile, interval)
     
-    # ✅ canonical conversion point
+    #  canonical conversion point
     df$Time <- df$Time_min / 60
     
-    # ✅ drop raw minutes column
+    #  drop raw minutes column
     df$Time_min <- NULL
     
     # ---- Add block_name ----
@@ -666,7 +665,7 @@ gc_read_design <- function(designfile, blocklist) {
     endrow      = designendvector
   )
   
-  # Remove accidental row labels (A–H)
+  # Remove accidental row labels (A-H)
   for (v in blocklist[-1]) {
     my_design[[v]] <- as.character(my_design[[v]])
     my_design[[v]][my_design[[v]] %in% LETTERS[1:8]] <- NA
@@ -785,7 +784,7 @@ gc_import_data <- function(
   }
   
   if (max(imported_tidy$Time, na.rm = TRUE) > 200) {
-    warning("Time appears to still be in minutes — expected hours.")
+    warning("Time appears to still be in minutes - expected hours.")
   }
   # ==========================================================
   # READ DESIGN (shared)
@@ -1041,7 +1040,7 @@ gc_core_compute <- function(
   
   qc_lookup <- data_forplots[, c("Well", "QC_flag", "QC_reason")]
   
-  # ✅ Attach QC to ALL datasets that need it
+  #  Attach QC to ALL datasets that need it
   
   merged_data <- dplyr::left_join(
     merged_data,
@@ -1234,7 +1233,7 @@ gc_plot_mean_curves <- function(merged_data_means,
 #   after blank correction.
 #
 # Notes:
-#   - Reorders Well factor to A1–H12 to match plate layout
+#   - Reorders Well factor to A1-H12 to match plate layout
 #   - Drops NA rows before plotting
 #
 # Inputs:
@@ -1288,7 +1287,7 @@ gc_plot_perwell_linear <- function(merged_data,
 #   after blank correction.
 #
 # Notes:
-#   - Reorders Well factor to A1–H12 to match plate layout
+#   - Reorders Well factor to A1-H12 to match plate layout
 #   - Drops NA rows before plotting
 #
 # Inputs:
@@ -1443,7 +1442,7 @@ gc_plot_fitted_percap_with_max <- function(merged_data_sub,
     ggplot2::geom_point(
       data = ex_dat_mrg_sum,
       ggplot2::aes(x = max_percap_time, y = max_percap),
-      inherit.aes = FALSE,   # ✅ still required
+      inherit.aes = FALSE,   #  still required
       size = 1,
       color = "red"
     ) +
@@ -1497,7 +1496,7 @@ gc_plot_od_curves_with_maxgc <- function(merged_data,
     ggplot2::geom_vline(
       data = ex_dat_mrg_sum,
       ggplot2::aes(xintercept = max_percap_time),
-      inherit.aes = FALSE,   # ✅ still required
+      inherit.aes = FALSE,   #  still required
       linewidth = 0.3,
       color = "red",
       linetype = "dotted"
@@ -1670,7 +1669,7 @@ gc_build_plots <- function(core, ggplot_theme, region) {
   plots <- list()
   
   # ----------------------------------------------------------
-  # Plots 1–3: Global growth curves
+  # Plots 1-3: Global growth curves
   # ----------------------------------------------------------
   
   plots$blank_linear <- gc_plot_blank_corrected(
@@ -1694,7 +1693,7 @@ gc_build_plots <- function(core, ggplot_theme, region) {
   )
   
   # ----------------------------------------------------------
-  # Plots 4–5: Per-well OD curves
+  # Plots 4-5: Per-well OD curves
   # ----------------------------------------------------------
   
   plots$perwell_linear <- gc_plot_perwell_linear(
@@ -1708,7 +1707,7 @@ gc_build_plots <- function(core, ggplot_theme, region) {
   )
   
   # ----------------------------------------------------------
-  # Plots 6–9: Growth-rate diagnostics
+  # Plots 6-9: Growth-rate diagnostics
   # ----------------------------------------------------------
   
   plots$deriv_raw <- gc_plot_derivative_perwell(
@@ -1735,7 +1734,7 @@ gc_build_plots <- function(core, ggplot_theme, region) {
   )
   
   # ----------------------------------------------------------
-  # Plots 10–11: Summary dot plots
+  # Plots 10-11: Summary dot plots
   # ----------------------------------------------------------
   
   # Only construct these if data exist
@@ -1844,7 +1843,7 @@ gc_write_summaries <- function(core,
                                region) {
   
   if (!is.data.frame(core$data_forplots)) {
-    gc_abort("Core data is invalid — cannot write summaries.")
+    gc_abort("Core data is invalid - cannot write summaries.")
   }
   
   stopifnot(
@@ -2112,7 +2111,7 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
 }
 
 # ------------------------------------------------------------
-# run_gc() — Orchestrated growth-curve analysis pipeline
+# run_gc() - Orchestrated growth-curve analysis pipeline
 #
 # Purpose:
 #   High-level coordinator for growth curve analysis.
@@ -2186,7 +2185,7 @@ run_gc <- function(
   }
   
   # ==========================================================
-  # STAGE A — Input validation & setup
+  # STAGE A - Input validation & setup
   # ==========================================================
   # Responsibilities:
   #   - Validate arguments
@@ -2231,7 +2230,7 @@ run_gc <- function(
   check_cancel()
   
   # ==========================================================
-  # STAGE B — Core computation (PURE)
+  # STAGE B - Core computation (PURE)
   # ==========================================================
   # Responsibilities:
   #   - All scientific computation
@@ -2271,7 +2270,7 @@ run_gc <- function(
   check_cancel()
   
   # ==========================================================
-  # STAGE C — Plot construction (PURE)
+  # STAGE C - Plot construction (PURE)
   # ==========================================================
   # Responsibilities:
   #   - Build all ggplot objects
@@ -2291,7 +2290,7 @@ run_gc <- function(
   check_cancel()
   
   # ==========================================================
-  # STAGE D — Final assembly & return
+  # STAGE D - Final assembly & return
   # ==========================================================
   # Responsibilities:
   #   - Assemble structured return object
