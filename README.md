@@ -97,7 +97,7 @@ See the User Guide tab in the app for detailed format specifications.
 
 ## System Requirements
 
-- R ≥ 4.0.0
+- R ≥ 4.1.0
 - All required dependencies are installed automatically during installation
 
 ## License
