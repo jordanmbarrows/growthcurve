@@ -315,6 +315,12 @@ ui <- shiny::fluidPage(
           style = guide_note_style(),
           class = "guide-note",
           "Controls how preview tables are displayed and how exported CSV files and plots are formatted."
+        ),
+        
+        tags$p(
+          style = guide_note_style(),
+          class = "guide-note",
+          "Note: Decimal points in preview are converted based on the selected format and may also affect numeric-looking identifiers."
         )
       ),
       
@@ -836,49 +842,27 @@ server <- function(input, output, session) {
   }
   
   format_preview_df <- function(df, region) {
+    
     if (is.null(df) || !is.data.frame(df)) {
       return(df)
     }
     
     df_out <- df
     
-    for (j in seq_along(df_out)) {
-      col <- df_out[[j]]
+    if (region == "EU") {
       
-      # ---- CASE 1: numeric ----
-      if (is.numeric(col)) {
+      for (j in seq_along(df_out)) {
         
-        formatted <- format(col, scientific = FALSE, trim = TRUE)
+        col_chr <- as.character(df_out[[j]])
         
-        if (region == "EU") {
-          formatted <- gsub("\\.", ",", formatted)
-        }
-        
-        df_out[[j]] <- formatted
-      }
-      
-      # ---- CASE 2: numeric-like character ----
-      else if (is.character(col)) {
-        
-        suppressWarnings({
-          numeric_test <- as.numeric(col)
-        })
-        
-        # Only convert if all non-empty values are numeric
-        is_numeric_like <- all(
-          is.na(col) | col == "" | !is.na(numeric_test)
+        col_chr <- gsub(
+          "(\\d+)\\.(\\d+)",   # match digits . digits
+          "\\1,\\2",           # replace with comma
+          col_chr,
+          perl = TRUE
         )
         
-        if (is_numeric_like) {
-          
-          formatted <- col
-          
-          if (region == "EU") {
-            formatted <- gsub("\\.", ",", formatted)
-          }
-          
-          df_out[[j]] <- formatted
-        }
+        df_out[[j]] <- col_chr
       }
     }
     
@@ -2745,8 +2729,6 @@ B           0   0   1
       return(NULL)
     }
     
-    print(sapply(df, class))
-    
     df <- result$data
     
     df <- format_preview_df(
@@ -2892,39 +2874,17 @@ B           0   0   1
   })
   
   output$batch_raw_preview_table <- shiny::renderTable({
-    req(input$batch_data_dir)
     
-    format_preview_df(df, region_selected())
+    req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
     if (length(files) == 0)
       return(NULL)
     
-    # 🚨 NEW: block table rendering if design missing for oCelloscope
+    # 🚨 block oCelloscope without design
     if (input$batch_instrument == "ocelloscope" &&
-        (is.null(input$batch_design_dir) ||
-         !nzchar(input$batch_design_dir))) {
+        (is.null(input$batch_design_dir) || !nzchar(input$batch_design_dir))) {
       return(NULL)
-    }
-    
-    file <- files[1]
-    
-    # Optional design
-    design <- NULL
-    if (!is.null(input$batch_design_dir) &&
-        nzchar(input$batch_design_dir)) {
-      df <- tryCatch(
-        validated_pairs_cached(),
-        error = function(e = NULL)
-          NULL
-      )
-      
-      if (!is.null(df) && nrow(df) > 0) {
-        design <- df$design_file[1]
-        if (is.na(design) || !file.exists(design)) {
-          design <- NULL
-        }
-      }
     }
     
     result <- unwrap_preview(batch_preview_raw())
@@ -2933,10 +2893,17 @@ B           0   0   1
       return(NULL)
     }
     
-    format_preview_df(result$data, region_selected())
+    df <- result$data
+    
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
+    df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
-  
+    
   output$batch_preview_label <- shiny::renderText({
     req(input$batch_data_dir)
     
@@ -2974,6 +2941,18 @@ B           0   0   1
     req(!is.na(file), file.exists(file))
     df <- read_preview_file(file, nrows = 100)
     req(df)
+    
+    print("=== BEFORE FORMATTING ===")
+    print(df)
+    print(sapply(df, class))
+    
+    df2 <- format_preview_df(df, region_selected())
+    
+    print("=== AFTER FORMATTING ===")
+    print(df2)
+    
+    df2
+    
     df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
