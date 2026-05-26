@@ -786,8 +786,19 @@ server <- function(input, output, session) {
       lapply(ids, shinyjs::disable)
     } else {
       lapply(ids, shinyjs::enable)
+      enforce_blank_mode_state(session, input$batch_instrument, "batch")
     }
     
+  })
+  
+  shiny::observe({
+    req(input$instrument)
+    enforce_blank_mode_state(session, input$instrument)
+  })
+  
+  shiny::observe({
+    req(input$batch_instrument)
+    enforce_blank_mode_state(session, input$batch_instrument, "batch")
   })
   
   shiny::observe({
@@ -846,22 +857,6 @@ server <- function(input, output, session) {
   gc_abort_if <- function(condition, message) {
     if (isTRUE(condition)) {
       gc_abort(message)
-    }
-  }
-  
-  update_blank_mode_state <- function(session,
-                                      instrument,
-                                      current_blank_mode) {
-    if (instrument == "ocelloscope") {
-      if (!is.null(current_blank_mode) && current_blank_mode != "plate") {
-        updateRadioButtons(session, "blank_mode", selected = "plate")
-      }
-      
-      shinyjs::disable("blank_mode_container")
-      
-    } else {
-      shinyjs::enable("blank_mode_container")
-      
     }
   }
   
@@ -960,6 +955,25 @@ server <- function(input, output, session) {
     updateNumericInput(session, interval_id, value = defaults$interval)
     updateNumericInput(session, minod_id, value = defaults$minod)
     updateNumericInput(session, maxod_id, value = defaults$maxod)
+  }
+  
+  enforce_blank_mode_state <- function(session, instrument, prefix = "") {
+    
+    id <- if (nzchar(prefix)) {
+      paste0(prefix, "_blank_mode_container")
+    } else {
+      "blank_mode_container"
+    }
+    
+    if (instrument == "ocelloscope") {
+      updateRadioButtons(session,
+                         if (nzchar(prefix)) paste0(prefix, "_blank_mode") else "blank_mode",
+                         selected = "plate")
+      
+      shinyjs::disable(id)
+    } else {
+      shinyjs::enable(id)
+    }
   }
   
   make_export_dirs <- function(wd, prefix) {
@@ -3377,18 +3391,6 @@ B           0   0   1
     
   })
   
-  shiny::observeEvent(input$instrument, {
-    if (input$instrument == "ocelloscope") {
-      updateRadioButtons(session, "blank_mode", selected = "plate")
-      shinyjs::disable("blank_mode_container")
-      
-    } else {
-      shinyjs::enable("blank_mode_container")
-      
-    }
-    
-  }, ignoreNULL = TRUE)
-  
   output$stage_ui <- shiny::renderUI({
     req(analysis_result(), current_stage())
     
@@ -3799,32 +3801,30 @@ B           0   0   1
     shinyjs::enable("maxod")
     shinyjs::enable("prefix")
     shinyjs::enable("design_vars")
-    shinyjs::enable("blank_mode")
     shinyjs::enable("raw_file")
     shinyjs::enable("design_file")
     shinyjs::enable("instrument")
+    enforce_blank_mode_state(session, input$instrument)
     
     shinyjs::disable("export_files")
     
   })
   
   shiny::observeEvent(input$batch_instrument, {
-    if (input$batch_instrument == "ocelloscope") {
-      updateRadioButtons(session, "batch_blank_mode", selected = "plate")
-      shinyjs::disable("batch_blank_mode_container")
-    } else {
-      shinyjs::enable("batch_blank_mode_container")
-      
-      if (is.null(input$batch_blank_mode) ||
-          input$batch_blank_mode == "none") {
-        updateRadioButtons(session, "batch_blank_mode", selected = "plate")
-      }
-    }
     
-    apply_instrument_defaults(session,
-                              prefix = "batch",
-                              instrument = input$batch_instrument)
-  })
+    apply_instrument_defaults(
+      session,
+      prefix = "batch",
+      instrument = input$batch_instrument
+    )
+    
+    enforce_blank_mode_state(
+      session,
+      input$batch_instrument,
+      prefix = "batch"
+    )
+    
+  }, ignoreNULL = TRUE)
   
   shiny::observeEvent(input$agg_dir, {
     req(input$agg_dir)
@@ -3855,11 +3855,21 @@ B           0   0   1
   })
   
   shiny::observeEvent(input$instrument, {
-    apply_instrument_defaults(session,
-                              prefix = "",
-                              instrument = input$instrument)
     
-  })
+    # 1. Apply defaults FIRST
+    apply_instrument_defaults(
+      session,
+      prefix = "",
+      instrument = input$instrument
+    )
+    
+    # 2. Enforce blank mode rules SECOND
+    enforce_blank_mode_state(
+      session,
+      input$instrument
+    )
+    
+  }, ignoreNULL = TRUE)
   
   # -- run_one_plate_future ------------------------------------------------------
   # All mutable state lives in `bs` (the env passed in). No <<- needed.
@@ -4447,7 +4457,6 @@ B           0   0   1
       shinyjs::disable("maxod")
       shinyjs::disable("prefix")
       shinyjs::disable("design_vars")
-      shinyjs::disable("blank_mode")
       shinyjs::disable("raw_file")
       shinyjs::disable("design_file")
       shinyjs::disable("instrument")

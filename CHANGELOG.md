@@ -9,6 +9,8 @@
 
 ### Fixes
 - Replaced non-ASCII characters with either ASCII-safe characters or HTML codes for emojis
+- Disabled blank mode radio buttons at all times if oCelloscope is selected
+  - Generalized blank mode state enforcement
 
 ## [1.0.2] - 2026-05-26
 
