@@ -902,6 +902,31 @@ server <- function(input, output, session) {
     df_out
   }
   
+  # --- for debugging only ---
+  observe({
+    
+    current_version <- as.character(packageVersion("growthcurve"))
+    
+    info <- tryCatch({
+      check_for_updates(current_version, "jordanmbarrows/growthcurve")
+    }, error = function(e) {
+      print(paste("UPDATE CHECK ERROR:", e$message))
+      NULL
+    })
+    
+    print(list(
+      current = current_version,
+      info = info
+    ))
+    
+    if (!is.null(info) && info$has_update) {
+      showNotification(
+        paste0("Update available (v", info$latest, ")"),
+        duration = NULL
+      )
+    }
+  })
+  
   unwrap_preview <- function(res) {
     if (is.null(res))
       return(NULL)
