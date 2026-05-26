@@ -4,6 +4,12 @@
 
 -
 
+## [1.0.5] - 2026-05-26
+
+### Internal
+- Version bump to test update system behavior
+- Improved update modal with user instructions
+
 ## [1.0.4] - 2026-05-26
 
 ### Internal
