@@ -272,7 +272,6 @@ ui <- shiny::fluidPage(
         actionButton("refresh_files", "Refresh files"),
         shiny::verbatimTextOutput("wd_txt"),
         
-        
         tags$details(
           tags$summary(
             style = guide_summary_style(),
@@ -297,42 +296,31 @@ ui <- shiny::fluidPage(
           )
         ),
         
-        tags$details(
-          tags$summary(style = guide_summary_style(), "🌍 Regional settings"),
-          tags$div(
-            style = guide_body_style(),
-            
-            tags$hr(),
-            
-            h4("CSV format (regional settings)"),
-            
-            tags$p("Detected:", tags$strong(
-              textOutput("region_detected_txt", inline = TRUE)
-            )),
-            
-            tags$p(
-              style = guide_note_style(),
-              class = "guide-note",
-              "Note: Detection is based on your R session rather than your operating system or Excel settings. If this looks incorrect, please adjust the setting below."
-            ),
-            
-            selectInput(
-              "region_override",
-              "Output format",
-              choices = c(
-                "Auto-detect" = "auto",
-                "US (comma, decimal point)" = "US",
-                "European (semicolon, decimal comma)" = "EU"
-              ),
-              selected = "auto"
-            ),
-            
-            tags$p(
-              style = guide_note_style(),
-              class = "guide-note",
-              "This controls how data preview tables are rendered and exported plots and CSV files are written. Input files are handled automatically."
-            )
-          )
+        tags$hr(),
+        
+        h4("Export format"),
+        
+        radioButtons(
+          "region_override",
+          label = NULL,
+          choices = c(
+            "US (1.23, CSV uses comma)" = "US",
+            "European (1,23, CSV uses semicolon)" = "EU"
+          ),
+          selected = gc_app_config()$region,
+          inline = TRUE
+        ),
+        
+        tags$p(
+          style = guide_note_style(),
+          class = "guide-note",
+          "Controls how preview tables are displayed and how exported CSV files and plots are formatted."
+        ),
+        
+        tags$p(
+          style = guide_note_style(),
+          class = "guide-note",
+          "Note: Decimal points in preview are converted based on the selected format and may also affect numeric-looking identifiers."
         )
       ),
       
@@ -668,7 +656,7 @@ server <- function(input, output, session) {
     path.expand(path)
   }
   
-  region_selected <- reactiveVal(gc_app_config()$region)
+  region_selected <- reactive({input$region_override %||% gc_app_config()$region})
   wd_set <- reactiveVal(FALSE)
   wd_path <- reactiveVal(NULL)
   file_refresh <- reactiveVal(0)
@@ -740,19 +728,6 @@ server <- function(input, output, session) {
   
   output$wd_ready <- reactive({
     wd_set()
-  })
-  
-  shiny::observe({
-    req(input$region_override)
-    
-    if (input$region_override == "auto") {
-      # re-detect default (what you initialized from)
-      region_selected(gc_app_config()$region)
-      
-    } else {
-      region_selected(input$region_override)
-      
-    }
   })
   
   output$region_detected_txt <- shiny::renderText({
@@ -867,33 +842,31 @@ server <- function(input, output, session) {
   }
   
   format_preview_df <- function(df, region) {
-    if (is.null(df) || !is.data.frame(df))
+    
+    if (is.null(df) || !is.data.frame(df)) {
       return(df)
+    }
     
-    df[] <- lapply(df, function(col) {
-      # Try numeric conversion
-      num <- suppressWarnings(as.numeric(col))
-      
-      # If conversion fails → leave column as-is
-      if (all(is.na(num))) {
-        return(ifelse(is.na(col), "", col))
-      }
-      
-      # Format WITHOUT padding
-      formatted <- ifelse(is.na(num), "", as.character(signif(num, digits = 6)))
-      
-      # Replace decimal separator if EU
-      if (region == "EU") {
-        formatted <- gsub("\\.", ",", formatted)
-      }
-      
-      # Replace NA values explicitly
-      formatted[is.na(num)] <- ""
-      
-      formatted
-    })
+    df_out <- df
     
-    df
+    if (region == "EU") {
+      
+      for (j in seq_along(df_out)) {
+        
+        col_chr <- as.character(df_out[[j]])
+        
+        col_chr <- gsub(
+          "(\\d+)\\.(\\d+)",   # match digits . digits
+          "\\1,\\2",           # replace with comma
+          col_chr,
+          perl = TRUE
+        )
+        
+        df_out[[j]] <- col_chr
+      }
+    }
+    
+    df_out
   }
   
   unwrap_preview <- function(res) {
@@ -1421,7 +1394,7 @@ server <- function(input, output, session) {
   output$design_example_table <- shiny::renderTable({
     df <- design_example()
     req(df)
-    
+    df <- format_preview_df(df, region_selected())
     df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = FALSE, na = "")
@@ -2748,13 +2721,22 @@ B           0   0   1
   )
   
   output$single_raw_preview_table <- shiny::renderTable({
+    
     result <- single_preview_data()
+    req(result)
     
     if (is_preview_message(result)) {
       return(NULL)
     }
     
-    format_preview_df(result$data, region_selected())
+    df <- result$data
+    
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
+    df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
   
@@ -2788,6 +2770,7 @@ B           0   0   1
     req(file.exists(file))
     df <- read_preview_file(file, nrows = 100)
     req(df)
+    df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
   
@@ -2891,37 +2874,17 @@ B           0   0   1
   })
   
   output$batch_raw_preview_table <- shiny::renderTable({
+    
     req(input$batch_data_dir)
     
     files <- list.files(input$batch_data_dir, full.names = TRUE)
     if (length(files) == 0)
       return(NULL)
     
-    # 🚨 NEW: block table rendering if design missing for oCelloscope
+    # 🚨 block oCelloscope without design
     if (input$batch_instrument == "ocelloscope" &&
-        (is.null(input$batch_design_dir) ||
-         !nzchar(input$batch_design_dir))) {
+        (is.null(input$batch_design_dir) || !nzchar(input$batch_design_dir))) {
       return(NULL)
-    }
-    
-    file <- files[1]
-    
-    # Optional design
-    design <- NULL
-    if (!is.null(input$batch_design_dir) &&
-        nzchar(input$batch_design_dir)) {
-      df <- tryCatch(
-        validated_pairs_cached(),
-        error = function(e = NULL)
-          NULL
-      )
-      
-      if (!is.null(df) && nrow(df) > 0) {
-        design <- df$design_file[1]
-        if (is.na(design) || !file.exists(design)) {
-          design <- NULL
-        }
-      }
     }
     
     result <- unwrap_preview(batch_preview_raw())
@@ -2930,10 +2893,17 @@ B           0   0   1
       return(NULL)
     }
     
-    format_preview_df(result$data, region_selected())
+    df <- result$data
+    
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
+    df
     
   }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = TRUE, na = "")
-  
+    
   output$batch_preview_label <- shiny::renderText({
     req(input$batch_data_dir)
     
@@ -2971,6 +2941,19 @@ B           0   0   1
     req(!is.na(file), file.exists(file))
     df <- read_preview_file(file, nrows = 100)
     req(df)
+    
+    print("=== BEFORE FORMATTING ===")
+    print(df)
+    print(sapply(df, class))
+    
+    df2 <- format_preview_df(df, region_selected())
+    
+    print("=== AFTER FORMATTING ===")
+    print(df2)
+    
+    df2
+    
+    df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
   
@@ -3141,6 +3124,12 @@ B           0   0   1
     # ✅ drop unwanted column if present
     df <- df[, setdiff(names(df), "source_file"), drop = FALSE]
     
+    # ✅ APPLY FORMAT HERE
+    df <- format_preview_df(
+      df,
+      region_selected()
+    )
+    
     DT::datatable(
       head(df, 100),
       options = list(pageLength = 10, scrollX = TRUE),
@@ -3220,7 +3209,8 @@ B           0   0   1
         actionButton(
           "cancel_batch",
           "Cancel batch",
-          class = "btn-warning"
+          class = "btn-warning",
+          disabled = TRUE
         ),
         
       ),
