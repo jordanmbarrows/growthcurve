@@ -358,7 +358,7 @@ write_csv_safe <- function(df, file, region = NULL) {
   }
   
   if (!is.data.frame(df)) {
-    gc_abort("write_csv_safe expects a data.frame", call. = FALSE)
+    gc_abort("write_csv_safe expects a data.frame")
   }
   
   if (region == "EU") {
