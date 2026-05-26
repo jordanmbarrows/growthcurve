@@ -44,6 +44,23 @@ guide_note_style <- function() {
   "font-size: 0.9em; color: inherit;"
 }
 
+check_for_updates <- function(current_version, repo) {
+  url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
+  
+  res <- tryCatch({
+    jsonlite::fromJSON(url)
+  }, error = function(e) NULL)
+  
+  if (is.null(res) || is.null(res$tag_name)) return(NULL)
+  
+  latest <- sub("^v", "", res$tag_name)
+  
+  list(
+    latest = latest,
+    has_update = utils::compareVersion(latest, current_version) > 0
+  )
+}
+
 # ---- UI ----
 ui <- shiny::fluidPage(
   shinyjs::useShinyjs(),
@@ -490,6 +507,29 @@ server <- function(input, output, session) {
     warning = "#ffb74d",   # optional
     danger  = "#ef5350"    # optional
   )
+  
+  observe({
+    
+    current_version <- as.character(utils::packageVersion("growthcurve"))
+    
+    info <- check_for_updates(
+      current_version,
+      "jordanmbarrows/growthcurve"
+    )
+    
+    if (!is.null(info) && info$has_update) {
+      
+      showNotification(
+        paste0(
+          "Update available (v", info$latest, "). ",
+          "Reinstall from GitHub to update."
+        ),
+        type = "message",
+        duration = NULL
+      )
+    }
+    
+  })
   
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)

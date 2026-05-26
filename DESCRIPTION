@@ -29,7 +29,9 @@ Imports:
     later (>= 1.2.0),
     htmlwidgets (>= 1.5.3),
     tidyselect (>= 1.1.1),
-    parallel
+    parallel,
+    bslib,
+    jsonlite
 Suggests:
     testthat (>= 3.0.0)
 LazyData: true
