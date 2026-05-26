@@ -7,21 +7,20 @@
 ## [1.0.3] - 2026-05-26
 
 ### Improvements
-- Added check update function to see if the current version matches the most recent on Github
- - Prompts user to install the latest one if not
- - Automatically installs if user chooses and instructs user how to start the new version
+- Added check update function to see if the current version matches the most recent on GitHub
+- Prompts user to install the latest one if not
 - Generalized run failure message and improved console log output (dev mode only)
 
 ### Fixes
-- Replaced non-ASCII characters with either ASCII-safe characters or HTML codes for emojis
-- Disabled blank mode radio buttons at all times if oCelloscope is selected
-  - Generalized blank mode state enforcement
-- Fixed issue where European regional formatting was misinterpreting scientific notation for preview tables
+- Replaced non-ASCII characters with ASCII-safe characters or HTML codes for emojis
+- Disabled blank mode radio buttons when oCelloscope is selected
+- Generalized blank mode state enforcement
+- Fixed issue where European formatting misinterpreted scientific notation in preview tables
 - Updated imports in DESCRIPTION
-- Correct inconsistency between GitHub tags and package DESCRIPTION version
+- Fixed inconsistency between GitHub tags and DESCRIPTION version
 - Cleaned up documentation
 - Added `check_for_updates()` to NAMESPACE
-- Replaced obsolete `APP_CONFIG$region` calls in `growthcurve_system.R` with updated `gc_app_config()$region`
+- Replaced obsolete `APP_CONFIG$region` calls with `gc_app_config()$region`
 
 ## [1.0.2] - 2026-05-26
 
