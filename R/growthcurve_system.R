@@ -1,6 +1,6 @@
 # ============================================================
 # growthcurve_system.R
-# Growth Curve App – System Configuration & Behavior Layer
+# Growth Curve App - System Configuration & Behavior Layer
 #
 # Purpose:
 #   Centralizes all environment-dependent behavior, including:
@@ -27,7 +27,7 @@ gc_dev_mode <- function() {
 }
 
 # ============================================================
-# ✅ App Metadata  (sourced from DESCRIPTION)
+#  App Metadata  (sourced from DESCRIPTION)
 #=============================================================
 
 #' @export
@@ -36,7 +36,7 @@ gc_app_version <- function() {
 }
 
 # ============================================================
-# ✅ Backend readiness check (replaces app.R logic)
+#  Backend readiness check (replaces app.R logic)
 # ============================================================
 
 #' @export
@@ -65,9 +65,9 @@ gc_backend_ready <- function() {
     TRUE
     
   }, error = function(e) {
-    msg <- conditionMessage(e)   # ✅ FIXED
+    msg <- conditionMessage(e)   #  FIXED
     assign("gc_startup_error", msg, envir = .GlobalEnv)
-    message(msg)                 # ✅ now prints to console
+    message(msg)                 #  now prints to console
     FALSE
   })
 }
@@ -130,7 +130,7 @@ gc_abort <- function(message) {
 }
 
 # ============================================================
-# ✅ OS Detection
+#  OS Detection
 # ============================================================
 
 detect_os <- function() {
@@ -147,7 +147,7 @@ detect_os <- function() {
 
 
 # ============================================================
-# ✅ Regional Detection (basic heuristic)
+#  Regional Detection (basic heuristic)
 # ============================================================
 
 detect_region <- function() {
@@ -161,7 +161,7 @@ detect_region <- function() {
 }
 
 # ============================================================
-# ✅ Global Configuration Object
+#  Global Configuration Object
 # ============================================================
 
 #' @export
@@ -171,7 +171,7 @@ gc_app_config <- function() {
 
 
 # ============================================================
-# ✅ Behavior: Open Folder
+#  Behavior: Open Folder
 # ============================================================
 
 open_folder <- function(path) {
@@ -202,14 +202,14 @@ open_folder <- function(path) {
     
   }, error = function(e) {
     
-    message("⚠ Could not open folder: ", gc_get_message(e))
+    message("[!] Could not open folder: ", gc_get_message(e))
     return(FALSE)
     
   })
 }
 
 # ============================================================
-# ✅ Behavior: Pretty Path (for display/export)
+#  Behavior: Pretty Path (for display/export)
 # ============================================================
 
 pretty_export_path <- function(path) {
@@ -233,7 +233,7 @@ pretty_export_path <- function(path) {
 }
 
 # ============================================================
-# ✅ (FOUNDATION) CSV Behavior Abstraction
+#  (FOUNDATION) CSV Behavior Abstraction
 # ============================================================
 # NOTE:
 #   These functions are NOT fully wired yet, but they define
@@ -249,7 +249,7 @@ get_decimal_mark <- function() {
 }
 
 # ============================================================
-# ✅ Safe CSV Reader (centralized)
+#  Safe CSV Reader (centralized)
 # ============================================================
 
 read_csv_safe <- function(file,
@@ -347,7 +347,7 @@ read_csv_safe_text <- function(text,
 }
 
 # ============================================================
-# ✅ Safe CSV Writer (future-proof)
+#  Safe CSV Writer (future-proof)
 # ============================================================
 
 write_csv_safe <- function(df, file, region = NULL) {
