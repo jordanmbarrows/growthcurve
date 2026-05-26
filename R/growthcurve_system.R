@@ -301,11 +301,11 @@ pretty_export_path <- function(path) {
 # ============================================================
 
 get_csv_delimiter <- function() {
-  if (APP_CONFIG$region == "EU") ";" else ","
+  if (gc_app_config()$region == "EU") ";" else ","
 }
 
 get_decimal_mark <- function() {
-  if (APP_CONFIG$region == "EU") "," else "."
+  if (gc_app_config()$region == "EU") "," else "."
 }
 
 # ============================================================
@@ -414,7 +414,7 @@ write_csv_safe <- function(df, file, region = NULL) {
   
   
   if (is.null(region)) {
-    region <- APP_CONFIG$region
+    region <- gc_app_config()$region
   }
   
   if (!is.data.frame(df)) {
