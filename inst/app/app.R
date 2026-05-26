@@ -868,22 +868,36 @@ server <- function(input, output, session) {
     
     df_out <- df
     
-    if (region == "EU") {
+    df_out[] <- lapply(df_out, function(col) {
       
-      for (j in seq_along(df_out)) {
+      # ---- STEP 1: convert EVERYTHING to character safely ----
+      
+      if (is.numeric(col)) {
         
-        col_chr <- as.character(df_out[[j]])
+        # force decimal representation (NO scientific notation)
+        col_chr <- format(
+          col,
+          scientific = FALSE,
+          trim = TRUE
+        )
         
+      } else {
+        col_chr <- as.character(col)
+      }
+      
+      # ---- STEP 2: apply EU decimal conversion ----
+      
+      if (region == "EU") {
         col_chr <- gsub(
-          "(\\d+)\\.(\\d+)",   # match digits . digits
-          "\\1,\\2",           # replace with comma
+          "(?<=\\d)\\.(?=\\d)",
+          ",",
           col_chr,
           perl = TRUE
         )
-        
-        df_out[[j]] <- col_chr
       }
-    }
+      
+      col_chr
+    })
     
     df_out
   }
@@ -2782,10 +2796,9 @@ B           0   0   1
     
     df <- result$data
     
-    df <- format_preview_df(
-      df,
-      region_selected()
-    )
+    df <- format_preview_df(df, region_selected())
+    
+    df[] <- lapply(df, as.character)
     
     df
     
