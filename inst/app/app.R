@@ -683,6 +683,7 @@ server <- function(input, output, session) {
   region_selected <- reactive({input$region_override %||% gc_app_config()$region})
   wd_set <- reactiveVal(FALSE)
   wd_path <- reactiveVal(NULL)
+  update_info <- reactiveVal(NULL)
   file_refresh <- reactiveVal(0)
   batch_pairs <- reactiveVal(NULL)
   batch_failures <- reactiveVal(character(0))
@@ -902,29 +903,86 @@ server <- function(input, output, session) {
     df_out
   }
   
-  # --- for debugging only ---
   observe({
+    later::later(function() {
+      shiny::withReactiveDomain(session, {
+        current_version <- as.character(utils::packageVersion("growthcurve"))
+        
+        info <- tryCatch(
+          suppressWarnings(
+            check_for_updates(current_version, "jordanmbarrows/growthcurve")
+          ),
+          error = function(e) NULL
+        )
+        
+        update_info(info)
+        
+        if (!is.null(info) && info$has_update) {
+          showModal(modalDialog(
+            title = paste0("Update available (v", info$latest, ")"),
+            p("A new version is available. Update now?"),
+            p("The app will close after installation. Please relaunch it to use the new version."),
+            footer = tagList(
+              actionButton("gc_update_now", "Update & Close", class = "btn-primary"),
+              modalButton("Later")
+            )
+          ))
+        }
+      })
+    }, delay = 2)
+  })
+  
+  observeEvent(input$gc_update_now, {
+    info <- update_info()
+    req(info, info$latest)
     
-    current_version <- as.character(packageVersion("growthcurve"))
+    removeModal()
     
-    info <- tryCatch({
-      check_for_updates(current_version, "jordanmbarrows/growthcurve")
-    }, error = function(e) {
-      print(paste("UPDATE CHECK ERROR:", e$message))
-      NULL
-    })
-    
-    print(list(
-      current = current_version,
-      info = info
+    showModal(modalDialog(
+      title = "Installing update...",
+      p("Please wait. The app will close when installation is complete."),
+      footer = NULL,
+      easyClose = FALSE
     ))
     
-    if (!is.null(info) && info$has_update) {
-      showNotification(
-        paste0("Update available (v", info$latest, ")"),
-        duration = NULL
+    # Install in a background process, then stop the app when done
+    script <- tempfile(fileext = ".R")
+    writeLines(c(
+      "if (!requireNamespace('remotes', quietly = TRUE)) {",
+      "  install.packages('remotes', repos = 'https://cloud.r-project.org')",
+      "}",
+      sprintf(
+        "remotes::install_github('jordanmbarrows/growthcurve@v%s', upgrade = 'never', dependencies = NA, force = TRUE)",
+        info$latest
       )
+    ), con = script)
+    
+    # Run install synchronously so we can close the app cleanly after
+    result <- tryCatch(
+      system2(file.path(R.home("bin"), "Rscript"), c("--vanilla", shQuote(script)), wait = TRUE),
+      error = function(e) 1L
+    )
+    
+    if (result == 0L) {
+      showModal(modalDialog(
+        title = "Update complete",
+        p(paste0("growthcurve v", info$latest, " has been installed.")),
+        p("Please relaunch the app to use the new version."),
+        footer = actionButton("gc_close_after_update", "Close app", class = "btn-primary"),
+        easyClose = FALSE
+      ))
+    } else {
+      showModal(modalDialog(
+        title = "Update failed",
+        p("The installation did not complete successfully."),
+        p("You can try reinstalling manually from GitHub."),
+        easyClose = TRUE
+      ))
     }
+  })
+  
+  observeEvent(input$gc_close_after_update, {
+    stopApp()
   })
   
   unwrap_preview <- function(res) {
