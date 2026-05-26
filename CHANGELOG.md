@@ -2,7 +2,13 @@
 
 ## Unreleased
 
--
+### Improvements
+- Added check update function to see if the current version matches the most recent on Github
+ - Prompts user to install the latest one if not
+- Generalized run failure message and improved console log output (dev mode only)
+
+### Fixes
+- Replaced non-ASCII characters with either ASCII-safe characters or HTML codes for emojis
 
 ## [1.0.2] - 2026-05-26
 
