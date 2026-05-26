@@ -21,6 +21,7 @@
 # DEV MODE (global single source of truth)
 # ============================================================
 
+#' Sets dev mode flag
 #' @export
 gc_dev_mode <- function() {
   isTRUE(getOption("gc.dev_mode", FALSE))
@@ -30,6 +31,7 @@ gc_dev_mode <- function() {
 #  App Metadata  (sourced from DESCRIPTION)
 #=============================================================
 
+#' Get application version
 #' @export
 gc_app_version <- function() {
   as.character(utils::packageVersion(utils::packageName()))
@@ -39,6 +41,7 @@ gc_app_version <- function() {
 #  Backend readiness check
 # ============================================================
 
+#' Get backend ready
 #' @export
 gc_backend_ready <- function() {
   tryCatch({
@@ -76,6 +79,8 @@ gc_backend_ready <- function() {
 #  Update checker
 # ============================================================
 
+#' Check for app updates
+#' @export
 check_for_updates <- function(current_version, repo) {
   url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
   
@@ -96,6 +101,7 @@ check_for_updates <- function(current_version, repo) {
 # ============================================================
 # DEBUG LOGGING UTILITIES
 # ============================================================
+
 gc_log <- function(...) {
   if (!gc_dev_mode()) return(invisible(NULL))
   
@@ -217,6 +223,7 @@ detect_region <- function() {
 #  Global Configuration Object
 # ============================================================
 
+#' Get application configuration
 #' @export
 gc_app_config <- function() {
   list(region = detect_region())
