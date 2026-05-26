@@ -4,6 +4,24 @@
 
 -
 
+## [1.0.3] - 2026-05-26
+
+### Improvements
+- Added check update function to see if the current version matches the most recent on GitHub
+- Prompts user to install the latest one if not
+- Generalized run failure message and improved console log output (dev mode only)
+
+### Fixes
+- Replaced non-ASCII characters with ASCII-safe characters or HTML codes for emojis
+- Disabled blank mode radio buttons when oCelloscope is selected
+- Generalized blank mode state enforcement
+- Fixed issue where European formatting misinterpreted scientific notation in preview tables
+- Updated imports in DESCRIPTION
+- Fixed inconsistency between GitHub tags and DESCRIPTION version
+- Cleaned up documentation
+- Added `check_for_updates()` to NAMESPACE
+- Replaced obsolete `APP_CONFIG$region` calls with `gc_app_config()$region`
+
 ## [1.0.2] - 2026-05-26
 
 ### Improvements

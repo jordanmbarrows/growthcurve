@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 ^\.positai$
 ^\.claude$
+^\.dev_mode$
+^dev_flags$

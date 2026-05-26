@@ -1,6 +1,6 @@
 # ============================================================
 # growthcurve_system.R
-# Growth Curve App – System Configuration & Behavior Layer
+# Growth Curve App - System Configuration & Behavior Layer
 #
 # Purpose:
 #   Centralizes all environment-dependent behavior, including:
@@ -21,24 +21,27 @@
 # DEV MODE (global single source of truth)
 # ============================================================
 
+#' Sets dev mode flag
 #' @export
 gc_dev_mode <- function() {
   isTRUE(getOption("gc.dev_mode", FALSE))
 }
 
 # ============================================================
-# ✅ App Metadata  (sourced from DESCRIPTION)
+#  App Metadata  (sourced from DESCRIPTION)
 #=============================================================
 
+#' Get application version
 #' @export
 gc_app_version <- function() {
   as.character(utils::packageVersion(utils::packageName()))
 }
 
 # ============================================================
-# ✅ Backend readiness check (replaces app.R logic)
+#  Backend readiness check
 # ============================================================
 
+#' Get backend ready
 #' @export
 gc_backend_ready <- function() {
   tryCatch({
@@ -65,16 +68,40 @@ gc_backend_ready <- function() {
     TRUE
     
   }, error = function(e) {
-    msg <- conditionMessage(e)   # ✅ FIXED
+    msg <- conditionMessage(e)   #  FIXED
     assign("gc_startup_error", msg, envir = .GlobalEnv)
-    message(msg)                 # ✅ now prints to console
+    message(msg)                 #  now prints to console
     FALSE
   })
 }
 
 # ============================================================
+#  Update checker
+# ============================================================
+
+#' Check for app updates
+#' @export
+check_for_updates <- function(current_version, repo) {
+  url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
+  
+  res <- tryCatch({
+    jsonlite::fromJSON(url)
+  }, error = function(e) NULL)
+  
+  if (is.null(res) || is.null(res$tag_name)) return(NULL)
+  
+  latest <- sub("^v", "", res$tag_name)
+  
+  list(
+    latest = latest,
+    has_update = utils::compareVersion(latest, current_version) > 0
+  )
+}
+
+# ============================================================
 # DEBUG LOGGING UTILITIES
 # ============================================================
+
 gc_log <- function(...) {
   if (!gc_dev_mode()) return(invisible(NULL))
   
@@ -130,7 +157,39 @@ gc_abort <- function(message) {
 }
 
 # ============================================================
-# ✅ OS Detection
+# Formats errors for shared error handling
+# ============================================================
+
+gc_format_error <- function(e, dev = NULL) {
+  
+  if (is.null(dev)) dev <- gc_dev_mode()
+  
+  # Extract message safely
+  msg <- tryCatch(
+    gc_get_message(e),
+    error = function(...) "Unknown error"
+  )
+  
+  # DEV MODE: keep detail
+  if (dev) {
+    return(list(
+      user_message = msg,
+      debug = list(
+        class = class(e),
+        message = msg
+      )
+    ))
+  }
+  
+  # USER MODE: standardized message
+  list(
+    user_message = "The analysis could not be completed. Please check your instrument, input files, and formatting.",
+    debug = NULL
+  )
+}
+
+# ============================================================
+#  OS Detection
 # ============================================================
 
 detect_os <- function() {
@@ -147,7 +206,7 @@ detect_os <- function() {
 
 
 # ============================================================
-# ✅ Regional Detection (basic heuristic)
+#  Regional Detection (basic heuristic)
 # ============================================================
 
 detect_region <- function() {
@@ -161,9 +220,10 @@ detect_region <- function() {
 }
 
 # ============================================================
-# ✅ Global Configuration Object
+#  Global Configuration Object
 # ============================================================
 
+#' Get application configuration
 #' @export
 gc_app_config <- function() {
   list(region = detect_region())
@@ -171,7 +231,7 @@ gc_app_config <- function() {
 
 
 # ============================================================
-# ✅ Behavior: Open Folder
+#  Behavior: Open Folder
 # ============================================================
 
 open_folder <- function(path) {
@@ -202,14 +262,14 @@ open_folder <- function(path) {
     
   }, error = function(e) {
     
-    message("⚠ Could not open folder: ", gc_get_message(e))
+    message("[!] Could not open folder: ", gc_get_message(e))
     return(FALSE)
     
   })
 }
 
 # ============================================================
-# ✅ Behavior: Pretty Path (for display/export)
+#  Behavior: Pretty Path (for display/export)
 # ============================================================
 
 pretty_export_path <- function(path) {
@@ -233,7 +293,7 @@ pretty_export_path <- function(path) {
 }
 
 # ============================================================
-# ✅ (FOUNDATION) CSV Behavior Abstraction
+#  (FOUNDATION) CSV Behavior Abstraction
 # ============================================================
 # NOTE:
 #   These functions are NOT fully wired yet, but they define
@@ -241,15 +301,15 @@ pretty_export_path <- function(path) {
 # ============================================================
 
 get_csv_delimiter <- function() {
-  if (APP_CONFIG$region == "EU") ";" else ","
+  if (gc_app_config()$region == "EU") ";" else ","
 }
 
 get_decimal_mark <- function() {
-  if (APP_CONFIG$region == "EU") "," else "."
+  if (gc_app_config()$region == "EU") "," else "."
 }
 
 # ============================================================
-# ✅ Safe CSV Reader (centralized)
+#  Safe CSV Reader (centralized)
 # ============================================================
 
 read_csv_safe <- function(file,
@@ -347,18 +407,18 @@ read_csv_safe_text <- function(text,
 }
 
 # ============================================================
-# ✅ Safe CSV Writer (future-proof)
+#  Safe CSV Writer (future-proof)
 # ============================================================
 
 write_csv_safe <- function(df, file, region = NULL) {
   
   
   if (is.null(region)) {
-    region <- APP_CONFIG$region
+    region <- gc_app_config()$region
   }
   
   if (!is.data.frame(df)) {
-    gc_abort("write_csv_safe expects a data.frame", call. = FALSE)
+    gc_abort("write_csv_safe expects a data.frame")
   }
   
   if (region == "EU") {
@@ -397,3 +457,29 @@ write_csv_safe <- function(df, file, region = NULL) {
     fileEncoding = "UTF-8"
   )
 }
+
+# ============================================================
+#  Blank mode state enforcer
+# ============================================================
+
+# growthcurve_system.R
+#' @noRd
+enforce_blank_mode_state <- function(session, instrument, prefix = "") {
+  
+  id <- if (nzchar(prefix)) {
+    paste0(prefix, "_blank_mode_container")
+  } else {
+    "blank_mode_container"
+  }
+  
+  if (instrument == "ocelloscope") {
+    updateRadioButtons(session,
+                       if (nzchar(prefix)) paste0(prefix, "_blank_mode") else "blank_mode",
+                       selected = "plate")
+    
+    shinyjs::disable(id)
+  } else {
+    shinyjs::enable(id)
+  }
+}
+
