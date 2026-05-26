@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## [1.0.1] - 2026-05-26
+
 ### Internal improvements & bug fixes
 - Moved helper functions into `R/` directory
 - Fixed namespace resolution issues in Shiny runtime
