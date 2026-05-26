@@ -1,6 +1,6 @@
 Package: growthcurve
 Title: Growth Curve Analysis Shiny Application
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: person("Jordan", "Barrows", email = "jordan.m.barrows@gmail.com", 
                    role = c("aut", "cre"))
 Description: A comprehensive Shiny application for analyzing microbial growth curves
