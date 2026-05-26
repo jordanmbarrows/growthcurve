@@ -3209,7 +3209,8 @@ B           0   0   1
         actionButton(
           "cancel_batch",
           "Cancel batch",
-          class = "btn-warning"
+          class = "btn-warning",
+          disabled = TRUE
         ),
         
       ),
