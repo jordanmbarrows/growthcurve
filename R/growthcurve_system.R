@@ -36,7 +36,7 @@ gc_app_version <- function() {
 }
 
 # ============================================================
-#  Backend readiness check (replaces app.R logic)
+#  Backend readiness check
 # ============================================================
 
 #' @export
@@ -70,6 +70,27 @@ gc_backend_ready <- function() {
     message(msg)                 #  now prints to console
     FALSE
   })
+}
+
+# ============================================================
+#  Update checker
+# ============================================================
+
+check_for_updates <- function(current_version, repo) {
+  url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
+  
+  res <- tryCatch({
+    jsonlite::fromJSON(url)
+  }, error = function(e) NULL)
+  
+  if (is.null(res) || is.null(res$tag_name)) return(NULL)
+  
+  latest <- sub("^v", "", res$tag_name)
+  
+  list(
+    latest = latest,
+    has_update = utils::compareVersion(latest, current_version) > 0
+  )
 }
 
 # ============================================================
@@ -127,6 +148,38 @@ gc_abort <- function(message) {
   )
   
   stop(cond)
+}
+
+# ============================================================
+# Formats errors for shared error handling
+# ============================================================
+
+gc_format_error <- function(e, dev = NULL) {
+  
+  if (is.null(dev)) dev <- gc_dev_mode()
+  
+  # Extract message safely
+  msg <- tryCatch(
+    gc_get_message(e),
+    error = function(...) "Unknown error"
+  )
+  
+  # DEV MODE: keep detail
+  if (dev) {
+    return(list(
+      user_message = msg,
+      debug = list(
+        class = class(e),
+        message = msg
+      )
+    ))
+  }
+  
+  # USER MODE: standardized message
+  list(
+    user_message = "The analysis could not be completed. Please check your instrument, input files, and formatting.",
+    debug = NULL
+  )
 }
 
 # ============================================================

@@ -44,23 +44,6 @@ guide_note_style <- function() {
   "font-size: 0.9em; color: inherit;"
 }
 
-check_for_updates <- function(current_version, repo) {
-  url <- paste0("https://api.github.com/repos/", repo, "/releases/latest")
-  
-  res <- tryCatch({
-    jsonlite::fromJSON(url)
-  }, error = function(e) NULL)
-  
-  if (is.null(res) || is.null(res$tag_name)) return(NULL)
-  
-  latest <- sub("^v", "", res$tag_name)
-  
-  list(
-    latest = latest,
-    has_update = utils::compareVersion(latest, current_version) > 0
-  )
-}
-
 # ---- UI ----
 ui <- shiny::fluidPage(
   shinyjs::useShinyjs(),
@@ -463,9 +446,10 @@ server <- function(input, output, session) {
   gc_instrument_defaults <- growthcurve:::gc_instrument_defaults
   
   # --- Logging ---
-  gc_log_block   <- growthcurve:::gc_log_block
-  gc_log         <- growthcurve:::gc_log
-  gc_get_message <- growthcurve:::gc_get_message
+  gc_log_block    <- growthcurve:::gc_log_block
+  gc_log          <- growthcurve:::gc_log
+  gc_get_message  <- growthcurve:::gc_get_message
+  gc_format_error <- growthcurve:::gc_format_error
   
   # --- Runtime ---
   gc_dev_mode       <- growthcurve:::gc_dev_mode
@@ -3745,12 +3729,9 @@ B           0   0   1
                        )
                      )
                      
-                     msg <- if (inherits(e, "gc_error")) {
-                       gc_get_message(e)
-                     } else {
-                       paste("Unexpected error:\n", gc_get_message(e))
-                     }
+                     err <- gc_format_error(e)
                      
+                     msg <- err$user_message
                      
                      showModal(modalDialog(
                        title = "Analysis failed",
@@ -3943,13 +3924,13 @@ B           0   0   1
             )
           )
         }, error = function(e = NULL) {
+          
+          err <- gc_format_error(e, dev = gc_dev_mode())
+          
           list(
             success = FALSE,
-            message = if (inherits(e, "gc_error")) {
-              growthcurve:::gc_get_message(e)
-            } else {
-              paste("Unexpected error:", growthcurve:::gc_get_message(e))
-            },
+            message = err$user_message,
+            debug   = err$debug,
             plate   = pairs_val$data_file[i]
           )
         })
@@ -4074,7 +4055,13 @@ B           0   0   1
                 paste0("Plate ", i, ": ", result$message %||% "unknown error")
               )
               
-              gc_log_block(paste("BATCH FAILURE plate", i), result$message)
+              gc_log_block(
+                paste("BATCH FAILURE plate", i),
+                list(
+                  message = result$message,
+                  debug   = result$debug
+                )
+              )
             }
 
             # UNIFIED cancellation check (IMPORTANT)
@@ -4120,7 +4107,15 @@ B           0   0   1
 
     # -- catch: promise itself rejected (system/async error) -------------------
     prom <- promises::catch(prom, function(e) {
-      gc_log_block(paste("ASYNC ERROR plate", i), conditionMessage(e))
+      
+      err <- gc_format_error(e)
+      
+      gc_log_block(
+        paste("ASYNC ERROR plate", i),
+        list(
+          message = err$user_message
+        )
+      )
       
       tryCatch({
         bs$running   <- bs$running - 1L
@@ -4128,7 +4123,8 @@ B           0   0   1
         bs$aborted   <- TRUE
         bs$queue     <- list()
         bs$failures  <- c(bs$failures,
-                          paste0("Plate ", i, ": async system error - ", conditionMessage(e)))
+                          paste0("Plate ", i, ": ", err$user_message)
+                          )
         gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
                      conditionMessage(e))
         maybe_finish_fn()
