@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.0.3] - 2026-05-26
+
 ### Improvements
 - Added check update function to see if the current version matches the most recent on Github
  - Prompts user to install the latest one if not
