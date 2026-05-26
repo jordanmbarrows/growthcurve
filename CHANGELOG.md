@@ -14,6 +14,8 @@
 - Disabled blank mode radio buttons at all times if oCelloscope is selected
   - Generalized blank mode state enforcement
 - Fixed issue where European regional formatting was misinterpreting scientific notation for preview tables
+- Updated imports in DESCRIPTION
+- Correct inconsistency between GitHub tags and package DESCRIPTION version
 
 ## [1.0.2] - 2026-05-26
 
