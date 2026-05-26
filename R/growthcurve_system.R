@@ -457,3 +457,29 @@ write_csv_safe <- function(df, file, region = NULL) {
     fileEncoding = "UTF-8"
   )
 }
+
+# ============================================================
+#  Blank mode state enforcer
+# ============================================================
+
+# growthcurve_system.R
+#' @noRd
+enforce_blank_mode_state <- function(session, instrument, prefix = "") {
+  
+  id <- if (nzchar(prefix)) {
+    paste0(prefix, "_blank_mode_container")
+  } else {
+    "blank_mode_container"
+  }
+  
+  if (instrument == "ocelloscope") {
+    updateRadioButtons(session,
+                       if (nzchar(prefix)) paste0(prefix, "_blank_mode") else "blank_mode",
+                       selected = "plate")
+    
+    shinyjs::disable(id)
+  } else {
+    shinyjs::enable(id)
+  }
+}
+

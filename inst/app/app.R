@@ -474,6 +474,7 @@ server <- function(input, output, session) {
   pretty_export_path <- growthcurve:::pretty_export_path
   open_folder        <- growthcurve:::open_folder
   gc_abort           <- growthcurve:::gc_abort
+  enforce_blank_mode_state <- growthcurve:::enforce_blank_mode_state
   
   light_theme <- bslib::bs_theme(
     version = 3,
@@ -491,29 +492,6 @@ server <- function(input, output, session) {
     warning = "#ffb74d",   # optional
     danger  = "#ef5350"    # optional
   )
-  
-  observe({
-    
-    current_version <- as.character(utils::packageVersion("growthcurve"))
-    
-    info <- check_for_updates(
-      current_version,
-      "jordanmbarrows/growthcurve"
-    )
-    
-    if (!is.null(info) && info$has_update) {
-      
-      showNotification(
-        paste0(
-          "Update available (v", info$latest, "). ",
-          "Reinstall from GitHub to update."
-        ),
-        type = "message",
-        duration = NULL
-      )
-    }
-    
-  })
   
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
@@ -903,11 +881,11 @@ server <- function(input, output, session) {
     df_out
   }
   
-  observe({
+  observe(TRUE, {
     later::later(function() {
       shiny::withReactiveDomain(session, {
-        current_version <- "0.0.1" # as.character(utils::packageVersion("growthcurve"))
-        
+        current_version <-  "0.0.1" # gc_app_version()
+
         info <- tryCatch(
           suppressWarnings(
             check_for_updates(current_version, "jordanmbarrows/growthcurve")
@@ -930,7 +908,7 @@ server <- function(input, output, session) {
         }
       })
     }, delay = 2)
-  })
+  }, once = TRUE)
   
   observeEvent(input$gc_update_now, {
     info <- update_info()
@@ -1056,25 +1034,6 @@ server <- function(input, output, session) {
     updateNumericInput(session, interval_id, value = defaults$interval)
     updateNumericInput(session, minod_id, value = defaults$minod)
     updateNumericInput(session, maxod_id, value = defaults$maxod)
-  }
-  
-  enforce_blank_mode_state <- function(session, instrument, prefix = "") {
-    
-    id <- if (nzchar(prefix)) {
-      paste0(prefix, "_blank_mode_container")
-    } else {
-      "blank_mode_container"
-    }
-    
-    if (instrument == "ocelloscope") {
-      updateRadioButtons(session,
-                         if (nzchar(prefix)) paste0(prefix, "_blank_mode") else "blank_mode",
-                         selected = "plate")
-      
-      shinyjs::disable(id)
-    } else {
-      shinyjs::enable(id)
-    }
   }
   
   make_export_dirs <- function(wd, prefix) {
