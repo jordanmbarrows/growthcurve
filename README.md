@@ -106,7 +106,7 @@ MIT License - See LICENSE file for details
 
 ## Author
 
-Jordan Barrows
+Jordan M Barrows
 
 ## Acknowledgements
 
