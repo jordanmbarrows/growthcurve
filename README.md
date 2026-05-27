@@ -66,7 +66,7 @@ This opens the interactive Shiny app in your default web browser.
 
 ## Screenshot
 
-Example interface for analyzing microbial growth curves::
+Example interface for analyzing microbial growth curves:
 
 ![Screenshot](inst/app/www/screenshot.png)
 
