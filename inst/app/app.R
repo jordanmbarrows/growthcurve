@@ -2398,16 +2398,21 @@ B           0   0   1
               "Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."
             ),
             tags$li(
-              "To add a variable, copy a full block, paste it below, and rename it."
+              "To add a variable, copy a full block, paste it below, and rename it. Remember to leave one empty row between blocks."
             ),
             tags$li(
-              'Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty.'
+              "Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty."
             )
           ),
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Do not insert, delete, or shift cells inside a block. Only replace the values."
+            "Do not change the layout of a block (do not insert, delete, or move rows or columns). Only modify the values inside existing cells."
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
           ),
           
           tags$p(
@@ -2439,13 +2444,10 @@ B           0   0   1
             "Download the template matching your regional CSV format."
           ),
           
-          fluidRow(column(
-            6,
-            downloadButton("download_template_us", "US format (comma)")
-          ), column(
-            6,
-            downloadButton("download_template_eu", "European format (semicolon)")
-          ))
+          fluidRow(
+            column(6, downloadButton("download_template_us", "US format (comma)")),
+            column(6, downloadButton("download_template_eu", "European format (semicolon)"))
+          )
         )
       ),
       
