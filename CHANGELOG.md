@@ -2,7 +2,8 @@
 
 ## Unreleased
 
--
+### Improvements
+- Updated all instances of 'Not_Blank' to 'Sample'
 
 ## [1.0.7] - 2026-05-26
 
