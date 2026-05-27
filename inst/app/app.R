@@ -3413,7 +3413,6 @@ B           0   0   1
     
     if (current_stage() == "blank_linear") {
       shiny::tagList(
-        h3("Blank-corrected OD (linear scale)"),
         plotOutput("plot_blank_linear", height = "500px"),
         p(
           "Inspect blank wells and confirm that non-blank wells ",
@@ -3429,7 +3428,6 @@ B           0   0   1
       
     } else if (current_stage() == "blank_log") {
       shiny::tagList(
-        h3("Blank-corrected OD (log scale)"),
         plotOutput("plot_blank_log", height = "500px"),
         p(
           "Inspect baseline behavior and early growth on a log scale. ",
@@ -3445,7 +3443,6 @@ B           0   0   1
       
     } else if (current_stage() == "mean_curves") {
       shiny::tagList(
-        h3("Mean growth curves with 95% confidence interval"),
         plotOutput("plot_mean_curves", height = "500px"),
         p(
           "Inspect group-averaged growth curves and confidence intervals. ",
@@ -3456,7 +3453,6 @@ B           0   0   1
       
     } else if (current_stage() == "perwell_linear") {
       shiny::tagList(
-        h3("Per-well OD curves (linear scale)"),
         plotOutput("plot_perwell_linear", height = "500px"),
         p(
           "Inspect individual wells for anomalies such as contamination, ",
@@ -3467,7 +3463,6 @@ B           0   0   1
       
     } else if (current_stage() == "perwell_log") {
       shiny::tagList(
-        h3("Per-well OD curves (log scale)"),
         plotOutput("plot_perwell_log", height = "500px"),
         p(
           "Inspect individual wells on a log scale to assess early ",
@@ -3477,7 +3472,6 @@ B           0   0   1
       
     } else if (current_stage() == "deriv_raw") {
       shiny::tagList(
-        h3("Raw growth-rate derivatives"),
         plotOutput("plot_deriv_raw", height = "500px"),
         p(
           "Inspect raw growth-rate derivatives per well. ",
@@ -3488,7 +3482,6 @@ B           0   0   1
       
     } else if (current_stage() == "deriv_percap") {
       shiny::tagList(
-        h3("Per-capita growth-rate derivatives"),
         plotOutput("plot_deriv_percap", height = "500px"),
         p(
           "Inspect fitted per-capita growth-rate derivatives. ",
@@ -3499,7 +3492,6 @@ B           0   0   1
       
     } else if (current_stage() == "fitted_percap") {
       shiny::tagList(
-        h3("Fitted per-capita growth rate with maximum marked"),
         plotOutput("plot_fitted_percap", height = "500px"),
         p(
           "Inspect the fitted per-capita growth-rate curves with the ",
@@ -3510,7 +3502,6 @@ B           0   0   1
       
     } else if (current_stage() == "od_with_maxgc") {
       shiny::tagList(
-        h3("OD curves with maximum growth-rate time marked"),
         plotOutput("plot_od_with_maxgc", height = "500px"),
         p(
           "Inspect OD curves with the time of maximum per-capita growth ",
@@ -3521,7 +3512,6 @@ B           0   0   1
       
     } else if (current_stage() == "doubling_time") {
       shiny::tagList(
-        h3("Doubling time summary (mean and 95% confidence interval)"),
         plotOutput("plot_doubling_time", height = "500px"),
         p(
           "Inspect per-well doubling times grouped by condition. ",
@@ -3532,9 +3522,6 @@ B           0   0   1
       
     } else if (current_stage() == "max_growth_rate") {
       shiny::tagList(
-        h3(
-          "Maximum growth-rate summary (mean and 95% confidence interval)"
-        ),
         plotOutput("plot_max_growth_rate", height = "500px"),
         p(
           "Inspect maximum per-capita growth rates by condition. ",
