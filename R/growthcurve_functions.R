@@ -67,6 +67,33 @@ get_design_wells <- function(design_file) {
   design_wells
 }
 
+# ---------------------------
+# Plot titles
+# ---------------------------
+gc_plot_titles <- list(
+  blank_linear    = "Blank-corrected OD (linear scale)",
+  blank_log       = "Blank-corrected OD (log scale)",
+  mean_curves     = "Mean growth curves with 95% confidence interval",
+  perwell_linear  = "Per-well OD curves (linear scale)",
+  perwell_log     = "Per-well OD curves (log scale)",
+  deriv_raw       = "Raw growth-rate derivatives",
+  deriv_percap    = "Per-capita growth-rate derivatives",
+  fitted_percap   = "Fitted per-capita growth rate with maximum",
+  od_with_maxgc   = "OD curves with maximum growth-rate marked",
+  doubling_time   = "Doubling time",
+  max_growth_rate = "Maximum growth rate"
+)
+
+
+# ---------------------------
+# Unified plot title theme
+# ---------------------------
+gc_theme_title <- function() {
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(size = 16)
+  )
+}
+
 read_ocello_tanormalized <- function(file) {
   
   lines <- base::readLines(file)
@@ -467,29 +494,6 @@ gc_prepare_run <- function(rawdatafile,
       legend.title      = ggplot2::element_text(size = 14),
       legend.text       = ggplot2::element_text(size = 12)
     )
-  
-  gc_theme_title <- function() {
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(size = 16)
-    )
-  }
-  
-  # ---------------------------
-  # Plot titles
-  # ---------------------------
-  gc_plot_titles <- list(
-    blank_linear    = "Blank-corrected OD (linear scale)",
-    blank_log       = "Blank-corrected OD (log scale)",
-    mean_curves     = "Mean growth curves with 95% confidence interval",
-    perwell_linear  = "Per-well OD curves (linear scale)",
-    perwell_log     = "Per-well OD curves (log scale)",
-    deriv_raw       = "Raw growth-rate derivatives",
-    deriv_percap    = "Per-capita growth-rate derivatives",
-    fitted_percap   = "Fitted per-capita growth rate with maximum",
-    od_with_maxgc   = "OD curves with maximum growth-rate marked",
-    doubling_time   = "Doubling time",
-    max_growth_rate = "Maximum growth rate"
-  )
   
   # ---------------------------
   # Return structured setup
