@@ -3913,6 +3913,9 @@ B           0   0   1
     )
     
     prom <- promises::future_promise(expr = {
+      
+      library(growthcurve)
+      
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
         if (isTRUE(getOption("gc.dev_mode"))) return(expr)
