@@ -449,8 +449,8 @@ gc_prepare_run <- function(rawdatafile,
   }
   
   analysis_dir <- "Analysis"
-  plots_dir    <- file.path("Analysis", "Plots")
-  summary_dir  <- file.path("Analysis", "Summaries")
+  plots_dir    <- NULL
+  summary_dir  <- NULL
   
   # ---------------------------
   # Shared ggplot theme
@@ -1760,10 +1760,10 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 }
 
 # ------------------------------------------------------------
-# Helper: gc_save_plots()
+# Helper: gc_save_report()
 #
 # Purpose:
-#   Stage D of run_gc(): save ggplot objects to disk.
+#   Stage D of run_gc(): save ggplot objects to a single file on disk.
 #
 # Responsibilities:
 #   - Save plots with consistent filenames
@@ -1771,52 +1771,34 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 #
 # Inputs:
 #   plots     : named list of ggplot objects
-#   plots_dir : directory where plots should be written
+#   file      : file where plots should be written
 #
 # Returns:
 #   Named character vector of saved file paths
 # ------------------------------------------------------------
 
-gc_save_plots <- function(plots, plots_dir) {
+gc_save_report <- function(plots, file) {
   
-  stopifnot(
-    is.list(plots),
-    dir.exists(plots_dir)
-  )
-  
-  # Define filename mapping (single source of truth)
-  plot_files <- c(
-    blank_linear     = "1_Blankplot.pdf",
-    blank_log        = "2_Blankplot_log.pdf",
-    mean_curves      = "3_mean_curves.pdf",
-    perwell_linear   = "4_Curves_perwell.pdf",
-    perwell_log      = "5_Curves_perwell_log.pdf",
-    deriv_raw        = "6_Derivative_perwell.pdf",
-    deriv_percap     = "7_Per_capita_derivative_perwell.pdf",
-    fitted_percap    = "8_Fitted_per_capita_derivative_perwell.pdf",
-    od_with_maxgc    = "9_Curves_perwell_maxgc_time.pdf",
-    doubling_time    = "10_Doublingtime_dots.pdf",
-    max_growth_rate  = "11_Growthrate_dots.pdf"
-  )
-  
-  saved <- character()
-  
-  for (name in intersect(names(plot_files), names(plots))) {
-    
-    file_path <- file.path(plots_dir, plot_files[[name]])
-    
-    ggplot2::ggsave(
-      filename = file_path,
-      plot     = plots[[name]],
-      width    = 10,
-      height   = 7,
-      dpi      = 300
-    )
-    
-    saved[name] <- file_path
+  if (!is.list(plots)) {
+    gc_abort("Invalid plots object.")
   }
   
-  saved
+  grDevices::pdf(file, width = 10, height = 7)
+  
+  for (name in names(plots)) {
+    
+    p <- plots[[name]]
+    
+    if (!is.null(p)) {
+      print(
+        p + ggplot2::ggtitle(gsub("_", " ", name))
+      )
+    }
+  }
+  
+  dev.off()
+  
+  file
 }
 
 # ------------------------------------------------------------
