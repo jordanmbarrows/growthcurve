@@ -1775,13 +1775,13 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 
 #' Saves plots in single report
 #' @export
-gc_save_report <- function(plots, file) {
+gc_save_report <- function(plots, file, plate_name = NULL) {
   
   if (!is.list(plots)) {
     gc_abort("Invalid plots object.")
   }
   
-  grDevices::pdf(file, width = 10, height = 7)
+  grDevices::pdf(file, width = 10, height = 7, title = plate_name %||% basename(file))
   
   for (name in names(plots)) {
     
