@@ -2305,6 +2305,9 @@ C   0.09  0.09  0.09\n
               "The 'Well_type' variable must always be included as the first block."
             ),
             tags$li(
+              "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
+            ),
+            tags$li(
               "Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."
             ),
             tags$li("Cells representing unused wells must be left empty")
@@ -2317,7 +2320,12 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Empty wells must remain completely blank and must not contain any text values."
+            "Empty wells must remain completely empty and must not contain any text."
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Important: 'Well_type' and 'Blank' must be written exactly as shown (including capitalization). These are interpreted specially by the analysis. All other names and values are read as-is."
           ),
           
           tags$p(
