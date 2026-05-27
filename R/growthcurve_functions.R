@@ -1818,6 +1818,8 @@ gc_save_report <- function(plots, file) {
 #   Named character vector of written file paths
 # ------------------------------------------------------------
 
+#' Saves summary files
+#' @export
 gc_write_summaries <- function(core,
                                params,
                                instrument,
@@ -2096,6 +2098,8 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
 #   - All user-visible outputs returned in a structured object
 # ------------------------------------------------------------
 
+#' Run growth curve analysis
+#' @export
 run_gc <- function(
     rawdatafile,
     designfile,
