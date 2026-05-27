@@ -1824,7 +1824,7 @@ gc_save_report <- function(plots, file) {
 gc_write_summaries <- function(core,
                                params,
                                instrument,
-                               summary_dir,
+                               plate_dir,
                                region) {
   
   if (!is.data.frame(core$data_forplots)) {
@@ -1844,18 +1844,7 @@ gc_write_summaries <- function(core,
   # ----------------------------------------------------------
   
   path <- function(filename)
-    file.path(summary_dir, filename)
-  
-  write_csv_safe(core$merged_data, path("merged_data.csv"), region = region)
-  
-  written["merged_data"] <- path("merged_data.csv")
-  
-  write_csv_safe(
-    core$ex_dat_mrg_sum,
-    path("ex_dat_mrg_sum.csv"), 
-    region = region
-  )
-  written["ex_dat_mrg_sum"] <- path("ex_dat_mrg_sum.csv")
+    file.path(out_dir, filename)
   
   # ----------------------------------------------------------
   # Tidy per-plate output (NEW PRIMARY OUTPUT)
@@ -1869,16 +1858,12 @@ gc_write_summaries <- function(core,
   
   tidy <- gc_make_tidy(core, plate_id, instrument)
   
-  if (nrow(tidy) > 0) {
-    
-    write_csv_safe(
-      tidy,
-      path("plate_tidy.csv"),
-      region = region
-    )
-    
-    written["plate_tidy"] <- path("plate_tidy.csv")
-  }
+  write_csv_safe(
+    tidy,
+    path("plate_tidy.csv"),
+    region = region
+  )
+  
   
   # ----------------------------------------------------------
   # Argument record (metadata)
