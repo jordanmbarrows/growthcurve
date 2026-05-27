@@ -5,6 +5,8 @@
 ### Improvements
 - Clarified design file preview and templates to say 'Sample' instead of 'Not_Blank'
 - Updated User guide tab instructions to clarify that 'Well-type' and 'Blank' must be written exactly
+- Clarified downloadable Design file templates
+- Added .gitattributes file directing Git to convert CRLF to LF upon commit (standardize CSVs)
 
 ## [1.0.7] - 2026-05-26
 
