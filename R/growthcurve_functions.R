@@ -1773,6 +1773,8 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 #   Character string with the path to the generated report
 # ------------------------------------------------------------
 
+#' Saves plots in single report
+#' @export
 gc_save_report <- function(plots, file) {
   
   if (!is.list(plots)) {

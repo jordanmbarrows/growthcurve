@@ -4383,7 +4383,7 @@ B           0   0   1
     # Nest inside per-plate folder
     plate_dir <- file.path(dirs$analysis_dir, fname)
     
-    last_export_dir(dirs$analysis_dir)
+    last_export_dir(plate_dir)
     
     # --- Safety: never overwrite an existing analysis ---
     if (dir.exists(plate_dir)) {
@@ -4421,9 +4421,9 @@ B           0   0   1
     })
     
     pretty_path <- tryCatch(
-      pretty_export_path(analysis_dir),
+      pretty_export_path(plate_dir),
       error = function(e = NULL)
-        analysis_dir
+        plate_dir
     )
     
     showModal(
