@@ -457,7 +457,7 @@ server <- function(input, output, session) {
   
   # --- Core analysis ---
   run_gc             <- growthcurve:::run_gc
-  gc_save_report      <- growthcurve:::gc_save_report
+  gc_save_report     <- growthcurve:::gc_save_report
   gc_write_summaries <- growthcurve:::gc_write_summaries
   
   # --- File I/O ---
@@ -4423,7 +4423,7 @@ B           0   0   1
       
       incProgress(0.5, "Saving plots")
       
-      gc_save_plots(plots     = res$plots, plots_dir = plots_dir)
+      gc_save_report(plots = res$plots, plots_dir = plots_dir)
       
       incProgress(0.8, "Writing summary tables")
       
