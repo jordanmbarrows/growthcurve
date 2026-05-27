@@ -3937,7 +3937,7 @@ B           0   0   1
         
         res <- tryCatch({
           gc_run_quiet_worker(
-            growthcurve:::run_gc(
+            run_gc(
               rawdatafile = pairs_val$data_file[i],
               designfile  = pairs_val$design_file[i],
               hrs         = params$hrs,
@@ -3989,8 +3989,8 @@ B           0   0   1
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
         report_file <- file.path(plate_dir, "plate_report.pdf")
-        growthcurve:::gc_save_report(res$plots, report_file)
-        growthcurve:::gc_write_summaries(
+        gc_save_report(res$plots, report_file)
+        gc_write_summaries(
           core        = res$core,
           params      = res$params,
           instrument  = res$instrument,
