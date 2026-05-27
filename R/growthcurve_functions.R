@@ -1819,7 +1819,7 @@ gc_save_report <- function(plots, file) {
 gc_write_summaries <- function(core,
                                params,
                                instrument,
-                               plate_dir,
+                               out_dir,
                                region) {
   
   if (!is.data.frame(core$data_forplots)) {
@@ -1829,7 +1829,7 @@ gc_write_summaries <- function(core,
   stopifnot(
     is.list(core),
     is.list(params),
-    dir.exists(summary_dir)
+    dir.exists(out_dir)
   )
   
   written <- character()

@@ -998,9 +998,7 @@ server <- function(input, output, session) {
     analysis_dir <- file.path(wd, "Analysis", tag)
     
     list(
-      analysis_dir = analysis_dir,
-      plots_dir    = file.path(analysis_dir, "Plots"),
-      summary_dir  = file.path(analysis_dir, "Summaries")
+      analysis_dir = analysis_dir
     )
   }
   
@@ -3931,8 +3929,6 @@ B           0   0   1
         fname     <- basename(pairs_val$data_file[i])
         plate_tag <- tools::file_path_sans_ext(fname)
         plate_dir   <- file.path(root_path, plate_tag)
-        plots_dir   <- file.path(plate_dir, "Plots")
-        summary_dir <- file.path(plate_dir, "Summaries")
         
         # -- Paths defined above, but NO dir.create() yet --
         
@@ -3987,13 +3983,7 @@ B           0   0   1
                    recursive = TRUE,
                    showWarnings = FALSE)
         
-        # -- Analysis succeeded - now safe to create directories --
-        dir.create(plots_dir,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
-        dir.create(summary_dir,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
+        dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
         report_file <- file.path(plate_dir, "plate_report.pdf")
         growthcurve:::gc_save_report(res$plots, report_file)
@@ -4001,7 +3991,7 @@ B           0   0   1
           core        = res$core,
           params      = res$params,
           instrument  = res$instrument,
-          summary_dir = summary_dir,
+          out_dir     = plate_dir,
           region      = region
         )
         
@@ -4391,20 +4381,16 @@ B           0   0   1
     fname <- tools::file_path_sans_ext(input$raw_file)
     
     # Nest inside per-plate folder
-    analysis_dir <- file.path(dirs$analysis_dir, fname)
-    
-    plots_dir   <- file.path(analysis_dir, "Plots")
-    summary_dir <- file.path(analysis_dir, "Summaries")
+    plate_dir <- file.path(dirs$analysis_dir, fname)
     
     last_export_dir(dirs$analysis_dir)
     
     # --- Safety: never overwrite an existing analysis ---
-    if (dir.exists(plots_dir) || dir.exists(summary_dir)) {
+    if (dir.exists(plate_dir)) {
       showModal(modalDialog(
         title = "Export aborted",
         shiny::tagList(
-          p("An export with this prefix already exists."),
-          tags$code(basename(plots_dir))
+          p("An export with this prefix already exists.")
         ),
         easyClose = TRUE
       ))
@@ -4414,16 +4400,12 @@ B           0   0   1
     withProgress(message = "Exporting analysis files", value = 0, {
       incProgress(0.2, "Creating directories")
       
-      dir.create(plots_dir,
-                 recursive = TRUE,
-                 showWarnings = FALSE)
-      dir.create(summary_dir,
-                 recursive = TRUE,
-                 showWarnings = FALSE)
+      dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
       
       incProgress(0.5, "Saving plots")
       
-      gc_save_report(plots = res$plots, plots_dir = plots_dir)
+      report_file <- file.path(plate_dir, "plate_report.pdf")
+      gc_save_report(plots = res$plots, file = report_file)
       
       incProgress(0.8, "Writing summary tables")
       
@@ -4431,7 +4413,7 @@ B           0   0   1
         core        = res$core,
         params      = res$params,
         instrument  = res$instrument,
-        summary_dir = summary_dir,
+        out_dir     = plate_dir,
         region      = region_selected()
       )
       
