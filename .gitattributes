@@ -1,0 +1,9 @@
+# Normalize all text files to LF in the repo
+* text=auto
+
+# Force CSV templates to use LF (portable across systems)
+*.csv text eol=lf
+
+# (Optional but recommended)
+*.R   text eol=lf
+*.md  text eol=lf
