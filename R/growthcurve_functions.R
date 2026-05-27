@@ -1763,18 +1763,14 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 # Helper: gc_save_report()
 #
 # Purpose:
-#   Stage D of run_gc(): save ggplot objects to a single file on disk.
+#   Stage D of run_gc(): export all plots into a single PDF report.
 #
 # Responsibilities:
-#   - Save plots with consistent filenames
-#   - Record what was written
-#
-# Inputs:
-#   plots     : named list of ggplot objects
-#   file      : file where plots should be written
+#   - Combine all plots into a multi-page PDF
+#   - Ensure consistent formatting and ordering
 #
 # Returns:
-#   Named character vector of saved file paths
+#   Character string with the path to the generated report
 # ------------------------------------------------------------
 
 gc_save_report <- function(plots, file) {
@@ -1808,14 +1804,13 @@ gc_save_report <- function(plots, file) {
 #   Stage E of run_gc(): write CSV summary outputs.
 #
 # Responsibilities:
-#   - Write core data tables
 #   - Write summary table (growth rates & doubling times)
 #   - Write argument record
 #
 # Inputs:
 #   core        : output from gc_core_compute()
 #   params      : validated run parameters (from gc_prepare_run)
-#   summary_dir : directory where CSVs should be written
+#   plate_dir : directory where CSVs should be written
 #
 # Returns:
 #   Named character vector of written file paths
