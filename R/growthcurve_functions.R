@@ -461,13 +461,35 @@ gc_prepare_run <- function(rawdatafile,
       panel.grid.major  = ggplot2::element_blank(),
       panel.grid.minor  = ggplot2::element_blank(),
       axis.line         = ggplot2::element_line(colour = "black"),
-      title             = ggplot2::element_text(size = 22, face = "bold"),
       axis.text         = ggplot2::element_text(size = 14),
-      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
-      strip.text        = ggplot2::element_text(size = 14, face = "bold"),
-      legend.title      = ggplot2::element_text(size = 14, face = "bold"),
+      axis.title        = ggplot2::element_text(size = 16),
+      strip.text        = ggplot2::element_text(size = 14),
+      legend.title      = ggplot2::element_text(size = 14),
       legend.text       = ggplot2::element_text(size = 12)
     )
+  
+  gc_theme_title <- function() {
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 16)
+    )
+  }
+  
+  # ---------------------------
+  # Plot titles
+  # ---------------------------
+  gc_plot_titles <- list(
+    blank_linear    = "Blank-corrected OD (linear scale)",
+    blank_log       = "Blank-corrected OD (log scale)",
+    mean_curves     = "Mean growth curves with 95% confidence interval",
+    perwell_linear  = "Per-well OD curves (linear scale)",
+    perwell_log     = "Per-well OD curves (log scale)",
+    deriv_raw       = "Raw growth-rate derivatives",
+    deriv_percap    = "Per-capita growth-rate derivatives",
+    fitted_percap   = "Fitted per-capita growth rate with maximum",
+    od_with_maxgc   = "OD curves with maximum growth-rate marked",
+    doubling_time   = "Doubling time",
+    max_growth_rate = "Maximum growth rate"
+  )
   
   # ---------------------------
   # Return structured setup
@@ -1139,10 +1161,12 @@ gc_plot_blank_corrected <- function(merged_data,
   ) +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::labs(
+      title = gc_plot_titles$blank_linear,
       x = "Time (hrs)",
       y = "OD (blank corrected)"
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1177,10 +1201,12 @@ gc_plot_blank_log <- function(merged_data,
   ) +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::labs(
+      title = gc_plot_titles$blank_log,
       x = "Time (hrs)",
       y = bquote(log[10] * "OD (blank corrected)")
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1219,12 +1245,14 @@ gc_plot_mean_curves <- function(merged_data_means,
       colour = NA
     ) +
     ggplot2::labs(
+      title = gc_plot_titles$mean_curves,
       x = "Time (hrs)",
       y = "OD (blank corrected)",
       colour = "Group",
       fill   = "Group"
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1272,13 +1300,14 @@ gc_plot_perwell_linear <- function(merged_data,
     gc_qc_scale() +
     
     ggplot2::labs(
+      title = gc_plot_titles$perwell_linear,
       y = "OD (blank corrected)",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
-    
     ggplot2::facet_wrap(~Well) + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1326,6 +1355,7 @@ gc_plot_perwell_log <- function(merged_data,
     gc_qc_scale() +
     
     ggplot2::labs(
+      title = gc_plot_titles$perwell_log,
       y = bquote(log[10] * "OD (blank corrected)"),
       x = "Time (hrs)",
       colour = "QC status",
@@ -1333,6 +1363,7 @@ gc_plot_perwell_log <- function(merged_data,
     ) +
     
     ggplot2::facet_wrap(~Well) + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1365,12 +1396,14 @@ gc_plot_derivative_perwell <- function(merged_data_sub,
     ggplot2::geom_line(linewidth = 0.3) +
     gc_qc_scale() +
     ggplot2::labs(
+      title = gc_plot_titles$deriv_raw,
       y = "Derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
     ggplot2::facet_wrap(~Well, scales = "free") + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 # ------------------------------------------------------------
@@ -1402,12 +1435,14 @@ gc_plot_percap_derivative_perwell <- function(merged_data_sub,
     ggplot2::geom_line(linewidth = 0.3) +
     gc_qc_scale() +
     ggplot2::labs(
+      title = gc_plot_titles$deriv_percap,
       y = "Per-capita derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
     ggplot2::facet_wrap(~Well, scales = "free") + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 # ------------------------------------------------------------
@@ -1451,11 +1486,13 @@ gc_plot_fitted_percap_with_max <- function(merged_data_sub,
     ) +
     
     ggplot2::labs(
+      title = gc_plot_titles$fitted_percap,
       y = "Fitted per-capita derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
-    ) + 
+    ) +
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1506,11 +1543,13 @@ gc_plot_od_curves_with_maxgc <- function(merged_data,
     ) +
     
     ggplot2::labs(
+      title = gc_plot_titles$od_with_maxgc,
       y = "OD (blank corrected)",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
-    ) + 
+    ) +
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1566,9 +1605,10 @@ gc_plot_doubling_time <- function(data_forplots,
     ) +
     ggplot2::theme(legend.position = "none") +
     ggplot2::labs(
-      y     = "Doubling time (hrs)",
-      title = "Doubling time"
+      title = gc_plot_titles$doubling_time,
+      y     = "Doubling time (hrs)"
     ) + 
+    gc_theme_title() +
     scale_y_gc(region)
   
   if (!is.null(facet_formula)) {
@@ -1630,9 +1670,10 @@ gc_plot_max_growth_rate <- function(data_forplots,
     ) +
     ggplot2::theme(legend.position = "none") +
     ggplot2::labs(
-      y     = bquote("Max growth rate (hrs"^-1 * ")"),
-      title = "Max growth rate"
+      title = gc_plot_titles$max_growth_rate,
+      y     = bquote("Max growth rate (hrs"^-1 * ")")
     ) + 
+    gc_theme_title() +
     scale_y_gc(region)
   
   if (!is.null(facet_formula)) {
@@ -1788,10 +1829,8 @@ gc_save_report <- function(plots, file, plate_name = NULL) {
     p <- plots[[name]]
     
     if (!is.null(p)) {
-      print(
-        p + ggplot2::ggtitle(gsub("_", " ", name))
-      )
-    }
+      print(p)
+      }
   }
   
   dev.off()
