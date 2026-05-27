@@ -3,7 +3,8 @@
 ## Unreleased
 
 ### Improvements
-- Updated all instances of 'Not_Blank' to 'Sample'
+- Clarified design file preview and templates to say 'Sample' instead of 'Not_Blank'
+- Updated User guide tab instructions to clarify that 'Well-type' and 'Blank' must be written exactly
 
 ## [1.0.7] - 2026-05-26
 
