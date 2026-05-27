@@ -1978,7 +1978,7 @@ gc_aggregate_tidies <- function(analysis_dir) {
     )
     
     if (!is.null(df)) {
-      df$Source_file <- gsub(".*/([^/]+)/Summaries/plate_tidy\\.csv$", "\\1", f)
+      df$Source_file <- basename(dirname(f))
       dfs[[i]] <- df
     }
   }
