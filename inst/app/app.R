@@ -457,7 +457,7 @@ server <- function(input, output, session) {
   
   # --- Core analysis ---
   run_gc             <- growthcurve:::run_gc
-  gc_save_plots      <- growthcurve:::gc_save_plots
+  gc_save_report      <- growthcurve:::gc_save_report
   gc_write_summaries <- growthcurve:::gc_write_summaries
   
   # --- File I/O ---
@@ -3995,7 +3995,8 @@ B           0   0   1
                    recursive = TRUE,
                    showWarnings = FALSE)
         
-        growthcurve:::gc_save_plots(res$plots, plots_dir)
+        report_file <- file.path(plate_dir, "plate_report.pdf")
+        growthcurve:::gc_save_report(res$plots, report_file)
         growthcurve:::gc_write_summaries(
           core        = res$core,
           params      = res$params,
