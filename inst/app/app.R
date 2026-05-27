@@ -3989,7 +3989,7 @@ B           0   0   1
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
         report_file <- file.path(plate_dir, "plate_report.pdf")
-        gc_save_report(res$plots, report_file)
+        gc_save_report(res$plots, report_file, plate_name = plate_tag)
         gc_write_summaries(
           core        = res$core,
           params      = res$params,
@@ -4408,7 +4408,7 @@ B           0   0   1
       incProgress(0.5, "Saving plots")
       
       report_file <- file.path(plate_dir, "plate_report.pdf")
-      gc_save_report(plots = res$plots, file = report_file)
+      gc_save_report(plots = res$plots, file = report_file, plate_name = fname)
       
       incProgress(0.8, "Writing summary tables")
       
