@@ -6,8 +6,7 @@
 - Restructured output strategy:
   - Eliminate Plots/ and Summaries/ directories
   - Save all plots in single PDF file called plate_report.pdf
-  - Eliminate export of merged_data.csv and ex_dat_mrg_sum.csv 
-      (these are diagnostic intermediates and not necessary for general use)
+  - Eliminate export of merged_data.csv and ex_dat_mrg_sum.csv (these are diagnostic intermediates and not necessary for general use)
   - Analysis_args.csv and plate_tidy.csv files are unchanged
 - Clarified design file preview and templates to say 'Sample' instead of 'Not_Blank'
 - Updated User guide tab instructions to clarify that 'Well-type' and 'Blank' must be written exactly
