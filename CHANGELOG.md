@@ -7,7 +7,7 @@
 - Updated plots 10 and 11 titles to reflect mean and 95% CI
 - Changed "Plate" column name in plate_tidy.csv to "prefix" (more accurate) and changed behavior to always include it, even if `NULL`
 - Included "prefix" column from plate_tidy.csv in combined\_\_\*.csv file
-- Reordered columns in combined\_\_\*.csv so that metadata cols are first (file_index \| source_file \| run_name \| prefix \| instrument \| \plate_ \| Well \| ...)
+- Reordered columns in combined\_\_\*.csv so that metadata cols are first (file_index \| source_file \| run_name \| prefix \| instrument \| plate\_ \| Well \| ...)
 - Made variable detection during aggregation more flexible; works by selecting all columns beyond those expected to be present and placing them after "Well"
 
 ## [1.0.8] - 2026-05-28
