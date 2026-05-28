@@ -1897,21 +1897,7 @@ gc_write_summaries <- function(core,
   
   # ---- build tidy output ----
   tidy <- gc_make_tidy(core, prefix_val, instrument)
-  
-  # ---- enforce prefix column ----
-  if (is.data.frame(tidy)) {
-    if (nrow(tidy) > 0) {
-      tidy$prefix <- rep(prefix_val, nrow(tidy))
-    } else {
-      tidy$prefix <- character(0)
-    }
-  }
-  
-  # ---- remove legacy column if present ----
-  if ("Plate" %in% names(tidy)) {
-    tidy$Plate <- NULL
-  }
-  
+
   write_csv_safe(
     tidy,
     path("plate_tidy.csv"),
@@ -2095,7 +2081,7 @@ gc_add_qc <- function(df) {
     )
 }
 
-gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_character_) {
+gc_make_tidy <- function(core, prefix = NA_character_, instrument = NA_character_) {
 
   blocklist  <- core$blocklist
   group_vars <- unlist(blocklist[-1])
@@ -2123,15 +2109,10 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
   
   tidy$instrument <- instrument
   
-  if (!is.na(plate_id)) {
-    tidy$Plate <- plate_id
-  }
+  tidy$prefix <- if (!is.na(prefix) && nzchar(prefix)) prefix else ""
   
-  tidy |>
-   dplyr::select(
-      tidyselect::any_of("Plate"),
-      dplyr::everything()
-    )
+  tidy
+  
 }
 
 # ------------------------------------------------------------
