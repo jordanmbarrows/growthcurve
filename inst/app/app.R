@@ -120,11 +120,15 @@ ui <- shiny::fluidPage(
       }
 
     /* ---- Aggregate runs table ---- */
-     #agg_runs_table_container {
+      #agg_runs_table_outer {
         width: 100%;
         max-height: 600px;
         overflow-x: auto;
         overflow-y: auto;
+      }
+      #agg_runs_table_container {
+        min-width: max-content;
+        overflow: visible;
       }
       #agg_runs_table table.dataTable { table-layout: auto !important; }
       #agg_runs_table th:first-child, #agg_runs_table td:first-child {
@@ -3196,8 +3200,11 @@ B           0   0   1
         checkboxInput("agg_select_all", "Select all runs", TRUE),
         
         div(
-          id = "agg_runs_table_container",
-          DT::DTOutput("agg_runs_table")
+          id = "agg_runs_table_outer",
+          div(
+            id = "agg_runs_table_container",
+            DT::DTOutput("agg_runs_table")
+          )
         ),
         
         hr(),
