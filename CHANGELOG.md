@@ -9,6 +9,11 @@
 - Included `prefix` column from `plate_tidy.csv` in `combined__*.csv` file
 - Reordered columns in `combined__*.csv` so that metadata cols are first: `file_index | source_file | run_name | prefix | instrument | plate_ | Well | ...`
 - Made variable detection during aggregation more flexible; works by selecting all columns beyond those expected to be present and placing them after `Well`
+- Updated duplication detection prior to detection to include both prefix and plate name (raw data file name)
+  - Allows users to run analyses with different parameters on the same data and not have them flagged as duplicates
+  - Updated duplication warning modal to reflect these changes and demonstrate plate and prefix names for duplicates
+  - Updated Prefix section in User guide with guidance on using prefixes to differentiate analyses with different parameters
+- Added horizontal scroll bar to aggregate selection table so users can see entire tool tip
 
 ## [1.0.8] - 2026-05-28
 
