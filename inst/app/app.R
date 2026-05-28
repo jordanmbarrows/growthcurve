@@ -1297,7 +1297,7 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df$run_name    <- basename(dirname(dirname(f)))
+      df$run_name    <- basename(dirname(f))
       
       df
     })
@@ -1405,7 +1405,7 @@ server <- function(input, output, session) {
       
       info <- file.info(files)
       
-      plate_folder <- basename(dirname(dirname(files)))
+      plate_folder <- basename(dirname(files))
       
       tmp <- data.frame(
         run_name     = run_name,
