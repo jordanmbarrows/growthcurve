@@ -1308,7 +1308,37 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
-    dplyr::bind_rows(data_list, .id = "file_index")
+    df <- dplyr::bind_rows(data_list, .id = "file_index")
+    
+    cols <- names(df)
+    
+    well_pos <- match("Well", cols)
+    run_pos  <- match("run_name", cols)
+    
+    # detect extra columns after run_name
+    if (!is.na(run_pos) && run_pos < length(cols)) {
+      extra_cols <- cols[(run_pos + 1):length(cols)]
+    } else {
+      extra_cols <- character(0)
+    }
+    
+    # move them before Well
+    if (length(extra_cols) > 0 && !is.na(well_pos)) {
+      
+      non_extra <- setdiff(cols, extra_cols)
+      well_pos_nonextra <- match("Well", non_extra)
+      
+      new_order <- c(
+        non_extra[1:(well_pos_nonextra - 1)],
+        extra_cols,
+        non_extra[well_pos_nonextra:length(non_extra)]
+      )
+      
+      df <- df[, new_order, drop = FALSE]
+    }
+    
+    df
+    
   }
   
   detect_duplicate_runs <- function(run_df) {
