@@ -3,8 +3,11 @@
 ## Unreleased
 
 
-###Fixes 
+### Improvements 
 - Updated plots 10 and 11 titles to reflect mean and 95% CI
+- Changed "Plate" column name in plate_tidy.csv to "prefix" (more accurate) and changed behavior to always include it, even if `NULL`
+- Included "prefix" column from plate_tidy.csv in combined__*.csv file
+- Reordered columns in combined__*.csv so that metadata cols are first (run_name | prefix | Plate | Well | ...)
 
 ## [1.0.8] - 2026-05-28
 
