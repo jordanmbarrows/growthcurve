@@ -1495,8 +1495,6 @@ server <- function(input, output, session) {
       
       tmp$prefix <- extract_prefix(run_name)
       
-      cat("RUN:", run_name, "→ PREFIX:", tmp$prefix, "\n")
-      
       tmp$label <- ifelse(
         nzchar(tmp$prefix),
         paste(tmp$run_name, ">", tmp$plate_folder, "(", tmp$prefix, ")"),
