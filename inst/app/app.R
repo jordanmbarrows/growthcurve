@@ -110,8 +110,8 @@ ui <- shiny::fluidPage(
       th span[title] { cursor: help; text-decoration: underline dotted; }
 
     /* ---- Batch flex layout ---- */
-      .batch-flex { display: flex; align-items: stretch; gap: 24px; margin-bottom: 40px; }
-      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: hidden; }
+      .batch-flex { display: flex; min-width: 0; align-items: stretch; gap: 24px; margin-bottom: 40px; }
+      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: visible; }
       .batch-right { flex: 0 0 480px; max-width: 480px; }
       .batch-left .dataTables_wrapper { width: 100% !important; overflow-x: auto; }
       @media (max-width: 1200px) {
@@ -136,29 +136,30 @@ ui <- shiny::fluidPage(
       #agg_runs_table td:nth-child(2) { white-space: nowrap; }
       #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
       #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
-      #agg_runs_table .dataTables_wrapper { max-width: 100% !important; }
+      #agg_runs_table .dataTables_wrapper { width: 100% !important; max-width: none !important; overflow-x: visible !important; }    
       
       .dup-hover:hover + .dup-tooltip {
         display: block;
       }
-      
       .dup-tooltip {
         display: none;
         position: absolute;
         z-index: 1000;
-        
         background: #1e1e1e;
         color: #d4d4d4;
-        
         padding: 10px;
         border-radius: 6px;
         border: 1px solid #444;
-        
         max-width: 600px;
         overflow-x: auto;
         white-space: pre;   /* NO wrapping */
-        
         font-size: 12px;
+      }
+      table.dataTable {
+        width: auto !important;
+      }
+      table.dataTable td {
+        white-space: nowrap;
       }
 
     /* ---- Guide / user guide styles ---- */
@@ -3194,7 +3195,19 @@ B           0   0   1
         
         checkboxInput("agg_select_all", "Select all runs", TRUE),
         
-        DT::DTOutput("agg_runs_table"),
+        div(
+          style = "
+            width: 100%;
+            overflow-x: auto;
+          ",
+          div(
+            style = "
+              display: inline-block;
+              min-width: max-content;
+            ",
+            DT::DTOutput("agg_runs_table")
+          )
+        ),
         
         hr(),
         
@@ -3268,11 +3281,12 @@ B           0   0   1
         scrollY = "600px",
         scrollCollapse = TRUE,
         fixedHeader = TRUE
-      ),
+      ), width = "auto",
       callback = htmlwidgets::JS(
         "
       table.on('draw.dt', function() {
         Shiny.bindAll(table.table().node());
+        table.columns.adjust();
       });
     "
       )
