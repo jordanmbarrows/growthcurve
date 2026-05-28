@@ -13,6 +13,7 @@
 - Updated User guide tab instructions to clarify that 'Well-type' and 'Blank' must be written exactly
 - Clarified downloadable Design file templates
 - Added .gitattributes file directing Git to convert CRLF to LF upon commit (standardize CSVs)
+- Added `run_gc`, `gc_save_report`, and `gc_write_summaries` to NAMESPACE
 
 ## [1.0.7] - 2026-05-26
 
