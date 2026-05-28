@@ -3173,6 +3173,7 @@ B           0   0   1
         ordering = FALSE,
         autoWidth = FALSE,
         scrollY = "600px",
+        scrollCollapse = TRUE,
         fixedHeader = TRUE
       ),
       callback = htmlwidgets::JS(
