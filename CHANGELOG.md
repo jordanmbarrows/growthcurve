@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Nothing to see here...
+
+## [1.0.9] - 2026-05-28
+
 ### Improvements
 
 - Updated plots 10 and 11 titles to reflect mean and 95% CI
@@ -14,6 +18,9 @@
   - Updated duplication warning modal to reflect these changes and demonstrate plate and prefix names for duplicates
   - Updated Prefix section in User guide with guidance on using prefixes to differentiate analyses with different parameters
 - Added horizontal scroll bar to aggregate selection table so users can see entire tool tip
+  - Vertical and horizontal scroll bars are now controlled entirely by CSS, not DT, so they live outside the table
+    - Results in both scroll bars always being visible, rather than having to scroll to see one or the other
+  - Removing container settings from DT also allowed tooltips on duplicate runs showing the matching runs to show up on hover
 
 ## [1.0.8] - 2026-05-28
 
