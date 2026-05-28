@@ -137,6 +137,29 @@ ui <- shiny::fluidPage(
       #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
       #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
       #agg_runs_table .dataTables_wrapper { max-width: 100% !important; }
+      
+      .dup-hover:hover + .dup-tooltip {
+        display: block;
+      }
+      
+      .dup-tooltip {
+        display: none;
+        position: absolute;
+        z-index: 1000;
+        
+        background: #1e1e1e;
+        color: #d4d4d4;
+        
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        
+        max-width: 600px;
+        overflow-x: auto;
+        white-space: pre;   /* NO wrapping */
+        
+        font-size: 12px;
+      }
 
     /* ---- Guide / user guide styles ---- */
       .guide-container { max-width: 900px; margin: 0; padding: 20px; }
@@ -1450,10 +1473,48 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       
-      tmp$label <- paste(tmp$run_name, ">", tmp$plate_folder)
+      # --- Extract prefix from run_name ---
+      extract_prefix <- function(run_name) {
+        parts <- unlist(strsplit(run_name, "_", fixed = TRUE))
+        
+        # Remove empty pieces (handles double underscores)
+        parts <- parts[nzchar(parts)]
+        
+        # Remove trailing type
+        if (length(parts) > 0 && tail(parts, 1) %in% c("single", "batch")) {
+          parts <- head(parts, -1)
+        }
+        
+        # If only timestamp remains → no prefix
+        if (length(parts) <= 2) {
+          return("")
+        }
+        
+        paste(parts[3:length(parts)], collapse = "_")
+      }
       
-      tmp$group_key <- tolower(trimws(tmp$plate_folder))
-      tmp$group_key <- sub(" - copy$", "", tmp$group_key)
+      tmp$prefix <- extract_prefix(run_name)
+      
+      cat("RUN:", run_name, "→ PREFIX:", tmp$prefix, "\n")
+      
+      tmp$label <- ifelse(
+        nzchar(tmp$prefix),
+        paste(tmp$run_name, ">", tmp$plate_folder, "(", tmp$prefix, ")"),
+        paste(tmp$run_name, ">", tmp$plate_folder)
+      )
+      
+      clean_plate <- function(x) {
+        x <- tolower(trimws(x))
+        x <- sub(" - copy$", "", x)
+        x <- gsub("\\s+", " ", x)   # collapse weird spacing
+        x
+      }
+      
+      tmp$group_key <- paste0(
+        clean_plate(tmp$plate_folder),
+        "||",
+        tolower(trimws(tmp$prefix))
+      )
       
       plate_records <- rbind(plate_records, tmp)
     }
@@ -1481,9 +1542,6 @@ server <- function(input, output, session) {
     duplicate_map <- duplicate_map[sapply(duplicate_map, length) > 1]
     
     duplicate_map <- lapply(duplicate_map, unique)
-    
-    # Optional: clean plate names (remove .csv)
-    names(duplicate_map) <- tools::file_path_sans_ext(names(duplicate_map))
     
     # ---- Map back to runs ----
     run_flags <- tapply(plate_records$duplicate_plate,
@@ -2116,10 +2174,21 @@ server <- function(input, output, session) {
             tags$li("Useful when testing different parameter settings.")
           ),
           
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            HTML(
+              "You can run analyses on the same data multiple times using different settings. 
+    Each run is saved with a unique timestamp, so files are never overwritten. 
+    However, using a descriptive output prefix (e.g., 'minOD05', 'alt_interval') is 
+    strongly recommended to help identify and compare runs later, especially when combining results."
+            )
+          ),
+          
           tags$p("If provided, output folders will be named like:"),
           
           tags$pre(
-            "yyyymmdd_hhmmss_myexperiment_single\nyyyymmdd_hhmmss_myexperiment_batch"
+            "yyyymmdd_hhmmss_myanalysis_single\nyyyymmdd_hhmmss_myanalysis_batch"
           ),
           
           tags$p(
@@ -3260,9 +3329,18 @@ B           0   0   1
       )
       
       as.character(
-        tags$span(
-          title = tooltip,
-          HTML("&#9888;&#65039; duplicate plate data detected (within or across analysis runs)")
+        tags$div(
+          style = "position: relative; display: inline-block;",
+          
+          tags$span(
+            class = "dup-hover",
+            HTML("&#9888;&#65039; duplicate plate data detected (same plate and prefix across runs)")
+          ),
+          
+          tags$div(
+            class = "dup-tooltip",
+            HTML(paste0("<pre>", tooltip, "</pre>"))
+          )
         )
       )
       
@@ -4592,24 +4670,43 @@ B           0   0   1
       dup_map <- duplicate_info()$duplicate_map
       
       if (length(dup_map) > 0) {
+        
+        # --- format names for display ---
+        format_group_name <- function(key) {
+          parts <- strsplit(key, "\\|\\|")[[1]]
+          
+          plate  <- parts[1]
+          prefix <- parts[2]
+          
+          if (nzchar(prefix)) {
+            paste0(prefix, " — ", plate)
+          } else {
+            paste0("(no prefix) — ", plate)
+          }
+        }
+        
+        display_names <- vapply(names(dup_map), format_group_name, character(1))
+        
         showModal(
           modalDialog(
             title = "Overlapping plate data detected",
             
-            shiny::tagList(
+            tagList(
               p("Some selected runs contain overlapping plate data."),
               p("This may result in duplicated observations."),
               
-              p(strong("Overlapping plates across runs:")),
+              p(strong("Overlapping plates (grouped by prefix + plate):")),
               
-              tags$ul(lapply(names(dup_map), function(plate) {
-                tags$li(tagList(tags$strong(plate), tags$ul(lapply(
-                  dup_map[[plate]], tags$li
-                ))))
-                
+              tags$ul(lapply(seq_along(dup_map), function(i) {
+                tags$li(
+                  tagList(
+                    tags$strong(display_names[i]),
+                    tags$ul(lapply(dup_map[[i]], tags$li))
+                  )
+                )
               })),
               
-              p("Consider excluding one of the overlapping runs.")
+              p("Consider excluding one or more of the overlapping runs.")
             ),
             
             easyClose = TRUE
