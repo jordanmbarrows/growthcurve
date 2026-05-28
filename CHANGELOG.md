@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+-
+
+## [1.0.8] - 2026-05-28
+
 ### Improvements
 - Restructured output strategy:
   - Eliminate Plots/ and Summaries/ directories
@@ -14,6 +18,9 @@
 - Clarified downloadable Design file templates
 - Added .gitattributes file directing Git to convert CRLF to LF upon commit (standardize CSVs)
 - Added `run_gc`, `gc_save_report`, and `gc_write_summaries` to NAMESPACE
+
+### Fixes
+- Added `scrollCollapse = TRUE` to Aggregate results selection table so it only fills space if it needs it
 
 ## [1.0.7] - 2026-05-26
 
