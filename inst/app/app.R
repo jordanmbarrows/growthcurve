@@ -110,9 +110,8 @@ ui <- shiny::fluidPage(
       th span[title] { cursor: help; text-decoration: underline dotted; }
 
     /* ---- Batch flex layout ---- */
-      .batch-flex { display: flex; align-items: stretch; gap: 24px; margin-bottom: 40px; }
-      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: hidden; }
-      .batch-right { flex: 0 0 480px; max-width: 480px; }
+      .batch-flex { display: flex; min-width: 0; align-items: stretch; gap: 24px; margin-bottom: 40px; }
+      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: visible; }      
       .batch-left .dataTables_wrapper { width: 100% !important; overflow-x: auto; }
       @media (max-width: 1200px) {
         .batch-flex { flex-direction: column; align-items: stretch; }
@@ -121,22 +120,51 @@ ui <- shiny::fluidPage(
       }
 
     /* ---- Aggregate runs table ---- */
+      #agg_runs_table_outer {
+        width: 100%;
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
+      }
+      #agg_runs_table_container {
+        min-width: max-content;
+        overflow: visible;
+      }
       #agg_runs_table table.dataTable { table-layout: auto !important; }
       #agg_runs_table th:first-child, #agg_runs_table td:first-child {
         width: 60px !important; min-width: 60px !important; max-width: 60px !important;
         text-align: left !important; padding-left: 8px !important;
       }
       #agg_runs_table th:nth-child(2), #agg_runs_table td:nth-child(2) {
-        width: 300px !important; min-width: 300px !important; max-width: 300px !important;
+        min-width: 300px !important;
       }
       #agg_runs_table th:nth-child(3), #agg_runs_table td:nth-child(3) {
-        width: 220px !important; min-width: 220px !important; max-width: 220px !important;
+        min-width: 220px !important; white-space: nowrap; font-family: monospace;
       }
-      #agg_runs_table td:first-child { cursor: pointer; user-select: none; font-family: monospace; }
-      #agg_runs_table td:nth-child(2) { white-space: nowrap; }
-      #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
-      #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
-      #agg_runs_table .dataTables_wrapper { max-width: 100% !important; }
+     
+      .dup-hover:hover + .dup-tooltip {
+        display: block;
+      }
+      .dup-tooltip {
+        display: none;
+        position: absolute;
+        z-index: 1000;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        max-width: 600px;
+        overflow-x: auto;
+        white-space: pre;   /* NO wrapping */
+        font-size: 12px;
+      }
+      table.dataTable {
+        width: auto !important;
+      }
+      table.dataTable td {
+        white-space: nowrap;
+      }
 
     /* ---- Guide / user guide styles ---- */
       .guide-container { max-width: 900px; margin: 0; padding: 20px; }
@@ -1282,6 +1310,16 @@ server <- function(input, output, session) {
     }
   }
   
+  get_run_folder <- function(file_path) {
+    d1 <- basename(dirname(file_path))
+    
+    if (tolower(d1) %in% c("outputs", "output", "results", "summaries", "plots")) {
+      return(basename(dirname(dirname(dirname(file_path)))))
+    } else {
+      return(basename(dirname(dirname(file_path))))
+    }
+  }
+  
   combine_tidy_files <- function(run_df) {
     all_files <- unlist(lapply(run_df$full_path, function(dir) {
       list.files(
@@ -1310,7 +1348,15 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df$run_name <- get_plate_folder(f)
+      df$plate_ <- get_plate_folder(f)
+      df$run_name <- get_run_folder(f)
+      df$prefix <- if ("prefix" %in% names(df)) df$prefix else ""
+      
+      meta_cols <- c("source_file", "run_name", "prefix", "instrument", "plate_", "Well")
+      
+      other_cols <- setdiff(names(df), meta_cols)
+      
+      df <- df[, c(meta_cols, other_cols), drop = FALSE]
       
       df
     })
@@ -1323,32 +1369,36 @@ server <- function(input, output, session) {
     
     df <- dplyr::bind_rows(data_list, .id = "file_index")
     
-    cols <- names(df)
+    core_cols <- c(
+      "file_index",
+      "source_file",
+      "run_name",
+      "prefix",
+      "instrument",
+      "plate_",
+      "Well",
+      "Measurement",
+      "Value",
+      "Replicate",
+      "QC_flag",
+      "QC_reason"
+    )
     
-    well_pos <- match("Well", cols)
-    run_pos  <- match("run_name", cols)
+    extra_cols <- setdiff(names(df), core_cols)
     
-    # detect extra columns after run_name
-    if (!is.na(run_pos) && run_pos < length(cols)) {
-      extra_cols <- cols[(run_pos + 1):length(cols)]
-    } else {
-      extra_cols <- character(0)
-    }
+    pre_well <- setdiff(core_cols, c("Well", "Measurement", "Value", "Replicate", "QC_flag", "QC_reason"))
+    pre_well <- intersect(pre_well, names(df))
     
-    # move them before Well
-    if (length(extra_cols) > 0 && !is.na(well_pos)) {
-      
-      non_extra <- setdiff(cols, extra_cols)
-      well_pos_nonextra <- match("Well", non_extra)
-      
-      new_order <- c(
-        non_extra[1:(well_pos_nonextra - 1)],
-        extra_cols,
-        non_extra[well_pos_nonextra:length(non_extra)]
-      )
-      
-      df <- df[, new_order, drop = FALSE]
-    }
+    post_core <- intersect(c("Measurement", "Value", "Replicate", "QC_flag", "QC_reason"), names(df))
+    
+    new_order <- c(
+      pre_well,
+      "Well",
+      extra_cols,
+      post_core
+    )
+    
+    df <- df[, new_order, drop = FALSE]
     
     df
     
@@ -1428,12 +1478,46 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       
-      tmp$label <- paste(tmp$run_name, ">", tmp$plate_folder)
+      # --- Extract prefix from run_name ---
+      extract_prefix <- function(run_name) {
+        parts <- unlist(strsplit(run_name, "_", fixed = TRUE))
+        
+        # Remove empty pieces (handles double underscores)
+        parts <- parts[nzchar(parts)]
+        
+        # Remove trailing type
+        if (length(parts) > 0 && tail(parts, 1) %in% c("single", "batch")) {
+          parts <- head(parts, -1)
+        }
+        
+        # If only timestamp remains → no prefix
+        if (length(parts) <= 2) {
+          return("")
+        }
+        
+        paste(parts[3:length(parts)], collapse = "_")
+      }
       
-      tmp$group_key <- sub(" - Copy$", "", tmp$plate_folder)
+      tmp$prefix <- extract_prefix(run_name)
       
-      # Fingerprint = filename + size
-      tmp$fingerprint <- paste(tmp$plate_file, tmp$size, sep = "::")
+      tmp$label <- ifelse(
+        nzchar(tmp$prefix),
+        paste(tmp$run_name, ">", tmp$plate_folder, "(", tmp$prefix, ")"),
+        paste(tmp$run_name, ">", tmp$plate_folder)
+      )
+      
+      clean_plate <- function(x) {
+        x <- tolower(trimws(x))
+        x <- sub(" - copy$", "", x)
+        x <- gsub("\\s+", " ", x)   # collapse weird spacing
+        x
+      }
+      
+      tmp$group_key <- paste0(
+        clean_plate(tmp$plate_folder),
+        "||",
+        tolower(trimws(tmp$prefix))
+      )
       
       plate_records <- rbind(plate_records, tmp)
     }
@@ -1446,22 +1530,21 @@ server <- function(input, output, session) {
     }
     
     # ---- Detect duplicated plates ----
-    dup_idx <-
-      duplicated(plate_records$fingerprint) |
-      duplicated(plate_records$fingerprint, fromLast = TRUE)
+    
+    dup_idx <- duplicated(plate_records$group_key) |
+      duplicated(plate_records$group_key, fromLast = TRUE)
     
     plate_records$duplicate_plate <- dup_idx
     
-    # ---- Build duplicate map: plate -> (run > plate folder) ----
-    duplicate_map <- split(plate_records$label[dup_idx], plate_records$group_key[dup_idx])
+    duplicate_map <- split(
+      plate_records$label[dup_idx],
+      plate_records$group_key[dup_idx]
+    )
     
     # Keep only true duplicates (appear in >1 place)
     duplicate_map <- duplicate_map[sapply(duplicate_map, length) > 1]
     
     duplicate_map <- lapply(duplicate_map, unique)
-    
-    # Optional: clean plate names (remove .csv)
-    names(duplicate_map) <- tools::file_path_sans_ext(names(duplicate_map))
     
     # ---- Map back to runs ----
     run_flags <- tapply(plate_records$duplicate_plate,
@@ -2094,10 +2177,21 @@ server <- function(input, output, session) {
             tags$li("Useful when testing different parameter settings.")
           ),
           
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            HTML(
+              "You can run analyses on the same data multiple times using different settings. 
+    Each run is saved with a unique timestamp, so files are never overwritten. 
+    However, using a descriptive output prefix (e.g., 'minOD05', 'alt_interval') is 
+    strongly recommended to help identify and compare runs later, especially when combining results."
+            )
+          ),
+          
           tags$p("If provided, output folders will be named like:"),
           
           tags$pre(
-            "yyyymmdd_hhmmss_myexperiment_single\nyyyymmdd_hhmmss_myexperiment_batch"
+            "yyyymmdd_hhmmss_myanalysis_single\nyyyymmdd_hhmmss_myanalysis_batch"
           ),
           
           tags$p(
@@ -2336,7 +2430,11 @@ C   0.09  0.09  0.09\n
           tags$ul(
             tags$li("Each variable is one block (e.g., Strain, Treatment)."),
             tags$li("Each block must be a complete 96-well layout (A-H, 1-12)."),
-            tags$li("The top-left cell of each block contains the variable name."),
+            tags$li("The top-left cell of each block contains the variable name.",
+              tags$ul(
+                tags$li("Design variable names should not end with _ (e.g., Strain_), as names ending with _ are reserved for internal use during analysis and aggregation.")
+              )      
+                    ),
             tags$li(
               "Each block must contain one header row followed by eight rows (A-H)."
             ),
@@ -3101,7 +3199,13 @@ B           0   0   1
         
         checkboxInput("agg_select_all", "Select all runs", TRUE),
         
-        DT::DTOutput("agg_runs_table"),
+        div(
+          id = "agg_runs_table_outer",
+          div(
+            id = "agg_runs_table_container",
+            DT::DTOutput("agg_runs_table")
+          )
+        ),
         
         hr(),
         
@@ -3172,14 +3276,15 @@ B           0   0   1
         dom = "t",
         ordering = FALSE,
         autoWidth = FALSE,
-        scrollY = "600px",
-        scrollCollapse = TRUE,
+        scrollX = FALSE,
+        scrollY = FALSE,
         fixedHeader = TRUE
-      ),
+      ), width = "auto",
       callback = htmlwidgets::JS(
         "
       table.on('draw.dt', function() {
         Shiny.bindAll(table.table().node());
+        table.columns.adjust();
       });
     "
       )
@@ -3195,12 +3300,61 @@ B           0   0   1
     dup_info <- duplicate_info()
     
     # build status column
-    df$status <- ifelse(
-      df$run_name %in% names(dup_info$run_flags) &
-        dup_info$run_flags[df$run_name],
-      HTML("&#9888;&#65039; overlapping plates"),
-      HTML("&#9989; unique")
-    )
+    df$status <- vapply(df$run_name, function(run) {
+      
+      # ---- check if run is selected ----
+      safe_name <- gsub("[^a-zA-Z0-9_]", "_", run)
+      is_selected <- isTRUE(input[[paste0("agg_include_", safe_name)]])
+      
+      # ---- Case 1: NOT selected → EMPTY CELL ----
+      if (!is_selected) {
+        return("")   # ← this is the key change
+      }
+      
+      # ---- check duplicate status ----
+      is_dup <- run %in% names(dup_info$run_flags) &&
+        isTRUE(dup_info$run_flags[[run]])
+      
+      # ---- Case 2: selected + no duplicates ----
+      if (!is_dup) {
+        return(as.character(HTML("&#9989; unique")))
+      }
+      
+      # ---- Case 3: selected + duplicates ----
+      involved <- lapply(dup_info$duplicate_map, function(entries) {
+        entries[grepl(paste0("^", run, " >"), entries)]
+      })
+      
+      involved <- Filter(length, involved)
+      
+      if (length(involved) == 0) {
+        return(as.character(HTML("&#9989; unique")))  # safety fallback
+      }
+      
+      plates <- names(involved)
+      
+      tooltip <- paste(
+        unlist(dup_info$duplicate_map[plates]),
+        collapse = "\n"
+      )
+      
+      as.character(
+        tags$div(
+          style = "position: relative; display: inline-block;",
+          
+          tags$span(
+            class = "dup-hover",
+            HTML("&#9888;&#65039; duplicate plate data detected (same plate and prefix across runs)")
+          ),
+          
+          tags$div(
+            class = "dup-tooltip",
+            HTML(paste0("<pre>", tooltip, "</pre>"))
+          )
+        )
+      )
+      
+    }, character(1))
     
     # preserve checkbox column structure
     df$include_ui <- vapply(df$run_name, function(name) {
@@ -4526,24 +4680,43 @@ B           0   0   1
       dup_map <- duplicate_info()$duplicate_map
       
       if (length(dup_map) > 0) {
+        
+        # --- format names for display ---
+        format_group_name <- function(key) {
+          parts <- strsplit(key, "\\|\\|")[[1]]
+          
+          plate  <- parts[1]
+          prefix <- parts[2]
+          
+          if (nzchar(prefix)) {
+            paste0(prefix, " — ", plate)
+          } else {
+            paste0("(no prefix) — ", plate)
+          }
+        }
+        
+        display_names <- vapply(names(dup_map), format_group_name, character(1))
+        
         showModal(
           modalDialog(
             title = "Overlapping plate data detected",
             
-            shiny::tagList(
+            tagList(
               p("Some selected runs contain overlapping plate data."),
               p("This may result in duplicated observations."),
               
-              p(strong("Overlapping plates across runs:")),
+              p(strong("Overlapping plates (grouped by prefix + plate):")),
               
-              tags$ul(lapply(names(dup_map), function(plate) {
-                tags$li(tagList(tags$strong(plate), tags$ul(lapply(
-                  dup_map[[plate]], tags$li
-                ))))
-                
+              tags$ul(lapply(seq_along(dup_map), function(i) {
+                tags$li(
+                  tagList(
+                    tags$strong(display_names[i]),
+                    tags$ul(lapply(dup_map[[i]], tags$li))
+                  )
+                )
               })),
               
-              p("Consider excluding one of the overlapping runs.")
+              p("Consider excluding one or more of the overlapping runs.")
             ),
             
             easyClose = TRUE

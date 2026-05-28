@@ -80,8 +80,8 @@ gc_plot_titles <- list(
   deriv_percap    = "Per-capita growth-rate derivatives",
   fitted_percap   = "Fitted per-capita growth rate with maximum",
   od_with_maxgc   = "OD curves with maximum growth-rate marked",
-  doubling_time   = "Doubling time",
-  max_growth_rate = "Maximum growth rate"
+  doubling_time   = "Doubling time with mean and 95% confidence interval",
+  max_growth_rate = "Maximum growth rate with mean and 95% confidence interval"
 )
 
 
@@ -1892,14 +1892,12 @@ gc_write_summaries <- function(core,
   # Tidy per-plate output (NEW PRIMARY OUTPUT)
   # ----------------------------------------------------------
   
-  plate_id <- if (!is.null(params$prefix) && nzchar(params$prefix)) {
-    params$prefix
-  } else {
-    NA_character_
-  }
+  # ---- define prefix ONCE (scalar) ----
+  prefix_val <- params$prefix %||% ""
   
-  tidy <- gc_make_tidy(core, plate_id, instrument)
-  
+  # ---- build tidy output ----
+  tidy <- gc_make_tidy(core, prefix_val, instrument)
+
   write_csv_safe(
     tidy,
     path("plate_tidy.csv"),
@@ -2083,7 +2081,7 @@ gc_add_qc <- function(df) {
     )
 }
 
-gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_character_) {
+gc_make_tidy <- function(core, prefix = NA_character_, instrument = NA_character_) {
 
   blocklist  <- core$blocklist
   group_vars <- unlist(blocklist[-1])
@@ -2109,17 +2107,12 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
     dplyr::mutate(Replicate = dplyr::row_number()) |>
     dplyr::ungroup()
   
-  tidy$Instrument <- instrument
+  tidy$instrument <- instrument
   
-  if (!is.na(plate_id)) {
-    tidy$Plate <- plate_id
-  }
+  tidy$prefix <- if (!is.na(prefix) && nzchar(prefix)) prefix else ""
   
-  tidy |>
-   dplyr::select(
-      tidyselect::any_of("Plate"),
-      dplyr::everything()
-    )
+  tidy
+  
 }
 
 # ------------------------------------------------------------
