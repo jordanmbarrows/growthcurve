@@ -1282,6 +1282,16 @@ server <- function(input, output, session) {
     }
   }
   
+  get_run_folder <- function(file_path) {
+    d1 <- basename(dirname(file_path))
+    
+    if (tolower(d1) %in% c("outputs", "output", "results", "summaries", "plots")) {
+      return(basename(dirname(dirname(dirname(file_path)))))
+    } else {
+      return(basename(dirname(dirname(file_path))))
+    }
+  }
+  
   combine_tidy_files <- function(run_df) {
     all_files <- unlist(lapply(run_df$full_path, function(dir) {
       list.files(
@@ -1310,8 +1320,15 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df$run_name <- get_plate_folder(f)
+      df[["_plate"]] <- get_plate_folder(f)
+      df$run_name <- get_run_folder(f)
       df$prefix <- if ("prefix" %in% names(df)) df$prefix else ""
+      
+      meta_cols <- c("source_file", "run_name", "prefix", "instrument", "_plate", "Well")
+      
+      other_cols <- setdiff(names(df), meta_cols)
+      
+      df <- df[, c(meta_cols, other_cols), drop = FALSE]
       
       df
     })
@@ -1324,32 +1341,36 @@ server <- function(input, output, session) {
     
     df <- dplyr::bind_rows(data_list, .id = "file_index")
     
-    cols <- names(df)
+    core_cols <- c(
+      "file_index",
+      "source_file",
+      "run_name",
+      "prefix",
+      "instrument",
+      "_plate",
+      "Well",
+      "Measurement",
+      "Value",
+      "Replicate",
+      "QC_flag",
+      "QC_reason"
+    )
     
-    well_pos <- match("Well", cols)
-    run_pos  <- match("run_name", cols)
+    extra_cols <- setdiff(names(df), core_cols)
     
-    # detect extra columns after run_name
-    if (!is.na(run_pos) && run_pos < length(cols)) {
-      extra_cols <- cols[(run_pos + 1):length(cols)]
-    } else {
-      extra_cols <- character(0)
-    }
+    pre_well <- setdiff(core_cols, c("Well", "QC_flag", "QC_reason"))
+    pre_well <- intersect(pre_well, names(df))
     
-    # move them before Well
-    if (length(extra_cols) > 0 && !is.na(well_pos)) {
-      
-      non_extra <- setdiff(cols, extra_cols)
-      well_pos_nonextra <- match("Well", non_extra)
-      
-      new_order <- c(
-        non_extra[1:(well_pos_nonextra - 1)],
-        extra_cols,
-        non_extra[well_pos_nonextra:length(non_extra)]
-      )
-      
-      df <- df[, new_order, drop = FALSE]
-    }
+    post_core <- intersect(c("QC_flag", "QC_reason"), names(df))
+    
+    new_order <- c(
+      pre_well,
+      "Well",
+      extra_cols,
+      post_core
+    )
+    
+    df <- df[, new_order, drop = FALSE]
     
     df
     
