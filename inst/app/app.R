@@ -1269,6 +1269,19 @@ server <- function(input, output, session) {
     }
   }
   
+  get_plate_folder <- function(file_path) {
+    d1 <- basename(dirname(file_path))
+    
+    # Old structure: immediate parent is something generic (e.g., Summaries/)
+    # New structure: immediate parent IS the plate
+    
+    if (tolower(d1) %in% c("outputs", "output", "results", "summaries", "plots")) {
+      return(basename(dirname(dirname(file_path))))
+    } else {
+      return(d1)
+    }
+  }
+  
   combine_tidy_files <- function(run_df) {
     all_files <- unlist(lapply(run_df$full_path, function(dir) {
       list.files(
@@ -1297,7 +1310,7 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df$run_name    <- basename(dirname(f))
+      df$run_name <- get_plate_folder(f)
       
       df
     })
@@ -1405,7 +1418,7 @@ server <- function(input, output, session) {
       
       info <- file.info(files)
       
-      plate_folder <- basename(dirname(files))
+      plate_folder <- vapply(files, get_plate_folder, character(1))
       
       tmp <- data.frame(
         run_name     = run_name,
