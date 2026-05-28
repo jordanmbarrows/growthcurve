@@ -3195,12 +3195,52 @@ B           0   0   1
     dup_info <- duplicate_info()
     
     # build status column
-    df$status <- ifelse(
-      df$run_name %in% names(dup_info$run_flags) &
-        dup_info$run_flags[df$run_name],
-      HTML("&#9888;&#65039; duplicate plate data detected (within or across analysis runs)"),
-      HTML("&#9989; unique")
-    )
+    df$status <- vapply(df$run_name, function(run) {
+      
+      # ---- check if run is selected ----
+      safe_name <- gsub("[^a-zA-Z0-9_]", "_", run)
+      is_selected <- isTRUE(input[[paste0("agg_include_", safe_name)]])
+      
+      # ---- Case 1: NOT selected → EMPTY CELL ----
+      if (!is_selected) {
+        return("")   # ← this is the key change
+      }
+      
+      # ---- check duplicate status ----
+      is_dup <- run %in% names(dup_info$run_flags) &&
+        isTRUE(dup_info$run_flags[[run]])
+      
+      # ---- Case 2: selected + no duplicates ----
+      if (!is_dup) {
+        return(as.character(HTML("&#9989; unique")))
+      }
+      
+      # ---- Case 3: selected + duplicates ----
+      involved <- lapply(dup_info$duplicate_map, function(entries) {
+        entries[grepl(paste0("^", run, " >"), entries)]
+      })
+      
+      involved <- Filter(length, involved)
+      
+      if (length(involved) == 0) {
+        return(as.character(HTML("&#9989; unique")))  # safety fallback
+      }
+      
+      plates <- names(involved)
+      
+      tooltip <- paste(
+        unlist(dup_info$duplicate_map[plates]),
+        collapse = "\n"
+      )
+      
+      as.character(
+        tags$span(
+          title = tooltip,
+          HTML("&#9888;&#65039; duplicate plate data detected (within or across analysis runs)")
+        )
+      )
+      
+    }, character(1))
     
     # preserve checkbox column structure
     df$include_ui <- vapply(df$run_name, function(name) {
