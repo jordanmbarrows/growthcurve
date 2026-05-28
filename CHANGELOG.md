@@ -2,7 +2,9 @@
 
 ## Unreleased
 
--
+
+###Fixes 
+- Updated plots 10 and 11 titles to reflect mean and 95% CI
 
 ## [1.0.8] - 2026-05-28
 
