@@ -1311,6 +1311,7 @@ server <- function(input, output, session) {
       # EXISTING metadata
       df$source_file <- basename(f)
       df$run_name <- get_plate_folder(f)
+      df$prefix <- if ("prefix" %in% names(df)) df$prefix else ""
       
       df
     })
