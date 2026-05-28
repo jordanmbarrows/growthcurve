@@ -1430,10 +1430,8 @@ server <- function(input, output, session) {
       
       tmp$label <- paste(tmp$run_name, ">", tmp$plate_folder)
       
-      tmp$group_key <- sub(" - Copy$", "", tmp$plate_folder)
-      
-      # Fingerprint = filename + size
-      tmp$fingerprint <- paste(tmp$plate_file, tmp$size, sep = "::")
+      tmp$group_key <- tolower(trimws(tmp$plate_folder))
+      tmp$group_key <- sub(" - copy$", "", tmp$group_key)
       
       plate_records <- rbind(plate_records, tmp)
     }
@@ -1446,14 +1444,16 @@ server <- function(input, output, session) {
     }
     
     # ---- Detect duplicated plates ----
-    dup_idx <-
-      duplicated(plate_records$fingerprint) |
-      duplicated(plate_records$fingerprint, fromLast = TRUE)
+    
+    dup_idx <- duplicated(plate_records$group_key) |
+      duplicated(plate_records$group_key, fromLast = TRUE)
     
     plate_records$duplicate_plate <- dup_idx
     
-    # ---- Build duplicate map: plate -> (run > plate folder) ----
-    duplicate_map <- split(plate_records$label[dup_idx], plate_records$group_key[dup_idx])
+    duplicate_map <- split(
+      plate_records$label[dup_idx],
+      plate_records$group_key[dup_idx]
+    )
     
     # Keep only true duplicates (appear in >1 place)
     duplicate_map <- duplicate_map[sapply(duplicate_map, length) > 1]
@@ -3198,7 +3198,7 @@ B           0   0   1
     df$status <- ifelse(
       df$run_name %in% names(dup_info$run_flags) &
         dup_info$run_flags[df$run_name],
-      HTML("&#9888;&#65039; overlapping plates"),
+      HTML("&#9888;&#65039; duplicate plate data detected (within or across analysis runs)"),
       HTML("&#9989; unique")
     )
     
