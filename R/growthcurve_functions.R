@@ -2121,7 +2121,7 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
     dplyr::mutate(Replicate = dplyr::row_number()) |>
     dplyr::ungroup()
   
-  tidy$Instrument <- instrument
+  tidy$instrument <- instrument
   
   if (!is.na(plate_id)) {
     tidy$Plate <- plate_id
