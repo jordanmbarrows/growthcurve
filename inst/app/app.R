@@ -111,8 +111,7 @@ ui <- shiny::fluidPage(
 
     /* ---- Batch flex layout ---- */
       .batch-flex { display: flex; min-width: 0; align-items: stretch; gap: 24px; margin-bottom: 40px; }
-      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow-x: auto; overflow-y: visible; }
-      .batch-right { flex: 0 0 480px; max-width: 480px; }
+      .batch-left { flex: 1 1 0; min-width: 0; max-width: 100%; overflow: visible; }      
       .batch-left .dataTables_wrapper { width: 100% !important; overflow-x: auto; }
       @media (max-width: 1200px) {
         .batch-flex { flex-direction: column; align-items: stretch; }
@@ -121,23 +120,24 @@ ui <- shiny::fluidPage(
       }
 
     /* ---- Aggregate runs table ---- */
+     #agg_runs_table_container {
+        width: 100%;
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
+      }
       #agg_runs_table table.dataTable { table-layout: auto !important; }
       #agg_runs_table th:first-child, #agg_runs_table td:first-child {
         width: 60px !important; min-width: 60px !important; max-width: 60px !important;
         text-align: left !important; padding-left: 8px !important;
       }
       #agg_runs_table th:nth-child(2), #agg_runs_table td:nth-child(2) {
-        width: 300px !important; min-width: 300px !important; max-width: 300px !important;
+        min-width: 300px !important;
       }
       #agg_runs_table th:nth-child(3), #agg_runs_table td:nth-child(3) {
-        width: 220px !important; min-width: 220px !important; max-width: 220px !important;
+        min-width: 220px !important; white-space: nowrap; font-family: monospace;
       }
-      #agg_runs_table td:first-child { cursor: pointer; user-select: none; font-family: monospace; }
-      #agg_runs_table td:nth-child(2) { white-space: nowrap; }
-      #agg_runs_table td:nth-child(3) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
-      #agg_runs_table .dataTables_scrollBody { overflow-x: auto; }
-      #agg_runs_table .dataTables_wrapper { width: 100% !important; max-width: none !important; overflow-x: visible !important; }    
-      
+     
       .dup-hover:hover + .dup-tooltip {
         display: block;
       }
@@ -3196,17 +3196,8 @@ B           0   0   1
         checkboxInput("agg_select_all", "Select all runs", TRUE),
         
         div(
-          style = "
-            width: 100%;
-            overflow-x: auto;
-          ",
-          div(
-            style = "
-              display: inline-block;
-              min-width: max-content;
-            ",
-            DT::DTOutput("agg_runs_table")
-          )
+          id = "agg_runs_table_container",
+          DT::DTOutput("agg_runs_table")
         ),
         
         hr(),
@@ -3278,8 +3269,8 @@ B           0   0   1
         dom = "t",
         ordering = FALSE,
         autoWidth = FALSE,
-        scrollY = "600px",
-        scrollCollapse = TRUE,
+        scrollX = FALSE,
+        scrollY = FALSE,
         fixedHeader = TRUE
       ), width = "auto",
       callback = htmlwidgets::JS(
