@@ -67,6 +67,33 @@ get_design_wells <- function(design_file) {
   design_wells
 }
 
+# ---------------------------
+# Plot titles
+# ---------------------------
+gc_plot_titles <- list(
+  blank_linear    = "Blank-corrected OD (linear scale)",
+  blank_log       = "Blank-corrected OD (log scale)",
+  mean_curves     = "Mean growth curves with 95% confidence interval",
+  perwell_linear  = "Per-well OD curves (linear scale)",
+  perwell_log     = "Per-well OD curves (log scale)",
+  deriv_raw       = "Raw growth-rate derivatives",
+  deriv_percap    = "Per-capita growth-rate derivatives",
+  fitted_percap   = "Fitted per-capita growth rate with maximum",
+  od_with_maxgc   = "OD curves with maximum growth-rate marked",
+  doubling_time   = "Doubling time",
+  max_growth_rate = "Maximum growth rate"
+)
+
+
+# ---------------------------
+# Unified plot title theme
+# ---------------------------
+gc_theme_title <- function() {
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(size = 16)
+  )
+}
+
 read_ocello_tanormalized <- function(file) {
   
   lines <- base::readLines(file)
@@ -449,8 +476,8 @@ gc_prepare_run <- function(rawdatafile,
   }
   
   analysis_dir <- "Analysis"
-  plots_dir    <- file.path("Analysis", "Plots")
-  summary_dir  <- file.path("Analysis", "Summaries")
+  plots_dir    <- NULL
+  summary_dir  <- NULL
   
   # ---------------------------
   # Shared ggplot theme
@@ -461,11 +488,10 @@ gc_prepare_run <- function(rawdatafile,
       panel.grid.major  = ggplot2::element_blank(),
       panel.grid.minor  = ggplot2::element_blank(),
       axis.line         = ggplot2::element_line(colour = "black"),
-      title             = ggplot2::element_text(size = 22, face = "bold"),
       axis.text         = ggplot2::element_text(size = 14),
-      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
-      strip.text        = ggplot2::element_text(size = 14, face = "bold"),
-      legend.title      = ggplot2::element_text(size = 14, face = "bold"),
+      axis.title        = ggplot2::element_text(size = 16),
+      strip.text        = ggplot2::element_text(size = 14),
+      legend.title      = ggplot2::element_text(size = 14),
       legend.text       = ggplot2::element_text(size = 12)
     )
   
@@ -1139,10 +1165,12 @@ gc_plot_blank_corrected <- function(merged_data,
   ) +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::labs(
+      title = gc_plot_titles$blank_linear,
       x = "Time (hrs)",
       y = "OD (blank corrected)"
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1177,10 +1205,12 @@ gc_plot_blank_log <- function(merged_data,
   ) +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::labs(
+      title = gc_plot_titles$blank_log,
       x = "Time (hrs)",
       y = bquote(log[10] * "OD (blank corrected)")
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1219,12 +1249,14 @@ gc_plot_mean_curves <- function(merged_data_means,
       colour = NA
     ) +
     ggplot2::labs(
+      title = gc_plot_titles$mean_curves,
       x = "Time (hrs)",
       y = "OD (blank corrected)",
       colour = "Group",
       fill   = "Group"
     ) +
     ggplot_theme + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1272,13 +1304,14 @@ gc_plot_perwell_linear <- function(merged_data,
     gc_qc_scale() +
     
     ggplot2::labs(
+      title = gc_plot_titles$perwell_linear,
       y = "OD (blank corrected)",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
-    
     ggplot2::facet_wrap(~Well) + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1326,6 +1359,7 @@ gc_plot_perwell_log <- function(merged_data,
     gc_qc_scale() +
     
     ggplot2::labs(
+      title = gc_plot_titles$perwell_log,
       y = bquote(log[10] * "OD (blank corrected)"),
       x = "Time (hrs)",
       colour = "QC status",
@@ -1333,6 +1367,7 @@ gc_plot_perwell_log <- function(merged_data,
     ) +
     
     ggplot2::facet_wrap(~Well) + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1365,12 +1400,14 @@ gc_plot_derivative_perwell <- function(merged_data_sub,
     ggplot2::geom_line(linewidth = 0.3) +
     gc_qc_scale() +
     ggplot2::labs(
+      title = gc_plot_titles$deriv_raw,
       y = "Derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
     ggplot2::facet_wrap(~Well, scales = "free") + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 # ------------------------------------------------------------
@@ -1402,12 +1439,14 @@ gc_plot_percap_derivative_perwell <- function(merged_data_sub,
     ggplot2::geom_line(linewidth = 0.3) +
     gc_qc_scale() +
     ggplot2::labs(
+      title = gc_plot_titles$deriv_percap,
       y = "Per-capita derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
     ) +
     ggplot2::facet_wrap(~Well, scales = "free") + 
+    gc_theme_title() +
     scale_y_gc(region)
 }
 # ------------------------------------------------------------
@@ -1451,11 +1490,13 @@ gc_plot_fitted_percap_with_max <- function(merged_data_sub,
     ) +
     
     ggplot2::labs(
+      title = gc_plot_titles$fitted_percap,
       y = "Fitted per-capita derivative",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
-    ) + 
+    ) +
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1506,11 +1547,13 @@ gc_plot_od_curves_with_maxgc <- function(merged_data,
     ) +
     
     ggplot2::labs(
+      title = gc_plot_titles$od_with_maxgc,
       y = "OD (blank corrected)",
       x = "Time (hrs)",
       colour = "QC status",
       alpha  = "QC status"
-    ) + 
+    ) +
+    gc_theme_title() +
     scale_y_gc(region)
 }
 
@@ -1566,9 +1609,10 @@ gc_plot_doubling_time <- function(data_forplots,
     ) +
     ggplot2::theme(legend.position = "none") +
     ggplot2::labs(
-      y     = "Doubling time (hrs)",
-      title = "Doubling time"
+      title = gc_plot_titles$doubling_time,
+      y     = "Doubling time (hrs)"
     ) + 
+    gc_theme_title() +
     scale_y_gc(region)
   
   if (!is.null(facet_formula)) {
@@ -1630,9 +1674,10 @@ gc_plot_max_growth_rate <- function(data_forplots,
     ) +
     ggplot2::theme(legend.position = "none") +
     ggplot2::labs(
-      y     = bquote("Max growth rate (hrs"^-1 * ")"),
-      title = "Max growth rate"
+      title = gc_plot_titles$max_growth_rate,
+      y     = bquote("Max growth rate (hrs"^-1 * ")")
     ) + 
+    gc_theme_title() +
     scale_y_gc(region)
   
   if (!is.null(facet_formula)) {
@@ -1760,63 +1805,41 @@ gc_build_plots <- function(core, ggplot_theme, region) {
 }
 
 # ------------------------------------------------------------
-# Helper: gc_save_plots()
+# Helper: gc_save_report()
 #
 # Purpose:
-#   Stage D of run_gc(): save ggplot objects to disk.
+#   Stage D of run_gc(): export all plots into a single PDF report.
 #
 # Responsibilities:
-#   - Save plots with consistent filenames
-#   - Record what was written
-#
-# Inputs:
-#   plots     : named list of ggplot objects
-#   plots_dir : directory where plots should be written
+#   - Combine all plots into a multi-page PDF
+#   - Ensure consistent formatting and ordering
 #
 # Returns:
-#   Named character vector of saved file paths
+#   Character string with the path to the generated report
 # ------------------------------------------------------------
 
-gc_save_plots <- function(plots, plots_dir) {
+#' Saves plots in single report
+#' @export
+gc_save_report <- function(plots, file, plate_name = NULL) {
   
-  stopifnot(
-    is.list(plots),
-    dir.exists(plots_dir)
-  )
-  
-  # Define filename mapping (single source of truth)
-  plot_files <- c(
-    blank_linear     = "1_Blankplot.pdf",
-    blank_log        = "2_Blankplot_log.pdf",
-    mean_curves      = "3_mean_curves.pdf",
-    perwell_linear   = "4_Curves_perwell.pdf",
-    perwell_log      = "5_Curves_perwell_log.pdf",
-    deriv_raw        = "6_Derivative_perwell.pdf",
-    deriv_percap     = "7_Per_capita_derivative_perwell.pdf",
-    fitted_percap    = "8_Fitted_per_capita_derivative_perwell.pdf",
-    od_with_maxgc    = "9_Curves_perwell_maxgc_time.pdf",
-    doubling_time    = "10_Doublingtime_dots.pdf",
-    max_growth_rate  = "11_Growthrate_dots.pdf"
-  )
-  
-  saved <- character()
-  
-  for (name in intersect(names(plot_files), names(plots))) {
-    
-    file_path <- file.path(plots_dir, plot_files[[name]])
-    
-    ggplot2::ggsave(
-      filename = file_path,
-      plot     = plots[[name]],
-      width    = 10,
-      height   = 7,
-      dpi      = 300
-    )
-    
-    saved[name] <- file_path
+  if (!is.list(plots)) {
+    gc_abort("Invalid plots object.")
   }
   
-  saved
+  grDevices::pdf(file, width = 10, height = 7, title = plate_name %||% basename(file))
+  
+  for (name in names(plots)) {
+    
+    p <- plots[[name]]
+    
+    if (!is.null(p)) {
+      print(p)
+      }
+  }
+  
+  dev.off()
+  
+  file
 }
 
 # ------------------------------------------------------------
@@ -1826,23 +1849,24 @@ gc_save_plots <- function(plots, plots_dir) {
 #   Stage E of run_gc(): write CSV summary outputs.
 #
 # Responsibilities:
-#   - Write core data tables
 #   - Write summary table (growth rates & doubling times)
 #   - Write argument record
 #
 # Inputs:
 #   core        : output from gc_core_compute()
 #   params      : validated run parameters (from gc_prepare_run)
-#   summary_dir : directory where CSVs should be written
+#   plate_dir : directory where CSVs should be written
 #
 # Returns:
 #   Named character vector of written file paths
 # ------------------------------------------------------------
 
+#' Saves summary files
+#' @export
 gc_write_summaries <- function(core,
                                params,
                                instrument,
-                               summary_dir,
+                               out_dir,
                                region) {
   
   if (!is.data.frame(core$data_forplots)) {
@@ -1852,7 +1876,7 @@ gc_write_summaries <- function(core,
   stopifnot(
     is.list(core),
     is.list(params),
-    dir.exists(summary_dir)
+    dir.exists(out_dir)
   )
   
   written <- character()
@@ -1862,18 +1886,7 @@ gc_write_summaries <- function(core,
   # ----------------------------------------------------------
   
   path <- function(filename)
-    file.path(summary_dir, filename)
-  
-  write_csv_safe(core$merged_data, path("merged_data.csv"), region = region)
-  
-  written["merged_data"] <- path("merged_data.csv")
-  
-  write_csv_safe(
-    core$ex_dat_mrg_sum,
-    path("ex_dat_mrg_sum.csv"), 
-    region = region
-  )
-  written["ex_dat_mrg_sum"] <- path("ex_dat_mrg_sum.csv")
+    file.path(out_dir, filename)
   
   # ----------------------------------------------------------
   # Tidy per-plate output (NEW PRIMARY OUTPUT)
@@ -1887,16 +1900,12 @@ gc_write_summaries <- function(core,
   
   tidy <- gc_make_tidy(core, plate_id, instrument)
   
-  if (nrow(tidy) > 0) {
-    
-    write_csv_safe(
-      tidy,
-      path("plate_tidy.csv"),
-      region = region
-    )
-    
-    written["plate_tidy"] <- path("plate_tidy.csv")
-  }
+  write_csv_safe(
+    tidy,
+    path("plate_tidy.csv"),
+    region = region
+  )
+  
   
   # ----------------------------------------------------------
   # Argument record (metadata)
@@ -2011,7 +2020,7 @@ gc_aggregate_tidies <- function(analysis_dir) {
     )
     
     if (!is.null(df)) {
-      df$Source_file <- gsub(".*/([^/]+)/Summaries/plate_tidy\\.csv$", "\\1", f)
+      df$Source_file <- basename(dirname(f))
       dfs[[i]] <- df
     }
   }
@@ -2132,6 +2141,8 @@ gc_make_tidy <- function(core, plate_id = NA_character_, instrument = NA_charact
 #   - All user-visible outputs returned in a structured object
 # ------------------------------------------------------------
 
+#' Run growth curve analysis
+#' @export
 run_gc <- function(
     rawdatafile,
     designfile,

@@ -4,9 +4,27 @@
 
 -
 
-## [1.0.7] - 2026-05-26
+## [1.0.8] - 2026-05-28
 
 ### Improvements
+- Restructured output strategy:
+  - Eliminate Plots/ and Summaries/ directories
+  - Save all plots in single PDF file called plate_report.pdf
+  - Eliminate export of merged_data.csv and ex_dat_mrg_sum.csv (these are diagnostic intermediates and not necessary for general use)
+  - Analysis_args.csv and plate_tidy.csv files are unchanged
+  - Modify Aggregate results behavior to be more flexible (still backwards compatible)
+- Clarified design file preview and templates to say 'Sample' instead of 'Not_Blank'
+- Updated User guide tab instructions to clarify that 'Well-type' and 'Blank' must be written exactly
+- Clarified downloadable Design file templates
+- Added .gitattributes file directing Git to convert CRLF to LF upon commit (standardize CSVs)
+- Added `run_gc`, `gc_save_report`, and `gc_write_summaries` to NAMESPACE
+
+### Fixes
+- Added `scrollCollapse = TRUE` to Aggregate results selection table so it only fills space if it needs it
+
+## [1.0.7] - 2026-05-26
+
+### Internal
 - Improved update modal with user instructions
 
 ## [1.0.6] - 2026-05-26

@@ -457,7 +457,7 @@ server <- function(input, output, session) {
   
   # --- Core analysis ---
   run_gc             <- growthcurve:::run_gc
-  gc_save_plots      <- growthcurve:::gc_save_plots
+  gc_save_report     <- growthcurve:::gc_save_report
   gc_write_summaries <- growthcurve:::gc_write_summaries
   
   # --- File I/O ---
@@ -998,9 +998,7 @@ server <- function(input, output, session) {
     analysis_dir <- file.path(wd, "Analysis", tag)
     
     list(
-      analysis_dir = analysis_dir,
-      plots_dir    = file.path(analysis_dir, "Plots"),
-      summary_dir  = file.path(analysis_dir, "Summaries")
+      analysis_dir = analysis_dir
     )
   }
   
@@ -1271,6 +1269,19 @@ server <- function(input, output, session) {
     }
   }
   
+  get_plate_folder <- function(file_path) {
+    d1 <- basename(dirname(file_path))
+    
+    # Old structure: immediate parent is something generic (e.g., Summaries/)
+    # New structure: immediate parent IS the plate
+    
+    if (tolower(d1) %in% c("outputs", "output", "results", "summaries", "plots")) {
+      return(basename(dirname(dirname(file_path))))
+    } else {
+      return(d1)
+    }
+  }
+  
   combine_tidy_files <- function(run_df) {
     all_files <- unlist(lapply(run_df$full_path, function(dir) {
       list.files(
@@ -1299,7 +1310,7 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df$run_name    <- basename(dirname(dirname(f)))
+      df$run_name <- get_plate_folder(f)
       
       df
     })
@@ -1310,7 +1321,37 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
-    dplyr::bind_rows(data_list, .id = "file_index")
+    df <- dplyr::bind_rows(data_list, .id = "file_index")
+    
+    cols <- names(df)
+    
+    well_pos <- match("Well", cols)
+    run_pos  <- match("run_name", cols)
+    
+    # detect extra columns after run_name
+    if (!is.na(run_pos) && run_pos < length(cols)) {
+      extra_cols <- cols[(run_pos + 1):length(cols)]
+    } else {
+      extra_cols <- character(0)
+    }
+    
+    # move them before Well
+    if (length(extra_cols) > 0 && !is.na(well_pos)) {
+      
+      non_extra <- setdiff(cols, extra_cols)
+      well_pos_nonextra <- match("Well", non_extra)
+      
+      new_order <- c(
+        non_extra[1:(well_pos_nonextra - 1)],
+        extra_cols,
+        non_extra[well_pos_nonextra:length(non_extra)]
+      )
+      
+      df <- df[, new_order, drop = FALSE]
+    }
+    
+    df
+    
   }
   
   detect_duplicate_runs <- function(run_df) {
@@ -1377,7 +1418,7 @@ server <- function(input, output, session) {
       
       info <- file.info(files)
       
-      plate_folder <- basename(dirname(dirname(files)))
+      plate_folder <- vapply(files, get_plate_folder, character(1))
       
       tmp <- data.frame(
         run_name     = run_name,
@@ -2305,6 +2346,9 @@ C   0.09  0.09  0.09\n
               "The 'Well_type' variable must always be included as the first block."
             ),
             tags$li(
+              "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
+            ),
+            tags$li(
               "Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."
             ),
             tags$li("Cells representing unused wells must be left empty")
@@ -2317,7 +2361,12 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Empty wells must remain completely blank and must not contain any text values."
+            "Empty wells must remain completely empty and must not contain any text."
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Important: 'Well_type' and 'Blank' must be written exactly as shown (including capitalization). These are interpreted specially by the analysis. All other names and values are read as-is."
           ),
           
           tags$p(
@@ -2390,16 +2439,21 @@ B           0   0   1
               "Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."
             ),
             tags$li(
-              "To add a variable, copy a full block, paste it below, and rename it."
+              "To add a variable, copy a full block, paste it below, and rename it. Remember to leave one empty row between blocks."
             ),
             tags$li(
-              'Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty.'
+              "Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty."
             )
           ),
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Do not insert, delete, or shift cells inside a block. Only replace the values."
+            "Do not change the layout of a block (do not insert, delete, or move rows or columns). Only modify the values inside existing cells."
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
           ),
           
           tags$p(
@@ -2431,13 +2485,10 @@ B           0   0   1
             "Download the template matching your regional CSV format."
           ),
           
-          fluidRow(column(
-            6,
-            downloadButton("download_template_us", "US format (comma)")
-          ), column(
-            6,
-            downloadButton("download_template_eu", "European format (semicolon)")
-          ))
+          fluidRow(
+            column(6, downloadButton("download_template_us", "US format (comma)")),
+            column(6, downloadButton("download_template_eu", "European format (semicolon)"))
+          )
         )
       ),
       
@@ -3122,6 +3173,7 @@ B           0   0   1
         ordering = FALSE,
         autoWidth = FALSE,
         scrollY = "600px",
+        scrollCollapse = TRUE,
         fixedHeader = TRUE
       ),
       callback = htmlwidgets::JS(
@@ -3405,7 +3457,6 @@ B           0   0   1
     
     if (current_stage() == "blank_linear") {
       shiny::tagList(
-        h3("Blank-corrected OD (linear scale)"),
         plotOutput("plot_blank_linear", height = "500px"),
         p(
           "Inspect blank wells and confirm that non-blank wells ",
@@ -3421,7 +3472,6 @@ B           0   0   1
       
     } else if (current_stage() == "blank_log") {
       shiny::tagList(
-        h3("Blank-corrected OD (log scale)"),
         plotOutput("plot_blank_log", height = "500px"),
         p(
           "Inspect baseline behavior and early growth on a log scale. ",
@@ -3437,7 +3487,6 @@ B           0   0   1
       
     } else if (current_stage() == "mean_curves") {
       shiny::tagList(
-        h3("Mean growth curves with 95% confidence interval"),
         plotOutput("plot_mean_curves", height = "500px"),
         p(
           "Inspect group-averaged growth curves and confidence intervals. ",
@@ -3448,7 +3497,6 @@ B           0   0   1
       
     } else if (current_stage() == "perwell_linear") {
       shiny::tagList(
-        h3("Per-well OD curves (linear scale)"),
         plotOutput("plot_perwell_linear", height = "500px"),
         p(
           "Inspect individual wells for anomalies such as contamination, ",
@@ -3459,7 +3507,6 @@ B           0   0   1
       
     } else if (current_stage() == "perwell_log") {
       shiny::tagList(
-        h3("Per-well OD curves (log scale)"),
         plotOutput("plot_perwell_log", height = "500px"),
         p(
           "Inspect individual wells on a log scale to assess early ",
@@ -3469,7 +3516,6 @@ B           0   0   1
       
     } else if (current_stage() == "deriv_raw") {
       shiny::tagList(
-        h3("Raw growth-rate derivatives"),
         plotOutput("plot_deriv_raw", height = "500px"),
         p(
           "Inspect raw growth-rate derivatives per well. ",
@@ -3480,7 +3526,6 @@ B           0   0   1
       
     } else if (current_stage() == "deriv_percap") {
       shiny::tagList(
-        h3("Per-capita growth-rate derivatives"),
         plotOutput("plot_deriv_percap", height = "500px"),
         p(
           "Inspect fitted per-capita growth-rate derivatives. ",
@@ -3491,7 +3536,6 @@ B           0   0   1
       
     } else if (current_stage() == "fitted_percap") {
       shiny::tagList(
-        h3("Fitted per-capita growth rate with maximum marked"),
         plotOutput("plot_fitted_percap", height = "500px"),
         p(
           "Inspect the fitted per-capita growth-rate curves with the ",
@@ -3502,7 +3546,6 @@ B           0   0   1
       
     } else if (current_stage() == "od_with_maxgc") {
       shiny::tagList(
-        h3("OD curves with maximum growth-rate time marked"),
         plotOutput("plot_od_with_maxgc", height = "500px"),
         p(
           "Inspect OD curves with the time of maximum per-capita growth ",
@@ -3513,7 +3556,6 @@ B           0   0   1
       
     } else if (current_stage() == "doubling_time") {
       shiny::tagList(
-        h3("Doubling time summary (mean and 95% confidence interval)"),
         plotOutput("plot_doubling_time", height = "500px"),
         p(
           "Inspect per-well doubling times grouped by condition. ",
@@ -3524,9 +3566,6 @@ B           0   0   1
       
     } else if (current_stage() == "max_growth_rate") {
       shiny::tagList(
-        h3(
-          "Maximum growth-rate summary (mean and 95% confidence interval)"
-        ),
         plotOutput("plot_max_growth_rate", height = "500px"),
         p(
           "Inspect maximum per-capita growth rates by condition. ",
@@ -3905,6 +3944,9 @@ B           0   0   1
     )
     
     prom <- promises::future_promise(expr = {
+      
+      library(growthcurve)
+      
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
         if (isTRUE(getOption("gc.dev_mode"))) return(expr)
@@ -3921,14 +3963,12 @@ B           0   0   1
         fname     <- basename(pairs_val$data_file[i])
         plate_tag <- tools::file_path_sans_ext(fname)
         plate_dir   <- file.path(root_path, plate_tag)
-        plots_dir   <- file.path(plate_dir, "Plots")
-        summary_dir <- file.path(plate_dir, "Summaries")
         
         # -- Paths defined above, but NO dir.create() yet --
         
         res <- tryCatch({
           gc_run_quiet_worker(
-            growthcurve:::run_gc(
+            run_gc(
               rawdatafile = pairs_val$data_file[i],
               designfile  = pairs_val$design_file[i],
               hrs         = params$hrs,
@@ -3977,20 +4017,15 @@ B           0   0   1
                    recursive = TRUE,
                    showWarnings = FALSE)
         
-        # -- Analysis succeeded - now safe to create directories --
-        dir.create(plots_dir,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
-        dir.create(summary_dir,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
+        dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
-        growthcurve:::gc_save_plots(res$plots, plots_dir)
-        growthcurve:::gc_write_summaries(
+        report_file <- file.path(plate_dir, "plate_report.pdf")
+        gc_save_report(res$plots, report_file, plate_name = plate_tag)
+        gc_write_summaries(
           core        = res$core,
           params      = res$params,
           instrument  = res$instrument,
-          summary_dir = summary_dir,
+          out_dir     = plate_dir,
           region      = region
         )
         
@@ -4380,20 +4415,16 @@ B           0   0   1
     fname <- tools::file_path_sans_ext(input$raw_file)
     
     # Nest inside per-plate folder
-    analysis_dir <- file.path(dirs$analysis_dir, fname)
+    plate_dir <- file.path(dirs$analysis_dir, fname)
     
-    plots_dir   <- file.path(analysis_dir, "Plots")
-    summary_dir <- file.path(analysis_dir, "Summaries")
-    
-    last_export_dir(dirs$analysis_dir)
+    last_export_dir(plate_dir)
     
     # --- Safety: never overwrite an existing analysis ---
-    if (dir.exists(plots_dir) || dir.exists(summary_dir)) {
+    if (dir.exists(plate_dir)) {
       showModal(modalDialog(
         title = "Export aborted",
         shiny::tagList(
-          p("An export with this prefix already exists."),
-          tags$code(basename(plots_dir))
+          p("An export with this prefix already exists.")
         ),
         easyClose = TRUE
       ))
@@ -4403,16 +4434,12 @@ B           0   0   1
     withProgress(message = "Exporting analysis files", value = 0, {
       incProgress(0.2, "Creating directories")
       
-      dir.create(plots_dir,
-                 recursive = TRUE,
-                 showWarnings = FALSE)
-      dir.create(summary_dir,
-                 recursive = TRUE,
-                 showWarnings = FALSE)
+      dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
       
       incProgress(0.5, "Saving plots")
       
-      gc_save_plots(plots     = res$plots, plots_dir = plots_dir)
+      report_file <- file.path(plate_dir, "plate_report.pdf")
+      gc_save_report(plots = res$plots, file = report_file, plate_name = fname)
       
       incProgress(0.8, "Writing summary tables")
       
@@ -4420,7 +4447,7 @@ B           0   0   1
         core        = res$core,
         params      = res$params,
         instrument  = res$instrument,
-        summary_dir = summary_dir,
+        out_dir     = plate_dir,
         region      = region_selected()
       )
       
@@ -4428,9 +4455,9 @@ B           0   0   1
     })
     
     pretty_path <- tryCatch(
-      pretty_export_path(analysis_dir),
+      pretty_export_path(plate_dir),
       error = function(e = NULL)
-        analysis_dir
+        plate_dir
     )
     
     showModal(
