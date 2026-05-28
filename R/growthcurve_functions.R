@@ -80,8 +80,8 @@ gc_plot_titles <- list(
   deriv_percap    = "Per-capita growth-rate derivatives",
   fitted_percap   = "Fitted per-capita growth rate with maximum",
   od_with_maxgc   = "OD curves with maximum growth-rate marked",
-  doubling_time   = "Doubling time",
-  max_growth_rate = "Maximum growth rate"
+  doubling_time   = "Doubling time with mean and 95% confidence interval",
+  max_growth_rate = "Maximum growth rate with mean and 95% confidence interval"
 )
 
 
