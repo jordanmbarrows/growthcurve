@@ -1034,7 +1034,7 @@ gc_core_compute <- function(
         blank = 0
       ),
       
-      deriv_percap5 = gcplyr::calc_deriv(
+      deriv_percap3 = gcplyr::calc_deriv(
         x = Time,
         y = Measurements_used,
         percapita = TRUE,
@@ -1049,15 +1049,15 @@ gc_core_compute <- function(
   ex_dat_mrg_sum <- merged_data_sub |>
     dplyr::group_by(dplyr::across(unlist(blocklist[-1])), Well) |>
     dplyr::summarize(
-      max_percap = if (all(is.na(deriv_percap5))) NA_real_
-      else gcplyr::max_gc(deriv_percap5, na.rm = TRUE),
+      max_percap = if (all(is.na(deriv_percap3))) NA_real_
+      else gcplyr::max_gc(deriv_percap3, na.rm = TRUE),
       
-      max_percap_time = if (all(is.na(deriv_percap5))) NA_real_
-      else gcplyr::extr_val(Time, gcplyr::which_max_gc(deriv_percap5)),
+      max_percap_time = if (all(is.na(deriv_percap3))) NA_real_
+      else gcplyr::extr_val(Time, gcplyr::which_max_gc(deriv_percap3)),
       
-      doub_time = if (all(is.na(deriv_percap5))) NA_real_
+      doub_time = if (all(is.na(deriv_percap3))) NA_real_
       else gcplyr::doubling_time(
-        y = gcplyr::max_gc(deriv_percap5, na.rm = TRUE)
+        y = gcplyr::max_gc(deriv_percap3, na.rm = TRUE)
       ),
       .groups = "drop"
     )
@@ -1472,7 +1472,7 @@ gc_plot_fitted_percap_with_max <- function(merged_data_sub,
     merged_data_sub,
     ggplot2::aes(
       Time,
-      deriv_percap5,
+      deriv_percap3,
       colour = QC_flag,
       alpha  = QC_flag
     )
