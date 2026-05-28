@@ -1892,13 +1892,25 @@ gc_write_summaries <- function(core,
   # Tidy per-plate output (NEW PRIMARY OUTPUT)
   # ----------------------------------------------------------
   
-  plate_id <- if (!is.null(params$prefix) && nzchar(params$prefix)) {
-    params$prefix
-  } else {
-    NA_character_
+  # ---- define prefix ONCE (scalar) ----
+  prefix_val <- params$prefix %||% ""
+  
+  # ---- build tidy output ----
+  tidy <- gc_make_tidy(core, prefix_val, instrument)
+  
+  # ---- enforce prefix column ----
+  if (is.data.frame(tidy)) {
+    if (nrow(tidy) > 0) {
+      tidy$prefix <- rep(prefix_val, nrow(tidy))
+    } else {
+      tidy$prefix <- character(0)
+    }
   }
   
-  tidy <- gc_make_tidy(core, plate_id, instrument)
+  # ---- remove legacy column if present ----
+  if ("Plate" %in% names(tidy)) {
+    tidy$Plate <- NULL
+  }
   
   write_csv_safe(
     tidy,
