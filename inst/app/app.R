@@ -1320,11 +1320,11 @@ server <- function(input, output, session) {
       
       # EXISTING metadata
       df$source_file <- basename(f)
-      df[["_plate"]] <- get_plate_folder(f)
+      df$plate_ <- get_plate_folder(f)
       df$run_name <- get_run_folder(f)
       df$prefix <- if ("prefix" %in% names(df)) df$prefix else ""
       
-      meta_cols <- c("source_file", "run_name", "prefix", "instrument", "_plate", "Well")
+      meta_cols <- c("source_file", "run_name", "prefix", "instrument", "plate_", "Well")
       
       other_cols <- setdiff(names(df), meta_cols)
       
@@ -1347,7 +1347,7 @@ server <- function(input, output, session) {
       "run_name",
       "prefix",
       "instrument",
-      "_plate",
+      "plate_",
       "Well",
       "Measurement",
       "Value",
@@ -1358,10 +1358,10 @@ server <- function(input, output, session) {
     
     extra_cols <- setdiff(names(df), core_cols)
     
-    pre_well <- setdiff(core_cols, c("Well", "QC_flag", "QC_reason"))
+    pre_well <- setdiff(core_cols, c("Well", "Measurement", "Value", "Replicate", "QC_flag", "QC_reason"))
     pre_well <- intersect(pre_well, names(df))
     
-    post_core <- intersect(c("QC_flag", "QC_reason"), names(df))
+    post_core <- intersect(c("Measurement", "Value", "Replicate", "QC_flag", "QC_reason"), names(df))
     
     new_order <- c(
       pre_well,
@@ -2358,7 +2358,11 @@ C   0.09  0.09  0.09\n
           tags$ul(
             tags$li("Each variable is one block (e.g., Strain, Treatment)."),
             tags$li("Each block must be a complete 96-well layout (A-H, 1-12)."),
-            tags$li("The top-left cell of each block contains the variable name."),
+            tags$li("The top-left cell of each block contains the variable name.",
+              tags$ul(
+                tags$li("Design variable names should not end with _ (e.g., Strain_), as names ending with _ are reserved for internal use during analysis and aggregation.")
+              )      
+                    ),
             tags$li(
               "Each block must contain one header row followed by eight rows (A-H)."
             ),
