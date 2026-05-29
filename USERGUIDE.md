@@ -972,6 +972,9 @@ EU-format files produce wrong numbers in output
 The region setting does not match the file format. Override the region in the app settings to match your locale.
 ```
 
-App fails to start with missing backend error \`\`\`
+App fails to start with missing backend error 
 
-A required package is not installed. Run gc_check_packages() in the R console to identify missing dependencies and install them. \`\`\`
+```
+
+A required package is not installed. Run gc_check_packages() in the R console to identify missing dependencies and install them.
+```
