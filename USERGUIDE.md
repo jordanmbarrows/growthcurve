@@ -8,17 +8,12 @@ Version `r desc::desc_get("Version")`
 
 github.com/jordanmbarrows/growthcurve
 
-```         
-
-- 
-Contents: 
+### Contents:
 
   1.  Overview
 
   - 1.1 Installation
   - 1.2 Application Architecture
-
-- 
 
   2.  Analysis Modes
 
@@ -27,123 +22,100 @@ Contents:
   - 2.3 Aggregate Results
   - 2.4 Duplicate Detection
 
-- 
-
   3.  Input Files
 
   - 3.1 Raw Data File — Plate Reader
   - 3.2 Raw Data File — oCelloscope
-  - 3.3 CSV Format Compatibility 
-  - 3.4 Design File 
+  - 3.3 CSV Format Compatibility
+  - 3.4 Design File
 
-- 
-
-  4.  Analysis Parameters 
+  4.  Analysis Parameters
 
   - 4.1 Required Parameters
-  - 4.2 Optional Parameters 
-  - 4.3 Blank Correction Mode 
-  - 4.4 Instrument Defaults 
+  - 4.2 Optional Parameters
+  - 4.3 Blank Correction Mode
+  - 4.4 Instrument Defaults
 
-- 
-
-  5.  Analysis Pipeline 
+  5.  Analysis Pipeline
 
   - 5.1 Pipeline Stages
-  - 5.2 Data Import Details 
-  - 5.3 Core Computation Details 
-    - Blank correction 
-    - Mean curve calculation 
-    - OD window filtering 
+  - 5.2 Data Import Details
+  - 5.3 Core Computation Details
+    - Blank correction
+    - Mean curve calculation
+    - OD window filtering
     - Growth rate computation (gcplyr)
     - Growth summary metrics
-    - QC flagging 
+    - QC flagging
 
-- 
-
-  6.  Diagnostic Plots 
-
-- 
+  6.  Diagnostic Plots
 
   7.  Output Files
 
   - 7.1 Plot Report (plate_report.pdf)
   - 7.2 Tidy Results (plate_tidy.csv)
   - 7.3 Analysis Metadata (Analysis_arguments.csv)
-  - 7.4 Batch Summary (batch_summary.csv) 
-  - 7.5 Aggregate Output (combined_tidy_YYYYMMDD_HHMMSS.csv) 
-
-- 
+  - 7.4 Batch Summary (batch_summary.csv)
+  - 7.5 Aggregate Output (combined_tidy_YYYYMMDD_HHMMSS.csv)
 
   8.  Regional Settings
 
-- 
-
   9.  System Layer (growthcurve_system.R)
 
-  - 9.1 Error Handling 
-  - 9.2 Developer Mode 
-  - 9.3 Update Checker 
-  - 9.4 OS-Aware Folder Opening 
-  - 9.5 Backend Readiness Check 
-
-- 
+  - 9.1 Error Handling
+  - 9.2 Developer Mode
+  - 9.3 Update Checker
+  - 9.4 OS-Aware Folder Opening
+  - 9.5 Backend Readiness Check
 
   10. UI Features
 
-  - 10.1 File Preview 
-  - 10.2 Dark Mode 
-  - 10.3 Cancellation 
+  - 10.1 File Preview
+  - 10.2 Dark Mode
+  - 10.3 Cancellation
   - 10.4 Navigation Lock
-  - 10.5 User Guide 
-
-- 
+  - 10.5 User Guide
 
   11. gcplyr Integration
-
-- 
 
   12. File Structure Reference
 
   - 12.1 Single Analysis
   - 12.2 Batch Analysis
-  - 12.3 Aggregate Analysis 
-
-- 
+  - 12.3 Aggregate Analysis
 
   13. Troubleshooting
-  
 
 ## 1. Overview
 
 GrowthCurve is an interactive R Shiny application for analyzing microbial growth curve data. It supports two instrument types — plate readers and the oCelloscope imaging cytometer — and provides a structured, reproducible workflow for extracting biologically meaningful growth metrics from raw OD or cell-count data.
 
 **The central goal of the pipeline is:**
-```
-
-To extract maximum growth rate and doubling time from raw growth curve data, and export those results in a clean, tidy format ready for downstream statistical analysis.
 
 ```         
+
+To extract maximum growth rate and doubling time from raw growth curve data, and export those results in a clean, tidy format ready for downstream statistical analysis.
+```
 
 Important design principle: The app does not produce publication-ready figures. Every visualization in the app is a diagnostic tool intended to help users evaluate data quality and analysis behavior, not to generate figures for manuscripts.
 
 ### 1.1 Installation
 
 GrowthCurve is distributed as an R package installed directly from GitHub. The recommended installer is pak, which resolves dependencies automatically.
-```
+
+```         
 
 # Install pak if needed
 
 if (!requireNamespace("pak", quietly = TRUE)) { install.packages("pak") }
+```
 
 ```         
-```
 
 # Install growthcurve from GitHub
 
 pak::pak("jordanmbarrows/growthcurve")
-
-```         
+```
 
 Once installed, launch the app with: library(growthcurve) run_growthcurve()
 
@@ -152,26 +124,26 @@ The app performs a dependency check on startup and will fail with a descriptive 
 ### 1.2 Application Architecture
 
 The application is organized into three code layers, each with a distinct responsibility:
-```
+
+```         
 
 File Purpose
+```
 
 ```         
-```
 
 app.R Shiny UI definition and server orchestration. Handles file selection, parameter inputs, progress reporting, cancellation, and export. Contains no scientific computation.
+```
 
 ```         
-```
 
 growthcurve_functions.R The analysis backend. Contains all scientific computation, plotting, and file I/O. Designed to be deterministic and batch-safe.
-
-```         
 ```
 
-growthcurve_system.R System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
-
 ```         
+
+growthcurve_system.R System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
+```
 
 A strict architectural rule is enforced throughout: the UI layer performs no scientific computation, and the analysis backend has no UI side effects. This separation makes the analysis pipeline independently testable and suitable for batch execution outside the Shiny interface.
 
@@ -205,25 +177,25 @@ Characteristics:
 - A batch summary CSV is produced at the end of each run
 
 Expected file layout for batch input:
-```
-
-/batch/ data/ plate1.csv plate2.csv design/ plate1_design.csv plate2_design.csv
 
 ```         
+
+/batch/ data/ plate1.csv plate2.csv design/ plate1_design.csv plate2_design.csv
+```
 
 The batch UI presents a matching table where each raw data file is paired with a design file using a dropdown selector. Design files that do not match a raw file can be excluded from the run.
 
 Output structure per run:
-```
+
+```         
 
 Run/ Plate_1/ plate_report.pdf plate_tidy.csv Analysis_arguments.csv Plate_2/
-
-```         
 ```
 
-batch_summary.csv
-
 ```         
+
+batch_summary.csv
+```
 
 The batch_summary.csv records the plate name, analysis status (success, failed, or cancelled), and any diagnostic messages for each plate processed in the run.
 
@@ -299,16 +271,16 @@ Well name extraction: well identifiers are extracted from column headers using a
 ### 3.3 CSV Format Compatibility
 
 The app supports both US and EU regional CSV formats:
-```
+
+```         
 
 Format Details US format Comma delimiter, dot decimal (e.g. 0.123)
-
-```         
 ```
 
-EU format Semicolon delimiter, comma decimal (e.g. 0,123)
-
 ```         
+
+EU format Semicolon delimiter, comma decimal (e.g. 0,123)
+```
 
 Detection is performed by read_csv_safe(), which peeks at the first five lines of any file and counts commas versus semicolons. The format with the higher count is selected. This detection logic applies to both input reading and the safe text parser used for in-memory data blocks.
 
@@ -329,23 +301,23 @@ Block structure:
 The first block must always be named Well_type. It defines whether each well is a Blank or a Sample. This block is used for blank correction and is filtered from output metrics.
 
 Example design file structure (showing Well_type and Strain blocks):
-```
+
+```         
 
 Well_type
-
-```         
+```
 
 ##### ,1,2,3,4,5,6,7,8,9,10,11,
-```
+
+```         
 
 A,Blank,Sample,Sample,Sample,... B,Blank,Sample,Sample,Sample,... ... H,Blank,Sample,Sample,Sample,...
-
-```         
 ```
 
-Strain ,1,2,3,4,... A,WT,WT,KO,KO,... ...
-
 ```         
+
+Strain ,1,2,3,4,... A,WT,WT,KO,KO,... ...
+```
 
 Design variable selection: the app reads all block header names from the design file (excluding Well_type) and presents them as selectable design variables. In Single Analysis mode, the user selects which variables to include in the analysis. In Batch Analysis mode, design variables are inferred automatically from the design file if not explicitly provided.
 
@@ -354,88 +326,88 @@ Design parsing is handled by gcplyr::import_blockdesigns(). A temporary normaliz
 ## 4. Analysis Parameters
 
 ### 4.1 Required Parameters
-```
+
+```         
 
 Parameter Description Design variables One or more variable names selected from the design file blocks (excluding Well_type). These define the grouping structure for mean curve calculation, derivative computation, and summary statistics. Duration (hours) Total experiment duration in hours. Used to generate the time vector for plate reader data. Must be a positive number.
+```
 
 ```         
-```
 
 Interval (minutes) Measurement frequency in minutes. Used to generate the time vector for both instrument types. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. Min OD Lower bound of the OD window used for growth rate calculation. Only timepoints with blank-corrected OD greater than this value are analyzed. Default: 0.05 for plate reader, 0.01 for oCelloscope.
+```
 
 ```         
-```
 
 Max OD Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Min OD must be strictly less than Max OD.
+```
+
+### 4.2 Optional Parameters
 
 ```         
-
-### 4.2 Optional Parameters 
-```
 
 Parameter Description
-
-```         
 ```
 
-Prefix A text label prepended to analysis outputs. Used in output filenames and as a component of the duplicate detection key. If left empty, outputs are labeled by plate name alone.
-
 ```         
+
+Prefix A text label prepended to analysis outputs. Used in output filenames and as a component of the duplicate detection key. If left empty, outputs are labeled by plate name alone.
+```
 
 ### 4.3 Blank Correction Mode
 
 Blank correction is only applicable to plate reader data. oCelloscope data enters the pipeline already internally blanked by the instrument, so blank correction is disabled and the blank mode selector is greyed out when oCelloscope is selected.
-```
+
+```         
 
 Mode Behavior
+```
 
 ```         
-```
 
 plate Subtracts the median OD of all wells designated as Blank at time zero from every well at every timepoint. This is the recommended mode and the default. per_well Subtracts the OD of each individual well at the first timepoint from all subsequent timepoints of that well. Useful when wells have highly variable baseline readings.
-
-```         
 ```
 
-none No blank correction applied. The raw measurements are used as- is. Appropriate when data is already baseline-corrected.
-
 ```         
+
+none No blank correction applied. The raw measurements are used as- is. Appropriate when data is already baseline-corrected.
+```
 
 In all cases, blank-corrected values are stored as Measurements_adj, and a log transformation of pmax(Measurements_adj, 1e-6) is stored as Measurements_log. The small floor value (1e-6) prevents log-of-zero errors.
 
 ### 4.4 Instrument Defaults
 
 Instrument-specific default parameters are defined in the gc_instrument_defaults list in growthcurve_functions.R:
-```
+
+```         
 
 Parameter Default value
+```
 
 ```         
-```
 
 Plate reader interval 15 minutes
+```
 
 ```         
-```
 
 Plate reader Min OD 0. Plate reader Max OD 0.
+```
 
 ```         
-```
 
 Plate reader smoothing Disabled oCelloscope interval 10 minutes
+```
 
 ```         
-```
 
 oCelloscope Min OD 0. oCelloscope Max OD 0.
-
-```         
 ```
 
-oCelloscope smoothing Enabled, window = 3
-
 ```         
+
+oCelloscope smoothing Enabled, window = 3
+```
 
 ## 5. Analysis Pipeline
 
@@ -444,36 +416,36 @@ All scientific computation is orchestrated by run_gc(), the top-level coordinato
 ### 5.1 Pipeline Stages
 
 The run_gc() function executes the following stages in order:
-```
+
+```         
 
 Stage Responsibility
+```
 
 ```         
-```
 
 Stage A: gc_prepare_run() Input validation. Checks that all required arguments are present and valid (file paths exist, hrs \> 0, interval \> 0, minod \< maxod, design_vars is a non-empty character vector). Builds the shared ggplot theme object. Snapshots all resolved parameters.
+```
 
 ```         
-```
 
 Stage B: gc_import_data() Data import. Dispatches to instrument-specific readers, imports and parses the design file, then merges the two datasets using gcplyr::merge_dfs(). Validates that design variables exist in the design file before proceeding.
+```
 
 ```         
-```
 
 Stage C: gc_core_compute() Core scientific computation. Performs blank correction, OD filtering, derivative calculation, growth rate summarization, and QC flagging. Returns all intermediate and final datasets. This function is pure: no plotting, no file I/O.
+```
 
 ```         
-```
 
 Stage D: gc_build_plots() Plot construction. Builds all 11 ggplot objects from the outputs of gc_core_compute(). No saving or printing occurs at this stage.
-
-```         
 ```
 
-Stage E: Assembly The final return object is assembled, containing the parameter snapshot, instrument type, blank mode, core compute results, and all plot objects.
-
 ```         
+
+Stage E: Assembly The final return object is assembled, containing the parameter snapshot, instrument type, blank mode, core compute results, and all plot objects.
+```
 
 ### 5.2 Data Import Details
 
@@ -519,16 +491,16 @@ The dataset is subset to rows where Measurements_adj \> minod AND Measurements_a
 #### Growth rate computation (gcplyr)
 
 Within the OD window, the pipeline computes three derivative columns for each well:
-```
+
+```         
 
 Column Computation
-
-```         
 ```
 
-deriv Raw absolute growth rate: gcplyr::calc_deriv(x=Time, y=Measurements_used) deriv_percap Per-capita growth rate without windowing: gcplyr::calc_deriv(..., percapita=TRUE, blank=0) deriv_percap3 Per-capita growth rate with 3-timepoint rolling window on log- transformed data: gcplyr::calc_deriv(..., percapita=TRUE, blank=0, window_width_n=3, trans_y="log")
-
 ```         
+
+deriv Raw absolute growth rate: gcplyr::calc_deriv(x=Time, y=Measurements_used) deriv_percap Per-capita growth rate without windowing: gcplyr::calc_deriv(..., percapita=TRUE, blank=0) deriv_percap3 Per-capita growth rate with 3-timepoint rolling window on log- transformed data: gcplyr::calc_deriv(..., percapita=TRUE, blank=0, window_width_n=3, trans_y="log")
+```
 
 The deriv_percap3 column is the primary metric used for maximum growth rate extraction. The rolling window of 3 timepoints and log transformation improve robustness to noise while preserving the true growth signal. The window_width_n=3 choice is intentional and instrument- aware — the same code path is used for both instrument types, but oCelloscope data is pre- smoothed before derivatives are computed.
 
@@ -537,47 +509,47 @@ For oCelloscope data, when smoothing=TRUE, gcplyr::smooth_data() is applied to M
 #### Growth summary metrics
 
 Per-well summary statistics are computed by grouping on the design variables and Well:
-```
+
+```         
 
 Metric Computation
+```
 
 ```         
-```
 
 max_percap Maximum per-capita growth rate: gcplyr::max_gc(deriv_percap3, na.rm=TRUE)
+```
 
 ```         
-```
 
 max_percap_time Time at which max_percap occurs: gcplyr::extr_val(Time, gcplyr::which_max_gc(deriv_percap3))
-
-```         
 ```
 
-doub_time Doubling time in hours: gcplyr::doubling_time(y = max_percap)
-
 ```         
+
+doub_time Doubling time in hours: gcplyr::doubling_time(y = max_percap)
+```
 
 If all values of deriv_percap3 for a well are NA, the summary metrics are set to NA_real\_. This prevents crashes from wells with no valid data.
 
 #### QC flagging
 
 After summarization, gc_add_qc() assigns a QC_flag and QC_reason to each well based on the computed metrics:
-```
+
+```         
 
 Flag Condition FAIL max_percap is NA (no growth rate detected) or doub_time is NA (undefined doubling time)
+```
 
 ```         
-```
 
 WARN doub_time \< 0.2 hours (very fast growth, likely a calculation artifact) or doub_time \> 10 hours (very slow growth)
-
-```         
 ```
 
-OK All metrics are within expected ranges
-
 ```         
+
+OK All metrics are within expected ranges
+```
 
 QC flags are joined back onto the merged_data, merged_data_sub, and ex_dat_mrg_sum datasets so they are available in all downstream plots.
 
@@ -586,86 +558,86 @@ QC flags are joined back onto the merged_data, merged_data_sub, and ex_dat_mrg_s
 All 11 plots are produced by gc_build_plots(), which takes the core compute results and the shared ggplot theme as inputs. In Single Analysis mode, plots are displayed one at a time with stage navigation. In Batch Analysis mode, all plots are rendered directly to the PDF report without display.
 
 QC-flag coloring is applied to relevant plots using gc_qc_scale(), which maps OK wells to black, WARN wells to orange (#E69F00), and FAIL wells to light grey at reduced opacity (alpha = 0.3). This allows rapid visual identification of problematic wells across all summary plots.
-```
+
+```         
 
 Plot Content and purpose Plot 1: Blank-corrected OD (linear)
+```
 
 ```         
-```
 
 All wells plotted on a linear OD scale after blank correction, colored by Well_type (Blank vs Sample). Used to inspect the overall scale of the data and verify blank subtraction.
+```
 
 ```         
-```
 
 Plot 2: Blank-corrected OD (log scale)
+```
 
 ```         
-```
 
 Same data on a log10 scale. Reveals early exponential growth behavior and helps identify wells that never truly left the blank baseline.
+```
 
 ```         
-```
 
 Plot 3: Mean curves with 95% CI Mean growth curves for each experimental group defined by the design variables, with 95% confidence interval ribbons. Groups are distinguished by both color and linetype.
+```
 
 ```         
-```
 
 Plot 4: Per-well OD curves (linear)
+```
 
 ```         
-```
 
 Individual well curves faceted by design variable combinations, linear scale. Used to identify outlier wells and inspect within-group variability.
+```
 
 ```         
-```
 
 Plot 5: Per-well OD curves (log scale)
+```
 
 ```         
-```
 
 Same per-well faceted view on a log10 scale.
+```
 
 ```         
-```
 
 Plot 6: Raw derivatives Absolute growth rate (deriv) over time, per well, within the OD window. Useful for checking the magnitude and timing of the growth rate signal. Plot 7: Per-capita derivatives Per-capita growth rate (deriv_percap, no windowing) over time. Shows the unsmoothed growth rate trajectory. Plot 8: Fitted per-capita with maximum
+```
 
 ```         
-```
 
 The windowed per-capita derivative (deriv_percap3) with a vertical marker at the timepoint of maximum growth rate (max_percap_time). This is the primary derivative used for metric extraction.
+```
 
 ```         
-```
 
 Plot 9: OD curves with max growth marked
+```
 
 ```         
-```
 
 OD curves (from merged_data_sub) with a dot plotted at the timepoint of maximum growth for each well, colored by QC flag.
+```
 
 ```         
-```
 
 Plot 10: Doubling time summary Boxplot and jitter of doubling time per experimental group, with mean and 95% CI. Wells colored by QC flag.
+```
 
 ```         
-```
 
 Plot 11: Maximum growth rate summary
-
-```         
 ```
 
-Boxplot and jitter of max_percap per experimental group, with mean and 95% CI. Wells colored by QC flag.
-
 ```         
+
+Boxplot and jitter of max_percap per experimental group, with mean and 95% CI. Wells colored by QC flag.
+```
 
 ## 7. Output Files
 
@@ -678,77 +650,77 @@ The PDF report contains all 11 diagnostic plots, one per page. It is generated b
 This is the primary scientific output of the analysis. It contains one row per well per measurement type, in long (tidy) format suitable for direct import into statistical analysis tools or ggplot2.
 
 Column schema:
-```
+
+```         
 
 Column Content
+```
 
 ```         
-```
 
 [design variables] One column per design variable selected at analysis time (e.g. Strain, Treatment). Values are taken directly from the design file.
+```
 
 ```         
-```
 
 Well Well identifier (e.g. A1, B3). Measurement Type of measurement: max_growth (the maximum per-capita growth rate) or doub_time (the doubling time in hours).
+```
 
 ```         
-```
 
 Value Numeric value of the measurement. Replicate Integer replicate index assigned within each combination of design variables and measurement type. Assigned by row_number() within each group.
+```
 
 ```         
-```
 
 QC_flag OK, WARN, or FAIL. See Section 5.3 for flag definitions. QC_reason Empty string for OK wells; a short description for WARN and FAIL wells. instrument The instrument type used: plate_reader or ocelloscope.
-
-```         
 ```
 
-prefix The user-specified prefix. Empty string if no prefix was provided.
-
 ```         
+
+prefix The user-specified prefix. Empty string if no prefix was provided.
+```
 
 The tidy format means that max_growth and doub_time appear as separate rows for the same well, not as separate columns. This makes the file directly usable with dplyr group_by and ggplot2 facet operations in downstream analysis.
 
 ### 7.3 Analysis Metadata (Analysis_arguments.csv)
 
 A single-row CSV recording all parameters used for the analysis. This file provides a complete audit trail for reproducibility.
-```
+
+```         
 
 Field Content
+```
 
 ```         
-```
 
 rawdatafile Full path to the raw data file
+```
 
 ```         
-```
 
 designfile Full path to the design file instrument plate_reader or ocelloscope
+```
 
 ```         
-```
 
 blank_mode plate, per_well, or none hrs Duration in hours
+```
 
 ```         
-```
 
 interval Interval in minutes
+```
 
 ```         
-```
 
 minod Lower OD threshold maxod Upper OD threshold
-
-```         
 ```
 
-design_vars Comma-separated list of selected design variables prefix Prefix used (empty if none)
-
 ```         
+
+design_vars Comma-separated list of selected design variables prefix Prefix used (empty if none)
+```
 
 ### 7.4 Batch Summary (batch_summary.csv)
 
@@ -761,21 +733,21 @@ Produced by the Aggregate Results workflow. Contains the combined rows from all 
 ## 8. Regional Settings
 
 Regional formatting affects how CSV files are written and how numeric axis labels are rendered in plots. The app detects the current region on startup from the R session locale (Sys.localeconv()[["decimal_point"]]): a comma decimal mark triggers EU mode, a dot triggers US mode. Users can override this detection in the app's settings area.
-```
+
+```         
 
 Region Format
+```
 
 ```         
-```
 
 US format Comma delimiter (,) and dot decimal (.). Standard for R and most data analysis tools.
-
-```         
 ```
 
-EU format Semicolon delimiter (;) and comma decimal (,). Required for compatibility with Excel and other tools in many European locales.
-
 ```         
+
+EU format Semicolon delimiter (;) and comma decimal (,). Required for compatibility with Excel and other tools in many European locales.
+```
 
 The region setting affects:
 
@@ -783,16 +755,16 @@ The region setting affects:
 - Numeric axis labels in diagnostic plots (format_axis_labels() converts dots to commas for EU mode)
 
 All file I/O is routed through two centralized functions defined in growthcurve_system.R:
-```
+
+```         
 
 Function Behavior read_csv_safe(file, ...) Reads a CSV file with automatic delimiter and decimal detection. Calls read.table() with the inferred settings. Raises a gc_error if the file does not exist or cannot be parsed.
-
-```         
 ```
 
-read_csv_safe_text(text, ...) Same logic applied to an in-memory text block rather than a file path. Used for parsing extracted oCelloscope data blocks. write_csv_safe(df, file, region) Writes a data frame using the delimiter and decimal mark for the specified region. Converts numeric-like columns back to numeric before writing.
-
 ```         
+
+read_csv_safe_text(text, ...) Same logic applied to an in-memory text block rather than a file path. Used for parsing extracted oCelloscope data blocks. write_csv_safe(df, file, region) Writes a data frame using the delimiter and decimal mark for the specified region. Converts numeric-like columns back to numeric before writing.
+```
 
 ## 9. System Layer (growthcurve_system.R)
 
@@ -807,11 +779,11 @@ Error formatting is handled by gc_format_error(). In user mode (default), this f
 ### 9.2 Developer Mode
 
 Developer mode provides additional logging and debugging output. It is disabled by default and must be explicitly enabled:
-```
-
-options(gc.dev_mode = TRUE)
 
 ```         
+
+options(gc.dev_mode = TRUE)
+```
 
 When active, developer mode enables:
 
@@ -822,11 +794,11 @@ When active, developer mode enables:
 ### 9.3 Update Checker
 
 The app checks for updates on startup by querying the GitHub releases API:
-```
-
-<https://api.github.com/repos/jordanmbarrows/growthcurve/releases/latest>
 
 ```         
+
+<https://api.github.com/repos/jordanmbarrows/growthcurve/releases/latest>
+```
 
 The latest release tag is compared against the installed package version using utils::compareVersion(). If a newer version is available, the user is notified in the UI with instructions for installing the update. The checker does not force installation and does not block app startup if the network request fails.
 
@@ -869,46 +841,46 @@ The app includes a built-in User Guide tab containing embedded documentation cov
 ## 11. gcplyr Integration
 
 GrowthCurve uses the gcplyr R package (Blazanin 2024, BMC Bioinformatics) as its scientific computation engine. gcplyr provides the core functions for growth curve data manipulation and analysis. The following gcplyr functions are used directly in the pipeline:
-```
+
+```         
 
 Function Role in pipeline
+```
 
 ```         
-```
 
 gcplyr::import_blockmeasures() Reads repeating data blocks from plate reader CSV files. Called with startrow, endrow, startcol, and endcol vectors defining the position of each timepoint block.
+```
 
 ```         
-```
 
 gcplyr::trans_wide_to_tidy() Converts wide-format plate data (one column per well) to tidy long format (one row per well per timepoint).
+```
 
 ```         
-```
 
 gcplyr::import_blockdesigns() Reads the design file block structure. Called with block_names, startrow, and endrow vectors.
+```
 
 ```         
-```
 
 gcplyr::merge_dfs() Merges the tidy data with the design metadata by the Well column.
+```
 
 ```         
-```
 
 gcplyr::smooth_data() Applies a moving-average smooth to the Measurements_adj column for oCelloscope data (sm_method="moving-average", window_width_n=3). gcplyr::calc_deriv() Computes absolute and per-capita derivatives. The windowed per-capita derivative (window_width_n=3, trans_y="log") is the primary metric input. gcplyr::max_gc() Extracts the maximum value of the windowed derivative per well.
+```
 
 ```         
-```
 
 gcplyr::which_max_gc() Returns the index of the maximum in the derivative vector. gcplyr::extr_val() Extracts the Time value at the index returned by which_max_gc().
-
-```         
 ```
 
-gcplyr::doubling_time() Converts the maximum per-capita growth rate to doubling time in hours: log(2) / max_percap.
-
 ```         
+
+gcplyr::doubling_time() Converts the maximum per-capita growth rate to doubling time in hours: log(2) / max_percap.
+```
 
 For a comprehensive explanation of the underlying methodology, including the mathematical basis for per-capita derivative calculation and the interpretation of window_width_n, refer to the gcplyr documentation at:
 
@@ -917,45 +889,45 @@ For a comprehensive explanation of the underlying methodology, including the mat
 ## 12. File Structure Reference
 
 ### 12.1 Single Analysis
-```
+
+```         
 
 /project/ raw_data.csv \# plate reader or oCelloscope data design.csv \# experimental design
+```
 
 ```         
-```
 
 Analysis/ \# created on export [prefix\_]raw_data/ plate_report.pdf plate_tidy.csv Analysis_arguments.csv
-
-```         
+```
 
 ### 12.2 Batch Analysis
-```
+
+```         
 
 /batch/ data/ plate1.csv plate2.csv design/ plate1_design.csv plate2_design.csv
+```
 
 ```         
-```
 
 Analysis/ \# created on export Run_YYYYMMDD_HHMMSS/ plate1/ plate_report.pdf plate_tidy.csv Analysis_arguments.csv plate2/
+```
 
 ```         
-```
 
 batch_summary.csv
-
-```         
+```
 
 ### 12.3 Aggregate Analysis
-```
+
+```         
 
 /Analysis/ Run_1/ plate1/ plate_tidy.csv batch_summary.csv Run_2/
-
-```         
 ```
 
-combined_tidy_YYYYMMDD_HHMMSS.csv \# produced by Aggregate
-
 ```         
+
+combined_tidy_YYYYMMDD_HHMMSS.csv \# produced by Aggregate
+```
 
 ## 13. Troubleshooting
 
@@ -964,43 +936,42 @@ combined_tidy_YYYYMMDD_HHMMSS.csv \# produced by Aggregate
 "TANormalized block not found" The oCelloscope file was not exported correctly, or the wrong sheet was saved. Re-export from oCelloscope, open in Excel, select the raw data sheet, and Save As CSV.
 
 "TANormalized sanity check failed: max value is X"
-```
+
+```         
 
 The data block contains values greater than 10, indicating the data is not normalized. Check that the correct block/sheet was exported from oCelloscope.
-
-```         
+```
 
 "No data points fall within the OD window"
-```
+
+```         
 
 The OD window [minod, maxod] does not overlap with any blank- corrected measurements. Check that the correct instrument mode is selected, that the design file matches the data, and that the OD thresholds are appropriate for the data range.
-
-```         
+```
 
 "No overlapping wells between data and design"
-```
+
+```         
 
 Well names in the raw data file do not match well names in the design file. Verify both files use standard plate notation (A1–H12).
-
-```         
-
-"Design variables not found in design file"
 ```
 
-One or more selected design variables do not appear as block headers in the design file. Check for typos or verify the design file has been saved correctly.
+"Design variables not found in design file"
 
 ```         
+
+One or more selected design variables do not appear as block headers in the design file. Check for typos or verify the design file has been saved correctly.
+```
 
 Plate reader file fails to parse The file was not saved as a standard CSV from Excel. Open in Excel and re-save as CSV before uploading.
 
 EU-format files produce wrong numbers in output
-```
-
-The region setting does not match the file format. Override the region in the app settings to match your locale.
 
 ```         
 
-App fails to start with missing backend error
+The region setting does not match the file format. Override the region in the app settings to match your locale.
 ```
+
+App fails to start with missing backend error \`\`\`
 
 A required package is not installed. Run gc_check_packages() in the R console to identify missing dependencies and install them. \`\`\`
