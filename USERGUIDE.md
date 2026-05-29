@@ -1,15 +1,10 @@
-<!--
-This file is auto-generated from dev/USERGUIDE_source.md
-Do not edit manually.
--->
-
 # GrowthCurve
 
 ## Shiny Application
 
 ## User & Technical Guide
 
-Version Version 1.0.10
+Version 1.0.10
 
 github.com/jordanmbarrows/growthcurve
 
