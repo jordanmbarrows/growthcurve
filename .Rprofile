@@ -19,7 +19,7 @@ if (dev_flag) {
 update_userguide_if_present <- function() {
   
   script_path <- file.path("scripts", "update_userguide.R")
-  source_file <- "USERGUIDE_source.md"
+  source_file <- "dev/USERGUIDE_source.md"
   output_file <- "USERGUIDE.md"
   
   if (!file.exists(script_path) || !file.exists(source_file)) {
