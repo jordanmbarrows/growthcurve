@@ -4,6 +4,8 @@
 
 - Renamed `deriv_percap5` object to `deriv_percap3` in `growthcurve_functions.R`
   - Does not change behavior, but now accurately reflects usage of `window_width_n = 3` when calculating fitted per-capita derivative
+- Added comprehensive `User & Technical Guide` to both User guide tab in app and main page in repo (`USERGUIDE.md`)
+  - This guide automatically pulls version number from `DESCRIPTION` to keep it up to date
 
 ## [1.0.9] - 2026-05-28
 
