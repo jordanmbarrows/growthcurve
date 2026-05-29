@@ -5,7 +5,8 @@
 ## User & Technical Guide
 
 ```         
-Version 1.0.9 — 28 May 2026
+Version `r packageDescription("growthcurve")$Version`
+Date `r packageDescription("growthcurve")$Date`
 ```
 
 ```         
