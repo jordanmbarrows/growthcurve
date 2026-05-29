@@ -523,6 +523,13 @@ server <- function(input, output, session) {
     danger  = "#ef5350"    # optional
   )
   
+  get_app_version_userguide <- function() {
+    tryCatch(
+      as.character(utils::packageVersion("growthcurve")),
+      error = function(e) "unknown"
+    )
+  }
+  
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
     
@@ -1988,6 +1995,9 @@ server <- function(input, output, session) {
   })
   
   output$user_guide_ui <- shiny::renderUI({
+    
+    version <- paste("Version", get_app_version_userguide())
+    
     shiny::tagList(
       h3("User guide"),
       
@@ -2679,6 +2689,43 @@ B           0   0   1
           tags$li(HTML("&#9989; Correct delimiter")),
           tags$li(HTML("&#9989; No empty header rows"))
         ))
+      ),
+      hr(),
+      
+      # =========================================================
+      # USER & TECHNICAL GUIDE
+      # =========================================================
+      tags$div(
+        style = "
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid #4a90e2;
+    border-radius: 6px;
+    margin-top: 20px;
+  ",
+        
+        h4("User & Technical Guide"),
+        
+        tags$p(
+          style = "margin-bottom: 8px;",
+          "This documentation corresponds to the installed version of the application."
+        ),
+        
+        tags$p(
+          strong(version)
+        ),
+        
+        tags$p(
+          style = guide_note_style(),
+          class = "guide-note",
+          "For the full documentation and latest updates, visit the GitHub repository."
+        ),
+        
+        tags$a(
+          href = "https://github.com/jordanmbarrows/growthcurve",
+          target = "_blank",
+          "github.com/jordanmbarrows/growthcurve"
+        )
       )
     )
     
