@@ -3,11 +3,9 @@
 ## Shiny Application
 
 ## User & Technical Guide
-
-```         
+        
 Version `r packageDescription("growthcurve")$Version`
 Date `r packageDescription("growthcurve")$Date`
-```
 
 ```         
 github.com/jordanmbarrows/growthcurve
