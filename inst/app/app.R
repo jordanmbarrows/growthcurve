@@ -2625,15 +2625,155 @@ B           0   0   1
       # AGGREGATE MODE
       # =========================================================
       tags$details(
-        tags$summary(style = guide_summary_style(), HTML("&#128202; Aggregate results")),
+        tags$summary(
+          style = guide_summary_style(),
+          HTML("&#128202; Aggregate results")
+        ),
+        
         tags$div(
           style = guide_body_style(),
           
-          tags$pre("Analysis/
-|-- run_1/
-|-- run_2/"),
+          tags$p(
+            "Aggregate Results combines outputs from multiple analyses ",
+            "into a single dataset for downstream statistical analysis."
+          ),
           
-          p("Each subfolder is treated as a separate run.")
+          tags$p(
+            strong("Think of this step as:"),
+            " merging multiple completed runs into one unified results table."
+          ),
+          
+          tags$hr(),
+          
+          h4("What this does"),
+          
+          tags$ul(
+            tags$li("Searches selected directories recursively for all plate_tidy.csv files."),
+            tags$li("Combines detected files into a single dataset."),
+            tags$li("Harmonizes column structure (missing columns are filled with NA)."),
+            tags$li("Exports a single combined CSV file with a timestamped name.")
+          ),
+          
+          tags$pre(
+            "combined_tidy_YYYYMMDD_HHMMSS.csv"
+          ),
+          
+          tags$hr(),
+          
+          h4("Expected folder structure"),
+          
+          tags$pre(
+            "Analysis/
+|-- run_1/
+|-- run_2/
+|-- run_3/"
+          ),
+          
+          tags$ul(
+            tags$li("Each run folder contains one or more analyzed plates."),
+            tags$li("Each plate folder contains a plate_tidy.csv file."),
+            tags$li("The app scans all subfolders automatically.")
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Runs do not need to originate from the same batch. You can combine results from different experiments as needed."
+          ),
+          
+          tags$hr(),
+          
+          h4("Working with multiple experiments"),
+          
+          tags$p(
+            "If your analyses are spread across different directories, you can organize them before aggregation:"
+          ),
+          
+          tags$ul(
+            tags$li("Create a new parent folder (e.g., 'Analysis_combined')."),
+            tags$li("Copy or move individual run folders into this location."),
+            tags$li("Select that folder when running Aggregate Results.")
+          ),
+          
+          tags$pre(
+            "Analysis_combined/
+|-- experiment_A/
+|-- experiment_B/
+|-- experiment_C/"
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The app treats every subfolder as a potential source of results, regardless of how it was created."
+          ),
+          
+          tags$hr(),
+          
+          h4("Duplicate detection"),
+          
+          tags$p(
+            strong("Important:"),
+            " The app checks for overlapping analyses before combining results."
+          ),
+          
+          tags$ul(
+            tags$li(
+              "Duplicates are defined as the same plate name AND the same prefix."
+            ),
+            tags$li(
+              "The same plate can appear multiple times if prefixes differ."
+            ),
+            tags$li(
+              "Duplicate groups are shown in a warning dialog before aggregation."
+            )
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Using descriptive prefixes (e.g., 'minOD05', 'alt_interval') helps distinguish multiple analyses of the same data."
+          ),
+          
+          tags$hr(),
+          
+          h4("Output structure (preview)"),
+          
+          tags$p(
+            "The combined output is a tidy dataset where each row represents one measurement for one well:"
+          ),
+          
+          
+          tags$pre(
+            "[metadata]  Well  Strain  Treatment  Measurement   Value   Replicate  QC_flag
+...         A1    Str1    Yes        max_growth    1.26    1          OK
+...         A1    Str1    Yes        doub_time     0.55    1          OK
+...         A2    Str1    No         max_growth    0.87    2          WARN        "
+          ),
+          
+          
+          tags$ul(
+            tags$li("Each well contributes multiple rows (one per measurement type)."),
+            tags$li("Design variables appear as columns."),
+            tags$li("QC flags are preserved for downstream filtering."),
+            tags$li("Missing variables across runs are filled with NA.")
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            "max_growth = maximum growth rate (per hour); doub_time = doubling time (hours)."
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The output is designed for direct use with dplyr, ggplot2, or statistical software."
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Tip: Always inspect the combined dataset before downstream analysis, especially when merging results from different experiments."
+          )
         )
       ),
       
