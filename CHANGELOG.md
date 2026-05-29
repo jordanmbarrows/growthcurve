@@ -12,7 +12,7 @@
   - This guide is sourced from `USERGUIDE_source.md`, which automatically pulls version number from `DESCRIPTION` to keep it up to date
   - Script in `.Rprofile` automatically sources `update_userguide.R` to update `USERGUIDE.md` every time `growthcurve.Rproj` is launched
 - Added note at bottom of User Guide tab in app that displays current version number and provides a link to the repo for more info and latest updates
-- Enhanced Aggregate results in the User Guide tab
+- Enhanced Aggregate Results section in the User Guide tab
   
 ## [1.0.9] - 2026-05-28
 
