@@ -43,3 +43,12 @@ update_userguide_if_present <- function() {
   }
 }
 
+header <- c(
+  "<!--",
+  "This file is auto-generated from dev/USERGUIDE_source.md",
+  "Do not edit manually.",
+  "-->",
+  ""
+)
+
+writeLines(c(header, lines), output_file)
