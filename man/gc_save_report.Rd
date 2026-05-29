@@ -4,7 +4,7 @@
 \alias{gc_save_report}
 \title{Saves plots in single report}
 \usage{
-gc_save_report(plots, file)
+gc_save_report(plots, file, plate_name = NULL)
 }
 \description{
 Saves plots in single report
