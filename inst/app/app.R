@@ -2754,10 +2754,17 @@ B           0   0   1
           
           tags$ul(
             tags$li("Each well contributes multiple rows (one per measurement type)."),
-            tags$li("Design variables appear as columns."),
-            tags$li("QC flags are preserved for downstream filtering."),
-            tags$li("Missing variables across runs are filled with NA.")
+            tags$li("Measurement types include metrics such as max_growth and doub_time."),
+            tags$li("Value contains the numeric result of each measurement."),
+            tags$li("Replicate indicates biological/technical replicate number."),
+            tags$li("QC_flag indicates data quality status.")
           ),
+          
+          tags$p(
+            strong("Additional metadata columns include:"),
+            " file index (order of file in aggregation step), source file, run name, prefix, instrument, and plate identifier."
+          ),
+          
           
           tags$p(
             style = guide_note_style(),
