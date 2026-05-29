@@ -15,81 +15,81 @@ github.com/jordanmbarrows/growthcurve
 
 ### Contents:
 
-  1.  Overview
+1.  Overview
 
-  - 1.1 Installation
-  - 1.2 Application Architecture
+- 1.1 Installation
+- 1.2 Application Architecture
 
-  2.  Analysis Modes
+2.  Analysis Modes
 
-  - 2.1 Single Analysis
-  - 2.2 Batch Analysis
-  - 2.3 Aggregate Results
-  - 2.4 Duplicate Detection
+- 2.1 Single Analysis
+- 2.2 Batch Analysis
+- 2.3 Aggregate Results
+- 2.4 Duplicate Detection
 
-  3.  Input Files
+3.  Input Files
 
-  - 3.1 Raw Data File — Plate Reader
-  - 3.2 Raw Data File — oCelloscope
-  - 3.3 CSV Format Compatibility
-  - 3.4 Design File
+- 3.1 Raw Data File — Plate Reader
+- 3.2 Raw Data File — oCelloscope
+- 3.3 CSV Format Compatibility
+- 3.4 Design File
 
-  4.  Analysis Parameters
+4.  Analysis Parameters
 
-  - 4.1 Required Parameters
-  - 4.2 Optional Parameters
-  - 4.3 Blank Correction Mode
-  - 4.4 Instrument Defaults
+- 4.1 Required Parameters
+- 4.2 Optional Parameters
+- 4.3 Blank Correction Mode
+- 4.4 Instrument Defaults
 
-  5.  Analysis Pipeline
+5.  Analysis Pipeline
 
-  - 5.1 Pipeline Stages
-  - 5.2 Data Import Details
-  - 5.3 Core Computation Details
-    - Blank correction
-    - Mean curve calculation
-    - OD window filtering
-    - Growth rate computation (gcplyr)
-    - Growth summary metrics
-    - QC flagging
+- 5.1 Pipeline Stages
+- 5.2 Data Import Details
+- 5.3 Core Computation Details
+  - Blank correction
+  - Mean curve calculation
+  - OD window filtering
+  - Growth rate computation (gcplyr)
+  - Growth summary metrics
+  - QC flagging
 
-  6.  Diagnostic Plots
+6.  Diagnostic Plots
 
-  7.  Output Files
+7.  Output Files
 
-  - 7.1 Plot Report (plate_report.pdf)
-  - 7.2 Tidy Results (plate_tidy.csv)
-  - 7.3 Analysis Metadata (Analysis_arguments.csv)
-  - 7.4 Batch Summary (batch_summary.csv)
-  - 7.5 Aggregate Output (combined_tidy_YYYYMMDD_HHMMSS.csv)
+- 7.1 Plot Report (plate_report.pdf)
+- 7.2 Tidy Results (plate_tidy.csv)
+- 7.3 Analysis Metadata (Analysis_arguments.csv)
+- 7.4 Batch Summary (batch_summary.csv)
+- 7.5 Aggregate Output (combined_tidy_YYYYMMDD_HHMMSS.csv)
 
-  8.  Regional Settings
+8.  Regional Settings
 
-  9.  System Layer (growthcurve_system.R)
+9.  System Layer (growthcurve_system.R)
 
-  - 9.1 Error Handling
-  - 9.2 Developer Mode
-  - 9.3 Update Checker
-  - 9.4 OS-Aware Folder Opening
-  - 9.5 Backend Readiness Check
+- 9.1 Error Handling
+- 9.2 Developer Mode
+- 9.3 Update Checker
+- 9.4 OS-Aware Folder Opening
+- 9.5 Backend Readiness Check
 
-  10. UI Features
+10. UI Features
 
-  - 10.1 File Preview
-  - 10.2 Dark Mode
-  - 10.3 Cancellation
-  - 10.4 Navigation Lock
-  - 10.5 User Guide
+- 10.1 File Preview
+- 10.2 Dark Mode
+- 10.3 Cancellation
+- 10.4 Navigation Lock
+- 10.5 User Guide
 
-  11. gcplyr Integration
+11. gcplyr Integration
 
-  12. File Structure Reference
+12. File Structure Reference
 
-  - 12.1 Single Analysis
-  - 12.2 Batch Analysis
-  - 12.3 Aggregate Analysis
+- 12.1 Single Analysis
+- 12.2 Batch Analysis
+- 12.3 Aggregate Analysis
 
-  13. Troubleshooting
+13. Troubleshooting
 
 ## 1. Overview
 
@@ -130,25 +130,17 @@ The app performs a dependency check on startup and will fail with a descriptive 
 
 The application is organized into three code layers, each with a distinct responsibility:
 
-```         
+`File`
+Purpose
 
-File Purpose
-```
+`app.R`
+Shiny UI definition and server orchestration. Handles file selection, parameter inputs, progress reporting, cancellation, and export. Contains no scientific computation.
 
-```         
+`growthcurve_functions.R`
+The analysis backend. Contains all scientific computation, plotting, and file I/O. Designed to be deterministic and batch-safe.
 
-app.R Shiny UI definition and server orchestration. Handles file selection, parameter inputs, progress reporting, cancellation, and export. Contains no scientific computation.
-```
-
-```         
-
-growthcurve_functions.R The analysis backend. Contains all scientific computation, plotting, and file I/O. Designed to be deterministic and batch-safe.
-```
-
-```         
-
-growthcurve_system.R System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
-```
+`growthcurve_system.R`
+System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
 
 A strict architectural rule is enforced throughout: the UI layer performs no scientific computation, and the analysis backend has no UI side effects. This separation makes the analysis pipeline independently testable and suitable for batch execution outside the Shiny interface.
 
@@ -936,45 +928,38 @@ combined_tidy_YYYYMMDD_HHMMSS.csv \# produced by Aggregate
 
 ## 13. Troubleshooting
 
-`Error / symptom` 
+`Error / symptom`
 
 Likely cause and resolution
 
-` "TANormalized block not found" `
+`"TANormalized block not found"`
 
 The oCelloscope file was not exported correctly, or the wrong sheet was saved. Re-export from oCelloscope, open in Excel, select the raw data sheet, and Save As CSV.
 
-
-`"TANormalized sanity check failed: max value is X" `
+`"TANormalized sanity check failed: max value is X"`
 
 The data block contains values greater than 10, indicating the data is not normalized. Check that the correct block/sheet was exported from oCelloscope.
 
-
-`"No data points fall within the OD window" `
+`"No data points fall within the OD window"`
 
 The OD window [minod, maxod] does not overlap with any blank- corrected measurements. Check that the correct instrument mode is selected, that the design file matches the data, and that the OD thresholds are appropriate for the data range.
 
-
-`"No overlapping wells between data and design" `
+`"No overlapping wells between data and design"`
 
 Well names in the raw data file do not match well names in the design file. Verify both files use standard plate notation (A1–H12).
 
-
-`"Design variables not found in design file" `
+`"Design variables not found in design file"`
 
 One or more selected design variables do not appear as block headers in the design file. Check for typos or verify the design file has been saved correctly.
 
-`Plate reader file fails to parse ` 
+`Plate reader file fails to parse`
 
 The file was not saved as a standard CSV from Excel. Open in Excel and re-save as CSV before uploading.
 
-
-`EU-format files produce wrong numbers in output `
+`EU-format files produce wrong numbers in output`
 
 The region setting does not match the file format. Override the region in the app settings to match your locale.
 
-
-`App fails to start with missing backend error `
+`App fails to start with missing backend error`
 
 A required package is not installed. Run gc_check_packages() in the R console to identify missing dependencies and install them.
-
