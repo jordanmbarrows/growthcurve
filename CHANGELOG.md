@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Nothing to see here...please come back later. :)
+
+## [1.0.10] - 2026-05-29
+
 - Renamed `deriv_percap5` object to `deriv_percap3` in `growthcurve_functions.R`
   - Does not change behavior, but now accurately reflects usage of `window_width_n = 3` when calculating fitted per-capita derivative
 - Added comprehensive `User & Technical Guide` to main page in repo (`USERGUIDE.md`)
@@ -10,7 +14,6 @@
 - Added note at bottom of User Guide tab in app that displays current version number and provides a link to the repo for more info and latest updates
 - Enhanced Aggregate results in the User Guide tab
   
-
 ## [1.0.9] - 2026-05-28
 
 ### Improvements
