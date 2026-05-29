@@ -353,10 +353,10 @@ ui <- shiny::fluidPage(
       ),
       
       tabsetPanel(
-        tabPanel("User guide", div(uiOutput("user_guide_ui"))),
-        tabPanel("Single plate", uiOutput("single_ui")),
+        tabPanel("User Guide", div(uiOutput("user_guide_ui"))),
+        tabPanel("Single Plate", uiOutput("single_ui")),
         tabPanel(
-          "Batch processing",
+          "Batch Processing",
           
           uiOutput("batch_gate"),
           
@@ -413,7 +413,7 @@ ui <- shiny::fluidPage(
           uiOutput("batch_ui")  # rest of UI
         ),
         tabPanel(
-          "Aggregate results",
+          "Aggregate Results",
           
           uiOutput("aggregate_gate"),
           
