@@ -3,7 +3,7 @@
 # ------------------------------------------------------------
 
 # Get version
-version <- paste("Version", as.character(utils::packageVersion("growthcurve")))
+version <- paste("Version", desc::desc_get("Version"))
 
 # Paths
 input_file  <- "dev/USERGUIDE_source.md"
