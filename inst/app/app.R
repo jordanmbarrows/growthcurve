@@ -523,13 +523,6 @@ server <- function(input, output, session) {
     danger  = "#ef5350"    # optional
   )
   
-  get_app_version_userguide <- function() {
-    tryCatch(
-      as.character(utils::packageVersion("growthcurve")),
-      error = function(e) "unknown"
-    )
-  }
-  
   gc_run_quiet <- function(expr) {
     if (gc_dev_mode()) return(expr)
     
@@ -1996,7 +1989,7 @@ server <- function(input, output, session) {
   
   output$user_guide_ui <- shiny::renderUI({
     
-    version <- paste("Version", get_app_version_userguide())
+    version <- paste("Version", growthcurve:::gc_app_version())
     
     shiny::tagList(
       h3("User guide"),
@@ -2704,11 +2697,9 @@ B           0   0   1
     margin-top: 20px;
   ",
         
-        h4("User & Technical Guide"),
-        
         tags$p(
           style = "margin-bottom: 8px;",
-          "This documentation corresponds to the installed version of the application."
+          "This user guide corresponds to the installed version of the application."
         ),
         
         tags$p(
