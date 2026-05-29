@@ -4,7 +4,7 @@
 
 ## User & Technical Guide
 
-Version `r desc::desc_get("Version")`
+Version {{VERSION}}
 
 github.com/jordanmbarrows/growthcurve
 
