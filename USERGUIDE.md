@@ -931,50 +931,45 @@ combined_tidy_YYYYMMDD_HHMMSS.csv \# produced by Aggregate
 
 ## 13. Troubleshooting
 
-**Error / symptom Likely cause and resolution**
+`Error / symptom` 
 
-"TANormalized block not found" The oCelloscope file was not exported correctly, or the wrong sheet was saved. Re-export from oCelloscope, open in Excel, select the raw data sheet, and Save As CSV.
+Likely cause and resolution
 
-"TANormalized sanity check failed: max value is X"
+` "TANormalized block not found" `
 
-```         
+The oCelloscope file was not exported correctly, or the wrong sheet was saved. Re-export from oCelloscope, open in Excel, select the raw data sheet, and Save As CSV.
+
+
+`"TANormalized sanity check failed: max value is X" `
 
 The data block contains values greater than 10, indicating the data is not normalized. Check that the correct block/sheet was exported from oCelloscope.
-```
 
-"No data points fall within the OD window"
 
-```         
+`"No data points fall within the OD window" `
 
 The OD window [minod, maxod] does not overlap with any blank- corrected measurements. Check that the correct instrument mode is selected, that the design file matches the data, and that the OD thresholds are appropriate for the data range.
-```
 
-"No overlapping wells between data and design"
 
-```         
+`"No overlapping wells between data and design" `
 
 Well names in the raw data file do not match well names in the design file. Verify both files use standard plate notation (A1–H12).
-```
 
-"Design variables not found in design file"
 
-```         
+`"Design variables not found in design file" `
 
 One or more selected design variables do not appear as block headers in the design file. Check for typos or verify the design file has been saved correctly.
-```
 
-Plate reader file fails to parse The file was not saved as a standard CSV from Excel. Open in Excel and re-save as CSV before uploading.
+`Plate reader file fails to parse ` 
 
-EU-format files produce wrong numbers in output
+The file was not saved as a standard CSV from Excel. Open in Excel and re-save as CSV before uploading.
 
-```         
+
+`EU-format files produce wrong numbers in output `
 
 The region setting does not match the file format. Override the region in the app settings to match your locale.
-```
 
-App fails to start with missing backend error 
 
-```
+`App fails to start with missing backend error `
 
 A required package is not installed. Run gc_check_packages() in the R console to identify missing dependencies and install them.
-```
+
