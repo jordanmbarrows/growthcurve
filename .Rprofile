@@ -54,4 +54,6 @@ update_userguide_if_present <- function() {
   
 }
 
+update_userguide_if_present()
+
 
