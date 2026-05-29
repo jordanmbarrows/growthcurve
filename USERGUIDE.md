@@ -11,6 +11,7 @@ github.com/jordanmbarrows/growthcurve
 ```         
 
 - 
+Contents: 
 
   1.  Overview
 
