@@ -125,25 +125,17 @@ The app performs a dependency check on startup and will fail with a descriptive 
 
 The application is organized into three code layers, each with a distinct responsibility:
 
-```         
+`File`
+Purpose
 
-File Purpose
-```
+`app.R`
+Shiny UI definition and server orchestration. Handles file selection, parameter inputs, progress reporting, cancellation, and export. Contains no scientific computation.
 
-```         
+`growthcurve_functions.R`
+The analysis backend. Contains all scientific computation, plotting, and file I/O. Designed to be deterministic and batch-safe.
 
-app.R Shiny UI definition and server orchestration. Handles file selection, parameter inputs, progress reporting, cancellation, and export. Contains no scientific computation.
-```
-
-```         
-
-growthcurve_functions.R The analysis backend. Contains all scientific computation, plotting, and file I/O. Designed to be deterministic and batch-safe.
-```
-
-```         
-
-growthcurve_system.R System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
-```
+`growthcurve_system.R`
+System configuration and behavior layer. Centralizes OS detection, regional settings (CSV and numeric formatting), app versioning, error handling, and developer utilities.
 
 A strict architectural rule is enforced throughout: the UI layer performs no scientific computation, and the analysis backend has no UI side effects. This separation makes the analysis pipeline independently testable and suitable for batch execution outside the Shiny interface.
 
