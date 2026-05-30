@@ -120,7 +120,7 @@ library(growthcurve)
 run_growthcurve()
 ```
 
-The app performs a dependency check on startup and will fail with a descriptive error message if any required packages are missing. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
+The app performs a dependency check on startup and automatically install any missing required packages. This installation requires an internet connection and will fail with a descriptive error message if any required packages cannot be installed. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
 
 ### 1.2 Application Architecture
 
@@ -375,7 +375,7 @@ Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normal
 | Duration (hours)        | Total experiment duration in hours. Used to generate the time vector for plate reader data. Must be a positive number. |
 | Interval (minutes)      | Measurement frequency in minutes. Used to generate the time vector for both instrument types. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
 | Min OD                  | Lower bound of the OD window used for growth rate calculation. Only timepoints with blank-corrected OD greater than this value are analyzed. Default: 0.05 for plate reader, 0.01 for oCelloscope. |
-| Max OD                  | Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Min OD must be strictly less than Max OD. |
+| Max OD                  | Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Max OD value must be a greater than Min OD. |
 
 ### 4.2 Optional Parameters
 
