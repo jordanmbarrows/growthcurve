@@ -180,6 +180,10 @@ Characteristics:
 - Each plate is processed into its own subdirectory under the run output folder
 - A batch summary CSV is produced at the end of each run
 
+Parallel Processing
+By default, batch analysis runs two plates simultaneously using parallel workers. This reduces total runtime for multi-plate batches without placing excessive load on the system. The worker count is intentionally capped at two: higher values rarely improve performance for this type of workload because the bottleneck is typically disk I/O (reading and writing CSV files and PDFs) rather than CPU computation. Running more than two workers in parallel tends to cause disk contention that offsets any gains from parallelism.
+Parallel processing can be disabled via the Enable parallel processing checkbox in the batch parameter panel. When disabled, plates are processed sequentially, one at a time. Sequential mode is useful if you encounter instability on a particular system, are running on a machine with very limited memory, or simply prefer a more predictable execution pattern.
+
 Expected file layout for batch input:
 
 ``` 
