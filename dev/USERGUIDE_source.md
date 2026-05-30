@@ -530,12 +530,12 @@ All 11 plots are produced by `gc_build_plots()`, which takes the core compute re
 | Plot 1: Blank-corrected OD (linear) | All wells plotted on a linear OD scale after blank correction, colored by `Well_type` (`Blank` vs sample). Used to inspect the overall scale of the data and verify blank subtraction. |
 | Plot 2: Blank-corrected OD (log scale) | Same data on a log10 scale. Reveals early exponential growth behavior and helps identify wells that never truly left the blank baseline. |
 | Plot 3: Mean curves with 95% CI | Mean growth curves for each experimental group defined by the design variables, with 95% confidence interval ribbons. Groups are distinguished by both color and linetype. |
-| Plot 4: Per-well OD curves (linear) | Individual well curves faceted by design variable combinations, shown on a linear scale. Used to identify outlier wells and inspect within-group variability. |
-| Plot 5: Per-well OD curves (log scale) | Same per-well faceted view on a log10 scale. |
-| Plot 6: Raw derivatives | Absolute growth rate (`deriv`) over time per well, within the OD window. Useful for checking the magnitude and timing of the growth rate signal. |
-| Plot 7: Per-capita derivatives | Per-capita growth rate (`deriv_percap`, no windowing) over time. Shows the unsmoothed growth rate trajectory. |
-| Plot 8: Fitted per-capita with maximum | Windowed per-capita derivative (`deriv_percap3`) with a vertical marker at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
-| Plot 9: OD curves with max growth marked | OD curves (from `merged_data_sub`) with a point marking the timepoint of maximum growth for each well, colored by QC flag. |
+| Plot 4: Per-well OD curves (linear) | Individual well curves faceted by design variable combinations, shown on a linear scale, colored by `QC_flag`. Used to identify outlier wells and inspect within-group variability. |
+| Plot 5: Per-well OD curves (log scale) | Same per-well faceted view on a log10 scale, colored by `QC_flag`. |
+| Plot 6: Raw derivatives | Absolute growth rate (`deriv`) over time per well within the OD window, colored by `QC_flag`. Useful for checking the magnitude and timing of the growth rate signal. |
+| Plot 7: Per-capita derivatives | Per-capita growth rate (`deriv_percap`, no windowing) over time, colored by `QC_flag`. Shows the unsmoothed growth rate trajectory. |
+| Plot 8: Fitted per-capita with maximum | Windowed per-capita derivative (`deriv_percap3`), colored by `QC_flag`, with a vertical marker at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
+| Plot 9: OD curves with max growth marked | OD curves (from `merged_data_sub`) with a point marking the timepoint of maximum growth for each well, colored by `QC_flag`. |
 | Plot 10: Doubling time summary | Boxplot and jitter of doubling time (hours) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
 | Plot 11: Maximum growth rate summary | Boxplot and jitter of maximum growth rate (per hour) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
 
