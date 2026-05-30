@@ -254,7 +254,6 @@ ui <- shiny::fluidPage(
   ),
   
   
-  
   shiny::tagList(if (!gc_backend_ready()) {
     shiny::verbatimTextOutput("startup_error")
     
