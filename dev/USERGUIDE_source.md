@@ -394,7 +394,7 @@ Blank correction is only applicable to plate reader data. oCelloscope data enter
 | `per_well`  | Subtracts the OD of each individual well at the first timepoint from all subsequent timepoints of that well. Useful when wells have highly variable baseline readings. |
 | `none`      | No blank correction applied. The raw measurements are used as-is. Appropriate when data is already baseline-corrected. |
 
-In all cases, blank-corrected values are stored as `Measurements_adj`, and a log transformation of `pmax(Measurements_adj, 1e-6)` is stored as Measurements_log. The small floor value (1e-6) prevents log-of-zero errors.
+In all cases, blank-corrected values are stored as `Measurements_adj`, and a log transformation of `pmax(Measurements_adj, 1e-6)` is stored as `Measurements_log`. The small floor value (1e-6) prevents log-of-zero errors.
 
 ### 4.4 Instrument Defaults
 
