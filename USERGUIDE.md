@@ -360,7 +360,7 @@ Block structure:
 - Blocks are separated by exactly one empty row
 - The stride between block headers is exactly 10 rows (1 header + 8 data rows + 1 empty row)
 
-The first block must always be named Well_type. It defines whether each well is a `Blank` or a sample. This block is used for blank correction and is filtered from output metrics.
+The first block must always be named `Well_type`. It defines whether each well is a `Blank` or a sample. This block is used for blank correction and is filtered from output metrics.
 
 Example design file structure (showing `Well_type`, `Strain`, and `Treatment` blocks):
   
