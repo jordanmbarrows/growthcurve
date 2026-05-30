@@ -13,6 +13,7 @@
   - Script in `.Rprofile` automatically sources `update_userguide.R` to update `USERGUIDE.md` every time `growthcurve.Rproj` is launched
 - Added note at bottom of User Guide tab in app that displays current version number and provides a link to the repo for more info and latest updates
 - Enhanced Aggregate Results section in the User Guide tab
+- Made parallel processing the default for batch processing
   
 ## [1.0.9] - 2026-05-28
 
