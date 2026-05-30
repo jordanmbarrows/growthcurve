@@ -176,7 +176,7 @@ Batch Processing is the production workflow. It processes multiple datasets in s
 #### Characteristics:
 
 - No stage-by-stage plot display during processing
-- Cancellation is supported mid-batch via a `Cancel` button
+- Cancellation is supported mid-batch via a Cancel button
 - Each plate is processed into its own subdirectory under the run output folder
 - A batch summary CSV is produced at the end of each run
 
@@ -651,7 +651,7 @@ The latest release tag is compared against the installed package version using `
 
 ### 9.4 OS-Aware Folder Opening
 
-The `Open export folder` button in export dialogs uses `open_folder()`, which dispatches to the appropriate system command based on the detected OS: `shell.exec()` on Windows, `open` on macOS, and `xdg-open` on Linux. Failures are caught and surfaced as console warnings without crashing the app.
+The Open export folder button in export dialogs uses `open_folder()`, which dispatches to the appropriate system command based on the detected OS: `shell.exec()` on Windows, `open` on macOS, and `xdg-open` on Linux. Failures are caught and surfaced as console warnings without crashing the app.
 
 ### 9.5 Backend Readiness Check
 
@@ -675,11 +675,11 @@ A dark/light theme toggle is available in the top navigation area. Dark mode app
 
 ### 10.3 Cancellation
 
-Batch Processing can be `cancelled` mid-run using a `Cancel` button that appears during processing. Cancellation is implemented via a reactive flag checked between each plate in the batch. When cancellation is triggered, the current plate's analysis is allowed to complete, and then the batch loop exits. The batch summary records cancelled as the status for all plates not yet processed.
+Batch Processing can be cancelled mid-run using a Cancel button that appears during processing. Cancellation is implemented via a reactive flag checked between each plate in the batch. When cancellation is triggered, the current plate's analysis is allowed to complete, and then the batch loop exits. The batch summary records cancelled as the status for all plates not yet processed.
 
 ### 10.4 Navigation Lock
 
-In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the page is refreshed. Navigation between plot stages is provided by `Previous` and `Next` buttons that are enabled/disabled according to the current stage index.
+In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the page is refreshed. Navigation between plot stages is provided by Previous and Next buttons that are enabled/disabled according to the current stage index.
 
 ### 10.5 User Guide
 
