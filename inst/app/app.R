@@ -3626,7 +3626,7 @@ B           0   0   1
       
       hr(),
       
-      checkboxInput("batch_parallel", "Enable parallel processing", FALSE),
+      checkboxInput("batch_parallel", "Enable parallel processing", TRUE),
       
       conditionalPanel(
         condition = "input.batch_parallel == true",
