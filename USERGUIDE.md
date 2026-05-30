@@ -59,7 +59,7 @@ github.com/jordanmbarrows/growthcurve
 - 7.1 Plot Report (`plate_report.pdf`)
 - 7.2 Tidy Results (`plate_tidy.csv`)
 - 7.3 Analysis Metadata (`Analysis_arguments.csv`)
-- 7.4 Batch Summary (`batch_summary.csv`)
+- 7.4 Batch Summary (`batch_run_summary.csv`)
 - 7.5 Aggregate Output (`combined_tidy_YYYYMMDD_HHMMSS.csv`)
 
 #### 8.  Regional Settings
@@ -216,10 +216,10 @@ Analysis/                               # created on export
     │   └── Analysis_arguments.csv
     ├── plate2/
     │   ...
-    └── batch_summary.csv
+    └── batch_run_summary.csv
 ```
 
-`batch_summary.csv` records the plate name, analysis status (success, failed, or cancelled), and any diagnostic messages for each plate processed in the run.
+`batch_run_summary.csv` records the plate name, analysis status (`success`, `failed`, or `cancelled`), and any diagnostic messages for each plate processed in the run.
 
 ### 2.3 Aggregate Results
 
@@ -333,7 +333,7 @@ After locating the `TANormalized` header, the parser:
 
 - Applies a sanity check: the maximum value in the data block must be less than 10 (normalized data). Values exceeding this threshold indicate a parsing error.
 
-Well name extraction: well identifiers are extracted from column headers using a regex pattern (\^([A-H][0-9]+).\*), stripping any trailing suffixes. Only wells that appear in the design file's Well_type block are retained.
+Well name extraction: well identifiers are extracted from column headers using a regex pattern (\^([A-H][0-9]+).\*), stripping any trailing suffixes. Only wells that appear in the design file's `Well_type` block are retained.
 
 ### 3.3 CSV Format Compatibility
 
@@ -354,7 +354,7 @@ The design file defines the experimental layout of the plate. It must be a CSV f
 
 Block structure:
 
-- Each block begins with a single header cell in the first column (e.g., Well_type, Strain, Treatment)
+- Each block begins with a single header cell in the first column (e.g., `Well_type`, Strain, Treatment)
 - The header is followed by exactly 8 rows (corresponding to plate rows A through H)
 - Each row contains 12 values (corresponding to plate columns 1 through 12)
 - Blocks are separated by exactly one empty row
@@ -391,7 +391,7 @@ Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normal
 
 ### 4.3 Blank Correction Mode
 
-Blank correction is only applicable to plate reader data. oCelloscope data enters the pipeline already internally blanked by the instrument, so blank correction is disabled and the blank mode selector is greyed out when oCelloscope is selected.
+Blank correction is only applicable to plate reader data. oCelloscope data enters the pipeline already internally blanked by the instrument, so blank correction is disabled and the `blank_mode` selector is greyed out when oCelloscope is selected.
 
 | Mode      | Behavior |
 |-----------|----------|
@@ -436,10 +436,10 @@ The `run_gc()` function executes the following stages in order:
 
 | Stage | Responsibility |
 |--------|----------------|
-| Stage A: `gc_prepare_run()` | Input validation. Checks that all required arguments are present and valid (file paths exist, hrs > 0, interval > 0, minod < maxod, design_vars is a non-empty character vector). Builds the shared ggplot theme object and snapshots all resolved parameters. |
+| Stage A: `gc_prepare_run()` | Input validation. Checks that all required arguments are present and valid (file paths exist, `hrs` > 0, `interval` > 0, `minod` < `maxod`, `design_vars` is a non-empty character vector). Builds the shared `ggplot` theme object and snapshots all resolved parameters. |
 | Stage B: `gc_import_data()` | Data import. Dispatches to instrument-specific readers, imports and parses the design file, then merges the two datasets using `gcplyr::merge_dfs()`. Validates that design variables exist in the design file before proceeding. |
 | Stage C: `gc_core_compute()` | Core scientific computation. Performs blank correction, OD filtering, derivative calculation, growth rate summarization, and QC flagging. Returns all intermediate and final datasets. This function is pure: no plotting and no file I/O. |
-| Stage D: `gc_build_plots()` | Plot construction. Builds all 11 ggplot objects from the outputs of `gc_core_compute()`. No saving or printing occurs at this stage. |
+| Stage D: `gc_build_plots()` | Plot construction. Builds all 11 `ggplot` objects from the outputs of `gc_core_compute()`. No saving or printing occurs at this stage. |
 | Stage E: Assembly | Final assembly. The return object contains the parameter snapshot, instrument type, blank mode, core compute results, and all plot objects. |
 
 ### 5.2 Data Import Details
@@ -461,11 +461,11 @@ For oCelloscope data:
 
 - `format_ocelloscope_data()` assigns the time vector and filters wells against the design
 
-- A `block_name` column is added with value "ocelloscope"
+- A `block_name` column is added with value `ocelloscope`
 
 - `gcplyr::trans_wide_to_tidy()` converts to long format
 
-After either path, the tidy data is merged with the parsed design using `gcplyr::merge_dfs()`, `NA` values are removed with `na.omit()`, and the `Time` column is coerced to numeric. A warning is emitted if the maximum `Time` value exceeds 200, which suggests the time vector may still be in minutes rather than hours.
+After either path, the tidy data is merged with the parsed design using `gcplyr::merge_dfs()`, `NA` values are removed with `na.omit()`, and the `Time` column is coerced to `numeric`. A warning is emitted if the maximum `Time` value exceeds 200, which suggests the time vector may still be in minutes rather than hours.
 
 ### 5.3 Core Computation Details
 
@@ -473,7 +473,7 @@ After either path, the tidy data is merged with the parsed design using `gcplyr:
 
 #### Blank correction
 
-Blank correction proceeds according to the `blank_mode` argument. The plate mode extracts all wells where `Well_type == "Blank"` at t0 and computes the median (`blankmed`). This median is subtracted from all wells at all timepoints. The per_well mode subtracts each well's own t 0 value. All modes produce a `Measurements_adj` column and a `Measurements_log` column.
+Blank correction proceeds according to the `blank_mode` argument. The `plate` mode extracts all wells where `Well_type == "Blank"` at t0 and computes the median (`blankmed`). This median is subtracted from all wells at all timepoints. The `per_well` mode subtracts each well's own t 0 value. All modes produce a `Measurements_adj` column and a `Measurements_log` column.
 
 #### Mean curve calculation
 
@@ -497,7 +497,7 @@ Within the OD window, the pipeline computes three derivative columns for each we
 
 The `deriv_percap3 column` is the primary metric used for maximum growth rate extraction. The rolling window of 3 timepoints and log transformation improve robustness to noise while preserving the true growth signal. The `window_width_n=3` choice is intentional and instrument-aware — the same code path is used for both instrument types, but oCelloscope data is pre- smoothed before derivatives are computed.
 
-For oCelloscope data, when `smoothing=TRUE`, `gcplyr::smooth_data()` is applied to `Measurements_adj` using a moving-average method with `window_width_n` equal to the `smoothing_window` value (default 3). This produces the `Measurements_used` column. For plate reader data, `Measurements_used` equals `Measurements_adj` directly.
+For oCelloscope data (`smoothing=TRUE`), `gcplyr::smooth_data()` is applied to `Measurements_adj` using a moving-average method with `window_width_n` equal to the `smoothing_window` value (default 3). This produces the `Measurements_used` column. For plate reader data, `Measurements_used` equals `Measurements_adj` directly.
 
 #### Growth summary metrics
 
@@ -510,7 +510,7 @@ Per-well summary statistics are computed by grouping on the design variables and
 | `doub_time`       | Doubling time in hours: `gcplyr::doubling_time(y = max_percap)` |
 
 
-If all values of `deriv_percap3` for a well are NA, the summary metrics are set to `NA_real_`. This prevents crashes from wells with no valid data.
+If all values of `deriv_percap3` for a well are `NA`, the summary metrics are set to `NA_real_`. This prevents crashes from wells with no valid data.
 
 #### QC flagging
 
@@ -528,7 +528,7 @@ QC flags are joined back onto the `merged_data`, `merged_data_sub`, and `ex_dat_
 
 All 11 plots are produced by `gc_build_plots()`, which takes the core compute results and the shared `ggplot` theme as inputs. In Single Plate mode, plots are displayed one at a time with stage navigation. In Batch Processing mode, all plots are rendered directly to the PDF report without display.
 
-QC-flag coloring is applied to relevant plots using `gc_qc_scale()`, which maps `OK` wells to black, `WARN` wells to orange (`#E69F00`), and `FAIL` wells to light grey at reduced opacity (alpha = 0.3). This allows rapid visual identification of problematic wells across all summary plots.
+`QC_flag` coloring is applied to relevant plots using `gc_qc_scale()`, which maps `OK` wells to black, `WARN` wells to orange (`#E69F00`), and `FAIL` wells to light grey at reduced opacity (alpha = 0.3). This allows rapid visual identification of problematic wells across all summary plots.
 
 | Plot | Content and purpose |
 |------|---------------------|
@@ -541,8 +541,8 @@ QC-flag coloring is applied to relevant plots using `gc_qc_scale()`, which maps 
 | Plot 7: Per-capita derivatives | Per-capita growth rate (`deriv_percap`, no windowing) over time. Shows the unsmoothed growth rate trajectory. |
 | Plot 8: Fitted per-capita with maximum | Windowed per-capita derivative (`deriv_percap3`) with a vertical marker at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
 | Plot 9: OD curves with max growth marked | OD curves (from `merged_data_sub`) with a point marking the timepoint of maximum growth for each well, colored by QC flag. |
-| Plot 10: Doubling time summary | Boxplot and jitter of doubling time per experimental group, with mean and 95% CI. Wells are colored by QC flag. |
-| Plot 11: Maximum growth rate summary | Boxplot and jitter of `max_percap` per experimental group, with mean and 95% CI. Wells are colored by QC flag. |
+| Plot 10: Doubling time summary | Boxplot and jitter of doubling time (hours) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
+| Plot 11: Maximum growth rate summary | Boxplot and jitter of maximum growth rate (per hour) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
 
 ## 7. Output Files
 
@@ -562,9 +562,9 @@ Column schema:
 | `Well` | Well identifier (e.g., A1, B3). |
 | `Measurement` | Type of measurement: `max_growth` (the maximum per-capita growth rate) or `doub_time` (the doubling time in hours). |
 | `Value` | Numeric value of the measurement. |
-| `Replicate` | Integer replicate index assigned within each combination of design variables and measurement type. Assigned by row_number() within each group. |
-| `QC_flag` | OK, WARN, or FAIL. See Section 5.3 for flag definitions. |
-| `QC_reason` | Empty string for OK wells; a short description for WARN and FAIL wells. |
+| `Replicate` | Integer replicate index assigned within each combination of design variables and measurement type. Assigned by `row_number()` within each group. |
+| `QC_flag` | `OK`, `WARN`, or `FAIL`. See Section 5.3 for flag definitions. |
+| `QC_reason` | Empty string for `OK` wells; a short description for `WARN` and `FAIL` wells. |
 | `instrument` | The instrument type used: `plate_reader` or `ocelloscope`. |
 | `prefix` | The user-specified prefix. Empty string if no prefix was provided. |
 
@@ -579,7 +579,7 @@ A single-row CSV recording all parameters used for the analysis. This file provi
 |------|---------------------|
 | `rawdatafile` | Full path to the raw data file |
 | `designfile` | Full path to the design file |
-| `instrument` | `plate_reade`r or `ocelloscope` |
+| `instrument` | `plate_reader` or `ocelloscope` |
 | `blank_mode` | `plate`, `per_well`, or `none` |
 | `hrs` | Duration in hours |
 | `interval` | Interval in minutes |
@@ -588,7 +588,7 @@ A single-row CSV recording all parameters used for the analysis. This file provi
 | `design_vars` | Comma-separated list of selected design variables |
 | `prefix` | Prefix used (empty if none) |
 
-### 7.4 Batch Summary (`batch_summary.csv`)
+### 7.4 Batch Summary (`batch_run_summary.csv`)
 
 Produced at the end of every Batch Processing run. Contains one row per plate. Fields include the plate name, analysis status (`success` / `failed` / `cancelled`), and any diagnostic messages produced during analysis of that plate.
 
@@ -607,7 +607,7 @@ Regional formatting affects how CSV files are written and how numeric axis label
 
 The region setting affects:
 
-- All CSV output files: `plate_tidy.csv`, `Analysis_arguments.csv`, `batch_summary.csv`, and combined_tidy files
+- All CSV output files: `plate_tidy.csv`, `Analysis_arguments.csv`, `batch_run_summary.csv`, and `combined_tidy_YYYYMMDD_HHMMSS.csv` files
 - Numeric axis labels in diagnostic plots (`format_axis_labels()` converts dots to commas for EU mode)
 
 All file input/output is routed through two centralized functions defined in `growthcurve_system.R`:
@@ -676,11 +676,11 @@ The preview helps users verify that the correct file has been selected and that 
 
 ### 10.2 Dark Mode
 
-A dark/light theme toggle is available in the top navigation area. Dark mode applies to all UI elements including modals, tables, and form controls. It does not apply to the `ggplot` diagnostic plots, which always render on a white background regardless of the UI theme. The toggle is implemented via a CSS class (dark-mode) applied to the html element and a corresponding `bslib::bs_theme` data attribute.
+A dark/light theme toggle is available in the top navigation area. Dark mode applies to all UI elements including modals, tables, and form controls. It does not apply to the `ggplot` diagnostic plots, which always render on a white background regardless of the UI theme. The toggle is implemented via a CSS class (`dark-mode`) applied to the html element and a corresponding `bslib::bs_theme` data attribute.
 
 ### 10.3 Cancellation
 
-Batch Processing can be cancelled mid-run using a `Cancel` button that appears during processing. Cancellation is implemented via a reactive flag checked between each plate in the batch. When cancellation is triggered, the current plate's analysis is allowed to complete, and then the batch loop exits. The batch summary records cancelled as the status for all plates not yet processed.
+Batch Processing can be `cancelled` mid-run using a `Cancel` button that appears during processing. Cancellation is implemented via a reactive flag checked between each plate in the batch. When cancellation is triggered, the current plate's analysis is allowed to complete, and then the batch loop exits. The batch summary records cancelled as the status for all plates not yet processed.
 
 ### 10.4 Navigation Lock
 
@@ -756,7 +756,7 @@ Analysis/                               # created on export
     │   └── Analysis_arguments.csv
     ├── plate2/
     │   ...
-    └── batch_summary.csv
+    └── batch_run_summary.csv
 ```
 
 ### 12.3 Aggregate Results
