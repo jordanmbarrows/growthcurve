@@ -142,7 +142,7 @@ The app provides three distinct workflows. Users will typically move through the
 
 Single Plate is the exploratory workflow. It is designed for interactive investigation of a single dataset and gives access to the full suite of 11 diagnostic plots, stage-by-stage.
 
-Characteristics:
+#### Characteristics:
 
 - Interactive, step-by-step plot navigation with Previous and Next stage buttons
 - Immediate visual feedback after each analysis stage completes
@@ -173,14 +173,14 @@ Analysis/                               # created on export
 
 Batch Processing is the production workflow. It processes multiple datasets in sequence without interactive plotting, making it efficient for routine analysis of many plates.
 
-####Characteristics:
+#### Characteristics:
 
 - No stage-by-stage plot display during processing
 - Cancellation is supported mid-batch via a `Cancel` button
 - Each plate is processed into its own subdirectory under the run output folder
 - A batch summary CSV is produced at the end of each run
 
-####Parallel Processing
+#### Parallel Processing
 
 By default, batch analysis runs two plates simultaneously using parallel workers. This reduces total runtime for multi-plate batches without placing excessive load on the system. The worker count is intentionally capped at two: higher values rarely improve performance for this type of workload because the bottleneck is typically disk I/O (reading and writing CSV files and PDFs) rather than CPU computation. Running more than two workers in parallel tends to cause disk contention that offsets any gains from parallelism.
 
