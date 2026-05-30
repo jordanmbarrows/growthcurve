@@ -656,7 +656,7 @@ The latest release tag is compared against the installed package version using `
 
 ### 9.4 OS-Aware Folder Opening
 
-The Open export folder button in export dialogs uses `open_folder()`, which dispatches to the appropriate system command based on the detected OS: `shell.exec()` on Windows, `open` on macOS, and `xdg-open` on Linux. Failures are caught and surfaced as console warnings without crashing the app.
+The `Open export folder` button in export dialogs uses `open_folder()`, which dispatches to the appropriate system command based on the detected OS: `shell.exec()` on Windows, `open` on macOS, and `xdg-open` on Linux. Failures are caught and surfaced as console warnings without crashing the app.
 
 ### 9.5 Backend Readiness Check
 
