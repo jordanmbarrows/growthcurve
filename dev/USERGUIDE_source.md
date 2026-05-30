@@ -120,7 +120,7 @@ library(growthcurve)
 run_growthcurve()
 ```
 
-The app performs a dependency check on startup and automatically install any missing required packages. This installation requires an internet connection and will fail with a descriptive error message if any required packages cannot be installed. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
+The app performs a dependency check on startup and automatically installs any missing required packages. This installation requires an internet connection and will fail with a descriptive error message if any required packages cannot be installed. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
 
 ### 1.2 Application Architecture
 
