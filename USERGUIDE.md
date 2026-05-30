@@ -147,7 +147,7 @@ The app provides three distinct workflows. Users will typically move through the
 
 Single Plate is the exploratory workflow. It is designed for interactive investigation of a single dataset and gives access to the full suite of 11 diagnostic plots, stage-by-stage.
 
-Characteristics:
+#### Characteristics:
 
 - Interactive, step-by-step plot navigation with Previous and Next stage buttons
 - Immediate visual feedback after each analysis stage completes
@@ -178,12 +178,18 @@ Analysis/                               # created on export
 
 Batch Processing is the production workflow. It processes multiple datasets in sequence without interactive plotting, making it efficient for routine analysis of many plates.
 
-Characteristics:
+#### Characteristics:
 
 - No stage-by-stage plot display during processing
 - Cancellation is supported mid-batch via a `Cancel` button
 - Each plate is processed into its own subdirectory under the run output folder
 - A batch summary CSV is produced at the end of each run
+
+#### Parallel Processing
+
+By default, batch analysis runs two plates simultaneously using parallel workers. This reduces total runtime for multi-plate batches without placing excessive load on the system. The worker count is intentionally capped at two: higher values rarely improve performance for this type of workload because the bottleneck is typically disk I/O (reading and writing CSV files and PDFs) rather than CPU computation. Running more than two workers in parallel tends to cause disk contention that offsets any gains from parallelism.
+
+Parallel processing can be disabled via the `Enable parallel processing` checkbox in the batch parameter panel. When disabled, plates are processed sequentially, one at a time. Sequential mode is useful if you encounter instability on a particular system, are running on a machine with very limited memory, or simply prefer a more predictable execution pattern.
 
 Expected file layout for batch input:
 
@@ -381,6 +387,7 @@ Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normal
 | Parameter | Description |
 |------------|-------------|
 | Prefix     | A text label prepended to analysis outputs. Used in output filenames and as a component of the duplicate detection key. If left empty, outputs are labeled by plate name alone. |
+| Parallel processing (batch only) | When enabled (default), two plates are processed simultaneously to reduce total batch runtime. Can be disabled if sequential processing is preferred — for example, on memory-limited systems or when troubleshooting unexpected batch failures. |
 
 ### 4.3 Blank Correction Mode
 
@@ -392,7 +399,7 @@ Blank correction is only applicable to plate reader data. oCelloscope data enter
 | `per_well`  | Subtracts the OD of each individual well at the first timepoint from all subsequent timepoints of that well. Useful when wells have highly variable baseline readings. |
 | `none`      | No blank correction applied. The raw measurements are used as-is. Appropriate when data is already baseline-corrected. |
 
-In all cases, blank-corrected values are stored as Measurements_adj, and a log transformation of pmax(Measurements_adj, 1e-6) is stored as Measurements_log. The small floor value (1e-6) prevents log-of-zero errors.
+In all cases, blank-corrected values are stored as `Measurements_adj`, and a log transformation of `pmax(Measurements_adj, 1e-6)` is stored as Measurements_log. The small floor value (1e-6) prevents log-of-zero errors.
 
 ### 4.4 Instrument Defaults
 
