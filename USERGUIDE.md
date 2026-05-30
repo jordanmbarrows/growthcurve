@@ -386,7 +386,7 @@ Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normal
 
 | Parameter | Description |
 |------------|-------------|
-| Prefix     | A text label prepended to analysis outputs. Used in output filenames and as a component of the duplicate detection key. If left empty, outputs are labeled by plate name alone. |
+| Prefix     | A text label prepended to analysis outputs. Used in output filenames and as a component of the duplicate detection key. If left empty, outputs are labeled by timestamp (`YYYYMMDD_HHMMSS`), run type (`_single` or `_batch`), and plate name (subfolder) alone. |
 | Parallel processing (batch only) | When enabled (default), two plates are processed simultaneously to reduce total batch runtime. Can be disabled if sequential processing is preferred — for example, on memory-limited systems or when troubleshooting unexpected batch failures. |
 
 ### 4.3 Blank Correction Mode
