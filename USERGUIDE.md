@@ -9,7 +9,7 @@ Do not edit manually.
 
 ## User & Technical Guide
 
-Version 1.0.10
+Version 1.0.10.9000
 
 github.com/jordanmbarrows/growthcurve
 
