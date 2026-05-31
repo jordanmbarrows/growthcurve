@@ -14,6 +14,7 @@
 - Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
   - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
+- Fixed bug where blank mode radio buttons were not disabled after running single plate analysis
 
 ### Fixed: oCelloscope well assignment in design parsing
 
