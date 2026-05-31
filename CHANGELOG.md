@@ -11,16 +11,19 @@
     - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
   - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
 - Updated preview table for `wide` format (both plate reader and oCelloscope)
-- Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
-  - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
-- Fixed bug where blank mode radio buttons were not disabled after running single plate analysis
+- Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
+  -Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
+
 
 ### Fixed: oCelloscope well assignment in design parsing
 
--Corrected oCelloscope design parsing so that active wells are assigned according to the actual design file layout. Active values in the oCelloscope design template begin in plate column 2; older output behavior was consistent with a one-column-right shift followed by truncation during raw/design overlap.
+- Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
+  - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
+  -Corrected oCelloscope design parsing so that active wells are assigned according to the actual design file layout. Active values in the oCelloscope design template begin in plate column 2; older output behavior was consistent with a one-column-right shift followed by truncation during raw/design overlap.
+    -This affected oCelloscope well assignment and replicate grouping in previous versions. Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
+- Fixed bug where blank mode radio buttons were not disabled after running single plate analysis
 
--This affected oCelloscope well assignment and replicate grouping in previous versions. Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
 
 ## [1.0.10] - 2026-05-29
 

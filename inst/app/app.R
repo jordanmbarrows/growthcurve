@@ -1138,10 +1138,35 @@ server <- function(input, output, session) {
         "Successfully processed plate(s):"
       }
       
-      processed <- unique(successes)
+      
+      # --- Determine processed plates from actual written outputs ---
+      processed <- character(0)
+      
+      if (dir.exists(root_path)) {
+        tidy_files <- list.files(
+          path = root_path,
+          pattern = "^plate_tidy\\.csv$",
+          recursive = TRUE,
+          full.names = TRUE
+        )
+        
+        if (length(tidy_files) > 0) {
+          # plate_tidy.csv lives inside the per-plate folder
+          processed_dirs <- basename(dirname(tidy_files))
+          
+          # Map folder names back to original plate filenames
+          # because all_plate_names still include ".csv"
+          processed <- all_plate_names[
+            tools::file_path_sans_ext(all_plate_names) %in% processed_dirs
+          ]
+        }
+      }
+      
+      processed <- unique(processed)
       not_processed <- setdiff(all_plate_names, processed)
       
-      completed_str <- paste0(completed_val, " of ", n)
+      completed_count <- length(processed)
+      completed_str <- paste0(completed_count, " of ", n)
       
       # --- Close progress ---
       if (isTRUE(batch_state$progress_open)) {
@@ -1162,11 +1187,11 @@ server <- function(input, output, session) {
       failure_ui <- shiny::tagList()
       
       # successes
-      if (length(successes) > 0) {
+      if (length(processed) > 0) {
         failure_ui <- tagAppendChildren(
           failure_ui,
           p(strong(label_success)),
-          tags$ul(lapply(successes, tags$li))
+          tags$ul(lapply(processed, tags$li))
         )
       }
       
@@ -1196,13 +1221,22 @@ server <- function(input, output, session) {
         )
       }
       
-      if (length(successes) == 0) {
-        if (completed_val > 0) {
+      if (length(processed) == 0) {
+        if (isTRUE(cancelled)) {
+          failure_ui <- shiny::tagList(
+            p(strong("Remaining plate(s):")),
+            tags$ul(
+              lapply(not_processed, function(x) {
+                tags$li(tags$span(style = "color: #555;", x))
+              })
+            )
+          )
+        } else if (completed_val > 0) {
           failure_ui <- tagList(
             p(
               HTML(paste0(
                 "The analysis could not be completed. Please check that:
-                <br><br>",
+          <br><br>",
                 "1. You have selected the correct instrument.<br>",
                 "2. You have selected the correct input files.<br>",
                 "3. Your input files are formatted correctly."
@@ -3753,11 +3787,6 @@ B           0   0   1
           disabled = TRUE
         ),
         
-      ),
-      
-      tags$p(
-        style = "font-size: 0.9em; color: #666; margin-top: 6px;",
-        "Note: Cancelling a batch will stop the analysis after the current plate finishes processing."
       )
     )
   })
@@ -4531,14 +4560,43 @@ B           0   0   1
           ))
         }
         
-        dir.create(root_path,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
-        
+        dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
+        # Re-check after directories exist but before writing outputs
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         report_file <- file.path(plate_dir, "plate_report.pdf")
+        
+        # Re-check before report write
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         gc_save_report(res$plots, report_file, plate_name = plate_tag)
+        
+        # Re-check before summaries
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         gc_write_summaries(
           core               = res$core,
           params             = res$params,
@@ -4566,13 +4624,11 @@ B           0   0   1
     start_cancellation_monitor <- function(root_path, bs, maybe_finish_fn) {
       monitor <- function() {
         if (cancel_requested(root_path)) {
-          bs$aborted <- TRUE
+          bs$aborted   <- TRUE
           bs$cancelled <- TRUE
-          bs$queue   <- list()  # <- DRAIN THE QUEUE IMMEDIATELY
+          bs$queue     <- list()
           gc_log("CANCELLATION DETECTED MID-PLATE")
-          # Queue will drain naturally when this plate finishes
-          maybe_finish_fn()  # Trigger finish check
-          return()  # Stop monitoring
+          return()
         }
         later::later(monitor, delay = 1)  # Check every second
       }
@@ -4746,22 +4802,28 @@ B           0   0   1
         return()
       }
       
-      if (bs$completed == n || bs$aborted) {
-        bs$finished <- TRUE   # lock it
+      # Only finish when:
+      # - all plates have completed, OR
+      # - cancellation/abort has happened AND no workers are still running
+      done_all <- (bs$completed == n)
+      done_cancelled <- isTRUE(bs$aborted) && identical(bs$running, 0L)
+      
+      if (done_all || done_cancelled) {
+        bs$finished <- TRUE
         
         finish_batch(
-          completed_val = bs$completed,
-          n = n,
-          root_path = root_path,
+          completed_val   = bs$completed,
+          n               = n,
+          root_path       = root_path,
           batch_start_time = batch_start_time,
-          progress = progress,
-          old_plan = old_plan,
-          failures = bs$failures,
-          all_failed = length(bs$failures) == n,
+          progress        = progress,
+          old_plan        = old_plan,
+          failures        = bs$failures,
+          all_failed      = length(bs$failures) == n,
           all_plate_names = all_plate_names,
-          successes = bs$successes,
-          region = region,
-          cancelled = isTRUE(bs$cancelled)
+          successes       = bs$successes,
+          region          = region,
+          cancelled       = isTRUE(bs$cancelled)
         )
       }
     }
