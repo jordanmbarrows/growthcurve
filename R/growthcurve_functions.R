@@ -1610,6 +1610,16 @@ gc_import_data <- function(
     design_file_format = design_file_format
   )
   
+  keep <- !is.na(my_design$Well_type)
+  for (v in vars) {
+    keep <- keep | !is.na(my_design[[v]])
+  }
+  
+  mapping_table <- my_design[keep, c("Well", "Well_type", vars), drop = FALSE]
+  mapping_table <- mapping_table[order(mapping_table$Well), , drop = FALSE]
+  
+  print(mapping_table)
+  
   # ---- Extract design wells from SAME source ----
   design_wells <- unique(my_design$Well)
   
@@ -1623,7 +1633,21 @@ gc_import_data <- function(
   # MERGE + CLEAN (shared)
   # ==========================================================
 
-  merged_data <- gcplyr::merge_dfs(imported_tidy, my_design)
+  merged_data <- dplyr::left_join(
+    imported_tidy,
+    my_design,
+    by = "Well"
+  )
+  
+  if (nrow(merged_data) != nrow(imported_tidy)) {
+    gc_abort(
+      paste(
+        "Merge error:",
+        "Joining design onto raw data changed the number of raw rows.",
+        "This suggests duplicate wells in the design table or malformed raw keys."
+      )
+    )
+  }
   
   bad_map <- merged_data |>
     dplyr::group_by(Well) |>
@@ -1640,22 +1664,17 @@ gc_import_data <- function(
     )
   }
   
-  mapping_table <- merged_data |>
-    dplyr::select(Well, Well_type, dplyr::all_of(vars)) |>
-    dplyr::distinct() |>
-    dplyr::arrange(Well, Well_type)
-  
-  print(mapping_table)
-  
   merged_data[vars] <- lapply(
     merged_data[vars],
     as.character
   )
 
-  if (any(duplicated(merged_data[c("Well", "Time")]))) {
-    warning(
-      "Duplicate (Well, Time) pairs detected after merging raw data and design."
-    )
+  dup_postmerge <- merged_data |>
+    dplyr::count(Well, Time, name = "n") |>
+    dplyr::filter(n > 1)
+  
+  if (nrow(dup_postmerge) > 0) {
+    gc_abort("Merge error: duplicate (Well, Time) pairs detected after joining design to raw data.")
   }
 
   if (nrow(merged_data) == 0) {
