@@ -1727,6 +1727,8 @@ server <- function(input, output, session) {
   
   single_run_root <- reactiveVal(NULL)
   
+  single_debug_temp <- reactiveVal(NULL)
+  
   shiny::observeEvent(input$install_no, {
     stopApp()
   })
@@ -4223,25 +4225,15 @@ B           0   0   1
                        )
                      )
                      
+                     single_debug_log <- NULL
                      
-                     dirs <- make_export_dirs(
-                       wd = wd_path(),
-                       prefix = input$prefix %||% ""
-                     )
-                     
-                     single_run_root(dirs$analysis_dir)
-                     
-                     dir.create(single_run_root(), recursive = TRUE, showWarnings = FALSE)
-                     
-                     single_debug_log <- if (isTRUE(gc_dev_mode())) {
-                       file.path(single_run_root(), "_single_debug_log.txt")
-                     } else {
-                       NULL
-                     }
-                     
-                     if (!is.null(single_debug_log)) {
-                       dir.create(dirname(single_debug_log), recursive = TRUE, showWarnings = FALSE)
-                       if (file.exists(single_debug_log)) file.remove(single_debug_log)
+                     if (isTRUE(gc_dev_mode())) {
+                       single_debug_log <- tempfile(
+                         pattern = "gc_single_debug_",
+                         fileext = ".log"
+                       )
+                       
+                       single_debug_temp(single_debug_log)
                        
                        cat(
                          paste0(
@@ -4256,8 +4248,6 @@ B           0   0   1
                          append = TRUE
                        )
                      }
-                     
-                     dir.create(dirname(single_debug_log), recursive = TRUE, showWarnings = FALSE)
                      
                      res <- gc_run_quiet(
                        run_gc(
@@ -4291,6 +4281,29 @@ B           0   0   1
                      err <- gc_format_error(e)
                      
                      msg <- err$user_message
+                     
+                     if (isTRUE(gc_dev_mode()) &&
+                         !is.null(single_debug_temp()) &&
+                         file.exists(single_debug_temp())) {
+                       
+                       fail_dir <- file.path(wd_path(), "Analysis", "_failed_debug")
+                       dir.create(fail_dir, recursive = TRUE, showWarnings = FALSE)
+                       
+                       fail_stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+                       fail_prefix <- input$prefix %||% ""
+                       
+                       fail_name <- if (nzchar(fail_prefix)) {
+                         paste0(fail_stamp, "_", fail_prefix, "_single_failed_debug.log")
+                       } else {
+                         paste0(fail_stamp, "_single_failed_debug.log")
+                       }
+                       
+                       file.copy(
+                         from = single_debug_temp(),
+                         to   = file.path(fail_dir, fail_name),
+                         overwrite = TRUE
+                       )
+                     }
                      
                      showModal(modalDialog(
                        title = "Analysis failed",
@@ -4364,7 +4377,14 @@ B           0   0   1
     enforce_blank_mode_state(session, input$instrument)
     
     shinyjs::disable("export_files")
+    
+    last_export_dir(NULL)
     single_run_root(NULL)
+    
+    if (!is.null(single_debug_temp()) && file.exists(single_debug_temp())) {
+      unlink(single_debug_temp())
+    }
+    single_debug_temp(NULL)
     
   })
   
@@ -4581,6 +4601,17 @@ B           0   0   1
         
         dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
+        
+        if (isTRUE(gc_dev_mode()) &&
+            !is.null(single_debug_temp()) &&
+            file.exists(single_debug_temp())) {
+          
+          file.copy(
+            from = single_debug_temp(),
+            to   = file.path(plate_dir, "_single_debug_log.txt"),
+            overwrite = TRUE
+          )
+        }
         
         # Re-check after directories exist but before writing outputs
         if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
