@@ -13,7 +13,8 @@
 - Updated preview table for `wide` format (both plate reader and oCelloscope)
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
 - Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
-  -Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
+  - Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
+- Debug logging is now dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
 
 ### Fixed: oCelloscope well assignment in design parsing
 
