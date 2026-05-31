@@ -4,7 +4,15 @@
 \alias{gc_write_summaries}
 \title{Saves summary files}
 \usage{
-gc_write_summaries(core, params, instrument, out_dir, region)
+gc_write_summaries(
+  core,
+  params,
+  instrument,
+  out_dir,
+  region,
+  raw_data_format = NULL,
+  design_file_format = NULL
+)
 }
 \description{
 Saves summary files

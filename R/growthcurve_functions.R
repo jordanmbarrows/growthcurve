@@ -266,7 +266,7 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
 }
 
 is_ocelloscope <- function(file) {
-  lines <- base::readLines(file, n = 200)
+  lines <- base::readLines(file, warn = FALSE)
   any(base::grepl("^\\s*TANormalized", lines, ignore.case = TRUE))
 }
 
@@ -300,7 +300,7 @@ detect_plate_format <- function(file) {
   }
 
   # ---- Search for wide well-name header ----
-  # A wide header has >= 6 cells matching [A-H][0-9]{1,2}
+  # A wide header has >= 2 cells matching [A-H][0-9]{1,2}
   # and appears only once (not repeated like block format).
   well_pattern <- "[A-H][0-9]{1,2}"
 
@@ -308,7 +308,7 @@ detect_plate_format <- function(file) {
     fields <- strsplit(l, "[,;]")[[1]]
     fields <- trimws(fields)
     n_wells <- sum(grepl(paste0("^", well_pattern, "$"), fields))
-    n_wells >= 6
+    n_wells >= 2
   }, logical(1)))
 
   if (n_wide_rows == 1) {
@@ -362,7 +362,7 @@ read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
   for (i in seq_along(lines)) {
     fields <- trimws(strsplit(lines[i], "[,;]")[[1]])
     n_wells <- sum(grepl(well_pattern, fields))
-    if (n_wells >= 6) {
+    if (n_wells >= 2) {
       header_idx <- i
       break
     }
@@ -404,11 +404,18 @@ read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
   if (!is.na(time_col_idx)) {
     time_raw <- suppressWarnings(as.numeric(as.character(df[[time_col_idx]])))
 
-    # Heuristic: if values look like seconds (>> 1000) convert; else assume minutes
-    if (!all(is.na(time_raw)) && max(time_raw, na.rm = TRUE) > 1000) {
-      time_min <- time_raw / 60
+    if (!all(is.na(time_raw))) {
+      # Successfully parsed: values > 1000 are assumed to be seconds
+      if (max(time_raw, na.rm = TRUE) > 1000) {
+        time_min <- time_raw / 60
+      } else {
+        time_min <- time_raw
+      }
+    } else if (!is.null(interval)) {
+      # Time column present but not parseable — fall back to interval
+      time_min <- seq(0, by = interval * 60, length.out = n)
     } else {
-      time_min <- time_raw
+      time_min <- seq_len(n) - 1L
     }
   } else if (!is.null(interval)) {
     time_min <- seq(0, by = interval * 60, length.out = n)
@@ -674,8 +681,6 @@ gc_instrument_defaults <- list(
 #     params,
 #     inputs,
 #     analysis_dir,
-#     plots_dir,
-#     summary_dir,
 #     ggplot_theme
 #   )
 # ------------------------------------------------------------
@@ -721,8 +726,6 @@ gc_prepare_run <- function(rawdatafile,
   }
   
   analysis_dir <- "Analysis"
-  plots_dir <- NULL
-  summary_dir <- NULL
   
   # ---------------------------
   # Shared ggplot theme
@@ -760,8 +763,6 @@ gc_prepare_run <- function(rawdatafile,
       designfile  = designfile
     ),
     analysis_dir = analysis_dir,
-    plots_dir    = plots_dir,
-    summary_dir  = summary_dir,
     ggplot_theme = ggplot_theme
   )
 }
@@ -972,7 +973,7 @@ detect_design_format <- function(file) {
   first_row_vals <- trimws(as.character(unlist(df[1, -1])))
   n_wells <- sum(grepl("^[A-H][0-9]{1,2}$", first_row_vals))
 
-  if (n_wells >= 6) return("wide")
+  if (n_wells >= 2) return("wide")
 
   "block"
 }
@@ -1009,7 +1010,7 @@ read_design_wide <- function(file) {
   well_pattern <- "^[A-H][0-9]{1,2}$"
   well_col_idx <- which(grepl(well_pattern, well_row))
 
-  if (length(well_col_idx) < 6) {
+  if (length(well_col_idx) < 2) {
     gc_abort("Wide design file: first row must contain well names (e.g. A1, B2 ... H12).")
   }
 
@@ -2664,8 +2665,6 @@ run_gc <- function(
   #     params,
   #     inputs,
   #     analysis_dir,
-  #     plots_dir,
-  #     summary_dir,
   #     ggplot_theme
   #   )
   # ==========================================================

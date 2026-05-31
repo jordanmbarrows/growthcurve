@@ -390,16 +390,7 @@ ui <- shiny::fluidPage(
             
             selectInput("batch_data_dir", "Raw data directory", choices = NULL),
 
-            conditionalPanel(
-              condition = "input.batch_instrument == 'plate_reader'",
-              radioButtons(
-                "batch_raw_data_format",
-                label = "Raw data format",
-                choices = c("Block" = "block", "Wide" = "wide"),
-                selected = "block",
-                inline = TRUE
-              )
-            ),
+
 
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data (first file)")),
@@ -412,13 +403,7 @@ ui <- shiny::fluidPage(
 
             selectInput("batch_design_dir", "Design file directory", choices = NULL),
 
-            radioButtons(
-              "batch_design_file_format",
-              label = "Design file format",
-              choices = c("Block" = "block", "Wide" = "wide"),
-              selected = "block",
-              inline = TRUE
-            ),
+
 
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file (first pair)")),
@@ -1628,7 +1613,7 @@ server <- function(input, output, session) {
       
       vars <- tryCatch(
         extract_design_blocks(dfile,
-                              design_file_format = input$batch_design_file_format %||% "block"),
+                              design_file_format = NULL),
         error = function(e = NULL)
           character(0)
       )
@@ -1672,7 +1657,7 @@ server <- function(input, output, session) {
   
   validated_pairs_cached <- bindCache(reactive({
     validated_batch_pairs()
-  }), batch_pairs(), input$batch_design_file_format)
+  }), batch_pairs())
   
   batch_can_parallel <- function() {
     cores <- parallel::detectCores(logical = TRUE)
@@ -2990,17 +2975,7 @@ B           0   0   1
         selected = ""
       ),
 
-      # Format selector: only shown for plate reader (not ocelloscope)
-      conditionalPanel(
-        condition = "input.instrument == 'plate_reader'",
-        radioButtons(
-          "raw_data_format",
-          label = "Raw data format",
-          choices = c("Block" = "block", "Wide" = "wide"),
-          selected = "block",
-          inline = TRUE
-        )
-      ),
+
 
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data")),
@@ -3019,13 +2994,7 @@ B           0   0   1
         selected = ""
       ),
 
-      radioButtons(
-        "design_file_format",
-        label = "Design file format",
-        choices = c("Block" = "block", "Wide" = "wide"),
-        selected = "block",
-        inline = TRUE
-      ),
+
 
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file")),
@@ -3118,17 +3087,11 @@ B           0   0   1
       NULL
     }
 
-    raw_fmt <- if (input$instrument == "plate_reader") {
-      input$raw_data_format %||% "block"
-    } else {
-      NULL
-    }
-
     build_preview(file,
                   design,
                   interval = interval_hours(),
                   instrument = input$instrument,
-                  raw_data_format = raw_fmt)
+                  raw_data_format = NULL)
 
   })
 
@@ -3137,8 +3100,7 @@ B           0   0   1
     input$raw_file,
     input$design_file,
     input$instrument,
-    input$interval_min,
-    input$raw_data_format
+    input$interval_min
   )
   
   single_preview_data <- reactive({
@@ -3189,9 +3151,7 @@ B           0   0   1
       design,
       interval = input$batch_interval / 60,
       instrument = input$batch_instrument,
-      raw_data_format = if (input$batch_instrument == "plate_reader")
-        input$batch_raw_data_format %||% "block"
-      else NULL
+      raw_data_format = NULL
     )
 
   })
@@ -3201,8 +3161,7 @@ B           0   0   1
     input$batch_data_dir,
     input$batch_design_dir,
     input$batch_instrument,
-    input$batch_interval,
-    input$batch_raw_data_format
+    input$batch_interval
   )
   
   output$single_raw_preview_table <- shiny::renderTable({
@@ -3231,12 +3190,8 @@ B           0   0   1
 
     res <- single_preview_raw()
 
-    raw_fmt <- if (input$instrument == "plate_reader") {
-      input$raw_data_format %||% "block"
-    } else NULL
-
     build_preview_label(file, res, instrument = input$instrument,
-                        raw_data_format = raw_fmt)
+                        raw_data_format = NULL)
   })
   
   output$single_raw_preview_ui <- shiny::renderUI({
@@ -3258,7 +3213,7 @@ B           0   0   1
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
 
-    dfmt <- input$design_file_format %||% "block"
+    dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
 
     if (dfmt == "wide") {
       result <- tryCatch({
@@ -3433,12 +3388,8 @@ B           0   0   1
     
     res <- batch_preview_raw()
 
-    raw_fmt <- if (isolate(input$batch_instrument) == "plate_reader")
-      input$batch_raw_data_format %||% "block"
-    else NULL
-
     build_preview_label(file, res, instrument = isolate(input$batch_instrument),
-                        raw_data_format = raw_fmt)
+                        raw_data_format = NULL)
   })
   
   output$batch_design_preview <- shiny::renderUI({
@@ -3448,7 +3399,7 @@ B           0   0   1
     file <- files[1]
     req(!is.na(file), file.exists(file))
 
-    dfmt <- input$batch_design_file_format %||% "block"
+    dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
 
     if (dfmt == "wide") {
       return(tryCatch({
@@ -3850,12 +3801,12 @@ B           0   0   1
 
     extract_design_blocks(
       file.path(wd_path(), input$design_file),
-      design_file_format = input$design_file_format %||% "block"
+      design_file_format = NULL
     )
 
   })
 
-  design_blocks <- bindCache(design_blocks, input$design_file, input$design_file_format)
+  design_blocks <- bindCache(design_blocks, input$design_file)
   
   output$design_section <- shiny::renderUI({
     shiny::tagList(
@@ -3891,14 +3842,14 @@ B           0   0   1
     )
   })
   
-  shiny::observeEvent(list(input$design_file, input$design_file_format), {
+  shiny::observeEvent(input$design_file, {
     req(wd_path(), input$design_file)
 
     file <- file.path(wd_path(), input$design_file)
 
     vars <- tryCatch(
       extract_design_blocks(file,
-                            design_file_format = input$design_file_format %||% "block"),
+                            design_file_format = NULL),
       error = function(e = NULL)
         character(0)
     )
@@ -4225,10 +4176,8 @@ B           0   0   1
                          prefix             = input$prefix,
                          batch              = FALSE,
                          region             = region_selected(),
-                         raw_data_format    = if (input$instrument == "plate_reader")
-                                               input$raw_data_format %||% "block"
-                                             else NULL,
-                         design_file_format = input$design_file_format %||% "block"
+                         raw_data_format    = NULL,
+                         design_file_format = NULL
                        )
                      )
                      
@@ -4448,7 +4397,7 @@ B           0   0   1
           )
         }, error = function(e = NULL) {
           
-          err <- gc_format_error(e, dev = gc_dev_mode())
+          err <- growthcurve:::gc_format_error(e, dev = gc_dev_mode())
           
           list(
             success = FALSE,
@@ -4628,7 +4577,7 @@ B           0   0   1
     # -- catch: promise itself rejected (system/async error) -------------------
     prom <- promises::catch(prom, function(e) {
       
-      err <- gc_format_error(e)
+      err <- growthcurve:::gc_format_error(e)
       
       gc_log_block(
         paste("ASYNC ERROR plate", i),
@@ -4800,10 +4749,8 @@ B           0   0   1
       blank_mode         = input$batch_blank_mode,
       prefix             = input$batch_prefix,
       parallel           = input$batch_parallel,
-      raw_data_format    = if (input$batch_instrument == "plate_reader")
-                             input$batch_raw_data_format %||% "block"
-                           else NULL,
-      design_file_format = input$batch_design_file_format %||% "block"
+      raw_data_format    = NULL,
+      design_file_format = NULL
     )
     
     later::later(function() {
