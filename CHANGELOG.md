@@ -15,7 +15,6 @@
 - Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
   -Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
 
-
 ### Fixed: oCelloscope well assignment in design parsing
 
 - Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
