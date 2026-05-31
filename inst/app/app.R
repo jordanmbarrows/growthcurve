@@ -4198,11 +4198,9 @@ B           0   0   1
                        "_single_debug_log.txt"
                      )
                      
-                     if (file.exists(single_debug_log)) {
-                       file.remove(single_debug_log)
-                     }
+                     dir.create(dirname(single_debug_log), recursive = TRUE, showWarnings = FALSE)
                      
-                     gc_run_quiet(
+                     res <- gc_run_quiet(
                        run_gc(
                          rawdatafile        = raw_file_path,
                          designfile         = design_file_path,
@@ -4399,6 +4397,20 @@ B           0   0   1
       
       library(growthcurve)
       
+      cat(
+        paste0(
+          format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+          " | WORKER INFO | growthcurve version = ",
+          as.character(utils::packageVersion("growthcurve")),
+          " | run_gc has debug_logfile = ",
+          "debug_logfile" %in% names(formals(growthcurve::run_gc)),
+          "\n"
+        ),
+        file = params$debug_logfile,
+        append = TRUE
+      )
+      
+      
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
         if (isTRUE(getOption("gc.dev_mode"))) return(expr)
@@ -4450,7 +4462,24 @@ B           0   0   1
               debug_logfile      = params$debug_logfile
             )
           )
+          
         }, error = function(e = NULL) {
+          
+          raw_err <- tryCatch(conditionMessage(e), error = function(...) "Unknown worker error")
+          raw_cls <- tryCatch(class(e)[1], error = function(...) "unknown_class")
+          
+          cat(
+            paste0(
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              " | WORKER RAW ERROR | rawdatafile = ", pairs_val$data_file[i],
+              " | designfile = ", pairs_val$design_file[i],
+              " | class = ", raw_cls,
+              " | error = ", raw_err,
+              "\n"
+            ),
+            file = params$debug_logfile,
+            append = TRUE
+          )
           
           err <- growthcurve:::gc_format_error(e, dev = gc_dev_mode())
           
@@ -4458,15 +4487,36 @@ B           0   0   1
             success = FALSE,
             message = err$user_message,
             debug   = err$debug,
-            plate   = pairs_val$data_file[i]
+            plate   = pairs_val$data_file[i],
+            raw_error = raw_err
           )
         })
         
+        
         if (!is.list(res) || is.null(res$plots)) {
+          
+          err_msg <- if (is.list(res) && !is.null(res$message)) {
+            as.character(res$message)
+          } else {
+            "Run failed before producing valid output"
+          }
+          
+          cat(
+            paste0(
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              " | APP BATCH ERROR | rawdatafile = ", pairs_val$data_file[i],
+              " | designfile = ", pairs_val$design_file[i],
+              " | error = ", err_msg,
+              "\n"
+            ),
+            file = params$debug_logfile,
+            append = TRUE
+          )
+          
           return(
             list(
               success = FALSE,
-              message = res$message %||% "Run failed before producing valid output",
+              message = err_msg,
               plate   = pairs_val$data_file[i]
             )
           )
@@ -4649,8 +4699,10 @@ B           0   0   1
         bs$failures  <- c(bs$failures,
                           paste0("Plate ", i, ": ", err$user_message)
                           )
-        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
-                     conditionMessage(e))
+        gc_log_block(
+          paste("ASYNC SYSTEM ERROR plate", i),
+          paste("Unhandled async failure while finalizing plate", i)
+        )
         maybe_finish_fn()
       }, error = function(e2) {
         gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))

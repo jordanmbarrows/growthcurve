@@ -1600,6 +1600,8 @@ gc_import_data <- function(
     debug_logfile      = NULL
 ) {
   
+  gc_dbg_file(debug_logfile, "IMPORT: start")
+  
   format <- match.arg(format)
   
   # ---- Blocklist ----
@@ -1645,23 +1647,25 @@ gc_import_data <- function(
     ))
   }
   
-  gc_dbg("---- RAW IMPORT DEBUG ----")
-  gc_dbg("format = ", format)
-  gc_dbg("raw_data_format = ", raw_data_format %||% "NULL")
-  gc_dbg("rawdatafile = ", rawdatafile)
-  gc_dbg("designfile = ", designfile)
+  gc_dbg_file(debug_logfile, "---- RAW IMPORT DEBUG ----")
+  gc_dbg_file(debug_logfile, "format = ", format)
+  gc_dbg_file(debug_logfile, "raw_data_format = ", if (is.null(raw_data_format)) "NULL" else raw_data_format)
+  gc_dbg_file(debug_logfile, "rawdatafile = ", rawdatafile)
+  gc_dbg_file(debug_logfile, "designfile = ", designfile)
+  
+  
   
   raw_wells <- sort(unique(imported_tidy$Well))
-  gc_dbg("n raw rows = ", nrow(imported_tidy))
-  gc_dbg("n raw unique wells = ", length(raw_wells))
-  gc_dbg("first raw wells: ", paste(head(raw_wells, 20), collapse = ", "))
+  gc_dbg_file(debug_logfile, "n raw rows = ", nrow(imported_tidy))
+  gc_dbg_file(debug_logfile, "n raw unique wells = ", length(raw_wells))
+  gc_dbg_file(debug_logfile, "first raw wells: ", paste(head(raw_wells, 20), collapse = ", "))
   
   dup_raw <- imported_tidy |>
     dplyr::count(Well, Time, name = "n") |>
     dplyr::filter(n > 1)
   
   if (nrow(dup_raw) > 0) {
-    gc_dbg("Duplicate raw Well-Time pairs detected:")
+    gc_dbg_file(debug_logfile, "Duplicate raw Well-Time pairs detected:")
     print(dup_raw)
   }
   
@@ -1678,20 +1682,25 @@ gc_import_data <- function(
     design_file_format = design_file_format
   )
   
-  gc_dbg("---- DESIGN DEBUG ----")
+  gc_dbg_file(debug_logfile, "---- DESIGN DEBUG ----")
   design_wells_all <- sort(unique(my_design$Well))
-  gc_dbg("n design rows = ", nrow(my_design))
-  gc_dbg("n design unique wells = ", length(design_wells_all))
-  gc_dbg("first design wells: ", paste(head(design_wells_all, 20), collapse = ", "))
+  gc_dbg_file(debug_logfile, "n design rows = ", nrow(my_design))
+  gc_dbg_file(debug_logfile, "n design unique wells = ", length(design_wells_all))
+  gc_dbg_file(debug_logfile, "first design wells: ", paste(head(design_wells_all, 20), collapse = ", "))
   
   keep_design <- !is.na(my_design$Well_type)
   for (v in vars) {
     keep_design <- keep_design | !is.na(my_design[[v]])
   }
   
+
+  
+ 
   design_wells_active <- sort(unique(my_design$Well[keep_design]))
-  gc_dbg("n active design wells = ", length(design_wells_active))
-  gc_dbg("active design wells: ", paste(design_wells_active, collapse = ", "))
+ 
+  in_raw_not_active <- setdiff(raw_wells, design_wells_active)
+  in_active_not_raw <- setdiff(design_wells_active, raw_wells)
+  in_active_common  <- intersect(raw_wells, design_wells_active)
   
   mapping_table <- my_design[keep_design, c("Well", "Well_type", vars), drop = FALSE]
   plate_levels <- paste0(rep(LETTERS[1:8], each = 12), 1:12)
@@ -1699,6 +1708,14 @@ gc_import_data <- function(
   mapping_table <- mapping_table[order(mapping_table$Well), , drop = FALSE]
   mapping_table$Well <- as.character(mapping_table$Well)
   print(mapping_table)
+  
+  gc_dbg_file(debug_logfile, "---- ACTIVE WELL SET COMPARISON ----")
+  gc_dbg_file(debug_logfile, "n common active wells = ", length(in_active_common))
+  gc_dbg_file(debug_logfile, "raw not in active design: ", paste(in_raw_not_active, collapse = ", "))
+  gc_dbg_file(debug_logfile, "active design not in raw: ", paste(in_active_not_raw, collapse = ", "))
+  gc_dbg_file(debug_logfile, "n active design wells = ", length(design_wells_active))
+  gc_dbg_file(debug_logfile, "active design wells: ", paste(design_wells_active, collapse = ", "))
+  
   
   # ==========================================================
   # COMPARE RAW VS DESIGN WELL SETS
@@ -1709,10 +1726,10 @@ gc_import_data <- function(
   in_design_not_raw <- setdiff(design_wells, raw_wells)
   in_common <- intersect(raw_wells, design_wells)
   
-  gc_dbg("---- WELL SET COMPARISON ----")
-  gc_dbg("n common wells = ", length(in_common))
-  gc_dbg("raw not in design: ", paste(in_raw_not_design, collapse = ", "))
-  gc_dbg("design not in raw: ", paste(in_design_not_raw, collapse = ", "))
+  gc_dbg_file(debug_logfile, "---- WELL SET COMPARISON ----")
+  gc_dbg_file(debug_logfile, "n common wells = ", length(in_common))
+  gc_dbg_file(debug_logfile, "raw not in design: ", paste(in_raw_not_design, collapse = ", "))
+  gc_dbg_file(debug_logfile, "design not in raw: ", paste(in_design_not_raw, collapse = ", "))
   
   # ---- Filter raw data using same design-well source ----
   imported_tidy <- imported_tidy[
@@ -1720,7 +1737,7 @@ gc_import_data <- function(
     , drop = FALSE
   ]
   
-  gc_dbg("n raw rows after design filter = ", nrow(imported_tidy))
+  gc_dbg_file(debug_logfile, "n raw rows after design filter = ", nrow(imported_tidy))
   
   # ==========================================================
   # MERGE + CLEAN
@@ -1741,15 +1758,15 @@ gc_import_data <- function(
     )
   }
   
-  gc_dbg("---- MERGE DEBUG ----")
-  gc_dbg("n merged rows = ", nrow(merged_data))
-  gc_dbg("n merged unique wells = ", length(unique(merged_data$Well)))
+  gc_dbg_file(debug_logfile, "---- MERGE DEBUG ----")
+  gc_dbg_file(debug_logfile, "n merged rows = ", nrow(merged_data))
+  gc_dbg_file(debug_logfile, "n merged unique wells = ", length(unique(merged_data$Well)))
   
   merged_keep <- !is.na(merged_data$Well_type)
   for (v in vars) {
     merged_keep <- merged_keep | !is.na(merged_data[[v]])
   }
-  gc_dbg("n merged rows with actual design annotation = ", sum(merged_keep))
+  gc_dbg_file(debug_logfile, "n merged rows with actual design annotation = ", sum(merged_keep))
   
   bad_map <- merged_data |>
     dplyr::group_by(Well) |>
@@ -1786,10 +1803,14 @@ gc_import_data <- function(
   merged_data <- na.omit(merged_data)
   merged_data$Time <- as.numeric(merged_data$Time)
   
-  list(
+  result <- list(
     merged_data = merged_data,
     blocklist   = blocklist
   )
+  
+  gc_dbg_file(debug_logfile, "IMPORT: done")
+  
+  result
 }
 
 gc_normalize_path_for_export <- function(path) {
@@ -3109,9 +3130,11 @@ run_gc <- function(
     debug_logfile      = NULL
 ) {
   
-  gc_dbg_file(debug_logfile, "==== RUN_GC START ====")
-  gc_dbg_file(debug_logfile, "rawdatafile = ", rawdatafile)
-  gc_dbg_file(debug_logfile, "designfile = ", designfile)
+  gc_dbg_file(debug_logfile, "STAGE: run_gc start")
+
+  
+
+  
   gc_dbg_file(debug_logfile, "instrument = ", instrument)
   gc_dbg_file(debug_logfile, "batch = ", batch)
   gc_dbg_file(debug_logfile, "raw_data_format = ", if (is.null(raw_data_format)) "NULL" else raw_data_format)
@@ -3176,6 +3199,10 @@ run_gc <- function(
   #   )
   # ==========================================================
   
+
+  gc_dbg_file(debug_logfile, "STAGE START: gc_prepare_run")
+
+  
   prep <- gc_prepare_run(
     rawdatafile = rawdatafile,
     designfile  = designfile,
@@ -3187,6 +3214,9 @@ run_gc <- function(
     prefix      = prefix,
     batch       = batch
   )
+  
+  gc_dbg_file(debug_logfile, "STAGE DONE: gc_prepare_run")
+
   
   # ----------------------------------------------------------
   # Resolve instrument defaults
@@ -3212,6 +3242,8 @@ run_gc <- function(
   #   gc_core_compute() list
   # ==========================================================
   
+  gc_dbg_file(debug_logfile, "STAGE START: gc_import_data")
+
   imported <- gc_import_data(
     rawdatafile        = prep$inputs$rawdatafile,
     designfile         = prep$inputs$designfile,
@@ -3224,8 +3256,12 @@ run_gc <- function(
     debug_logfile      = debug_logfile
   )
   
+  gc_dbg_file(debug_logfile, "STAGE DONE: gc_import_data")
+  
   use_blank <- instrument == "plate_reader"
   
+  gc_dbg_file(debug_logfile, "STAGE START: gc_core_compute")
+
   core <- gc_core_compute(
     merged_data      = imported$merged_data,
     blocklist        = imported$blocklist,
@@ -3241,6 +3277,9 @@ run_gc <- function(
     blank_mode       = if (use_blank) blank_mode else "none"
   )
   
+  gc_dbg_file(debug_logfile, "STAGE DONE: gc_core_compute")
+
+  
   check_cancel()
   
   # ==========================================================
@@ -3255,12 +3294,14 @@ run_gc <- function(
   #   named list of ggplot objects
   # ==========================================================
   
+  gc_dbg_file(debug_logfile, "STAGE START: gc_build_plots")
+
   plots <- gc_build_plots(
     core          = core,
     ggplot_theme  = prep$ggplot_theme,
     region        = region
   )
-  
+  gc_dbg_file(debug_logfile, "STAGE DONE: gc_build_plots")
   check_cancel()
   
   # ==========================================================
@@ -3270,8 +3311,9 @@ run_gc <- function(
   #   - Assemble structured return object
   #   - Surface convenience fields for Shiny
   # ==========================================================
+  gc_dbg_file(debug_logfile, "STAGE START: return success")
   
-  list(
+  result <- list(
     status        = "success",
     params        = prep$params,
     inputs        = prep$inputs,
@@ -3283,5 +3325,12 @@ run_gc <- function(
     raw_data_format    = raw_data_format %||% detect_plate_format(rawdatafile),
     design_file_format = design_file_format %||% detect_design_format(designfile)
   )
+  
+  gc_dbg_file(debug_logfile, "STAGE DONE: return success")
+  
+  gc_dbg_file(debug_logfile, "RUN_GC DONE: success")
+  
+  result
+  
 }
 
