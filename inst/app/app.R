@@ -389,7 +389,18 @@ ui <- shiny::fluidPage(
             ),
             
             selectInput("batch_data_dir", "Raw data directory", choices = NULL),
-            
+
+            conditionalPanel(
+              condition = "input.batch_instrument == 'plate_reader'",
+              radioButtons(
+                "batch_raw_data_format",
+                label = "Raw data format",
+                choices = c("Block" = "block", "Wide" = "wide"),
+                selected = "block",
+                inline = TRUE
+              )
+            ),
+
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data (first file)")),
               tags$div(
@@ -398,9 +409,17 @@ ui <- shiny::fluidPage(
                 uiOutput("batch_raw_preview_ui")
               )
             ),
-            
+
             selectInput("batch_design_dir", "Design file directory", choices = NULL),
-            
+
+            radioButtons(
+              "batch_design_file_format",
+              label = "Design file format",
+              choices = c("Block" = "block", "Wide" = "wide"),
+              selected = "block",
+              inline = TRUE
+            ),
+
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file (first pair)")),
               tags$div(style = guide_body_style(), div(
@@ -408,7 +427,7 @@ ui <- shiny::fluidPage(
               ))
             ),
           ),
-          
+
           uiOutput("batch_ui")  # rest of UI
         ),
         tabPanel(
@@ -493,9 +512,14 @@ server <- function(input, output, session) {
   read_preview_file <- growthcurve:::read_preview_file
   
   # --- Parsing / preview ---
-  extract_design_blocks <- growthcurve:::extract_design_blocks
-  build_preview         <- growthcurve:::build_preview
-  build_preview_label   <- growthcurve:::build_preview_label
+  extract_design_blocks    <- growthcurve:::extract_design_blocks
+  build_preview            <- growthcurve:::build_preview
+  build_preview_label      <- growthcurve:::build_preview_label
+  detect_plate_format      <- growthcurve:::detect_plate_format
+  detect_design_format     <- growthcurve:::detect_design_format
+  read_plate_wide          <- growthcurve:::read_plate_wide
+  read_design_wide         <- growthcurve:::read_design_wide
+  extract_design_blocks_wide <- growthcurve:::extract_design_blocks_wide
   
   # --- Utilities ---
   pretty_export_path       <- growthcurve:::pretty_export_path
@@ -1603,7 +1627,8 @@ server <- function(input, output, session) {
       }
       
       vars <- tryCatch(
-        extract_design_blocks(dfile),
+        extract_design_blocks(dfile,
+                              design_file_format = input$batch_design_file_format %||% "block"),
         error = function(e = NULL)
           character(0)
       )
@@ -1647,7 +1672,7 @@ server <- function(input, output, session) {
   
   validated_pairs_cached <- bindCache(reactive({
     validated_batch_pairs()
-  }), batch_pairs())
+  }), batch_pairs(), input$batch_design_file_format)
   
   batch_can_parallel <- function() {
     cores <- parallel::detectCores(logical = TRUE)
@@ -1908,6 +1933,40 @@ server <- function(input, output, session) {
     tags$table(
       class = paste("design-preview-table", if (needs_expand) "expanding" else ""),
       style = "border-collapse: collapse;",
+      tags$tbody(rows)
+    )
+  }
+
+  # Wide design preview: highlight first row (well names) and first col (variable names)
+  build_design_preview_table_wide <- function(df) {
+    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
+      cells <- lapply(seq_len(ncol(df)), function(j) {
+        val <- df[i, j]
+        if (is.na(val)) val <- ""
+        style_parts <- c("border: 1px solid rgba(120,120,120,0.2);")
+        # First col = variable name
+        if (j == 1)
+          style_parts <- c(style_parts, "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
+        tags$td(style = paste(style_parts, collapse = " "), val)
+      })
+      tags$tr(cells)
+    })
+
+    # Header row: well names
+    header_cells <- lapply(seq_len(ncol(df)), function(j) {
+      val <- names(df)[j]
+      style_parts <- c(
+        "border: 1px solid rgba(120,120,120,0.2);",
+        "font-weight: bold; background: rgba(80,80,80,0.07);"
+      )
+      tags$th(style = paste(style_parts, collapse = " "), val)
+    })
+
+    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
+    tags$table(
+      class = paste("design-preview-table", if (needs_expand) "expanding" else ""),
+      style = "border-collapse: collapse;",
+      tags$thead(tags$tr(header_cells)),
       tags$tbody(rows)
     )
   }
@@ -2930,7 +2989,19 @@ B           0   0   1
         choices = c(empty_choice, files),
         selected = ""
       ),
-      
+
+      # Format selector: only shown for plate reader (not ocelloscope)
+      conditionalPanel(
+        condition = "input.instrument == 'plate_reader'",
+        radioButtons(
+          "raw_data_format",
+          label = "Raw data format",
+          choices = c("Block" = "block", "Wide" = "wide"),
+          selected = "block",
+          inline = TRUE
+        )
+      ),
+
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data")),
         tags$div(
@@ -2939,28 +3010,36 @@ B           0   0   1
           uiOutput("single_raw_preview_ui")
         )
       ),
-      
-      
+
+
       selectInput(
         "design_file",
         "Design file",
         choices = c(empty_choice, files),
         selected = ""
       ),
-      
+
+      radioButtons(
+        "design_file_format",
+        label = "Design file format",
+        choices = c("Block" = "block", "Wide" = "wide"),
+        selected = "block",
+        inline = TRUE
+      ),
+
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file")),
         tags$div(style = guide_body_style(), div(class = "preview-table", uiOutput(
           "design_preview"
         )))
       ),
-      
+
       hr(),
-      
+
       # =========================================================
       # PARAMETERS
       # =========================================================
-      
+
       numericInput("hrs", "Duration (hours)", 24),
       numericInput("interval_min", "Interval (minutes)", 15, step = 1),
       numericInput("minod", "Min OD", 0.05),
@@ -3030,28 +3109,36 @@ B           0   0   1
   
   single_preview_raw <- reactive({
     req(input$raw_file, wd_path(), input$instrument)
-    
+
     file <- file.path(wd_path(), input$raw_file)
-    
+
     design <- if (nzchar(input$design_file %||% "")) {
       file.path(wd_path(), input$design_file)
     } else {
       NULL
     }
-    
+
+    raw_fmt <- if (input$instrument == "plate_reader") {
+      input$raw_data_format %||% "block"
+    } else {
+      NULL
+    }
+
     build_preview(file,
                   design,
                   interval = interval_hours(),
-                  instrument = input$instrument)
-    
+                  instrument = input$instrument,
+                  raw_data_format = raw_fmt)
+
   })
-  
+
   single_preview_raw <- bindCache(
     single_preview_raw,
     input$raw_file,
     input$design_file,
     input$instrument,
-    input$interval_min
+    input$interval_min,
+    input$raw_data_format
   )
   
   single_preview_data <- reactive({
@@ -3101,17 +3188,21 @@ B           0   0   1
       file,
       design,
       interval = input$batch_interval / 60,
-      instrument = input$batch_instrument
+      instrument = input$batch_instrument,
+      raw_data_format = if (input$batch_instrument == "plate_reader")
+        input$batch_raw_data_format %||% "block"
+      else NULL
     )
-    
+
   })
-  
+
   batch_preview_raw <- bindCache(
     batch_preview_raw,
     input$batch_data_dir,
     input$batch_design_dir,
     input$batch_instrument,
-    input$batch_interval
+    input$batch_interval,
+    input$batch_raw_data_format
   )
   
   output$single_raw_preview_table <- shiny::renderTable({
@@ -3135,12 +3226,17 @@ B           0   0   1
   
   output$single_preview_label <- shiny::renderText({
     req(input$raw_file, wd_path())
-    
+
     file <- file.path(wd_path(), input$raw_file)
-    
+
     res <- single_preview_raw()
-    
-    build_preview_label(file, res, instrument = input$instrument)
+
+    raw_fmt <- if (input$instrument == "plate_reader") {
+      input$raw_data_format %||% "block"
+    } else NULL
+
+    build_preview_label(file, res, instrument = input$instrument,
+                        raw_data_format = raw_fmt)
   })
   
   output$single_raw_preview_ui <- shiny::renderUI({
@@ -3161,6 +3257,20 @@ B           0   0   1
     req(input$design_file, wd_path())
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
+
+    dfmt <- input$design_file_format %||% "block"
+
+    if (dfmt == "wide") {
+      result <- tryCatch({
+        df_wide <- read_design_wide(file)
+        df_wide <- format_preview_df(df_wide, region_selected())
+        build_design_preview_table_wide(df_wide)
+      }, error = function(e) {
+        preview_warning_box(paste("Wide design preview error:", gc_get_message(e)))
+      })
+      return(result)
+    }
+
     df <- read_preview_file(file, nrows = 100)
     req(df)
     df <- format_preview_df(df, region_selected())
@@ -3322,8 +3432,13 @@ B           0   0   1
     }
     
     res <- batch_preview_raw()
-    
-    build_preview_label(file, res, instrument = isolate(input$batch_instrument))
+
+    raw_fmt <- if (isolate(input$batch_instrument) == "plate_reader")
+      input$batch_raw_data_format %||% "block"
+    else NULL
+
+    build_preview_label(file, res, instrument = isolate(input$batch_instrument),
+                        raw_data_format = raw_fmt)
   })
   
   output$batch_design_preview <- shiny::renderUI({
@@ -3332,20 +3447,21 @@ B           0   0   1
     if (length(files) == 0) return(NULL)
     file <- files[1]
     req(!is.na(file), file.exists(file))
+
+    dfmt <- input$batch_design_file_format %||% "block"
+
+    if (dfmt == "wide") {
+      return(tryCatch({
+        df_wide <- read_design_wide(file)
+        df_wide <- format_preview_df(df_wide, region_selected())
+        build_design_preview_table_wide(df_wide)
+      }, error = function(e) {
+        preview_warning_box(paste("Wide design preview error:", gc_get_message(e)))
+      }))
+    }
+
     df <- read_preview_file(file, nrows = 100)
     req(df)
-    
-    print("=== BEFORE FORMATTING ===")
-    print(df)
-    print(sapply(df, class))
-    
-    df2 <- format_preview_df(df, region_selected())
-    
-    print("=== AFTER FORMATTING ===")
-    print(df2)
-    
-    df2
-    
     df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
@@ -3731,12 +3847,15 @@ B           0   0   1
   
   design_blocks <- reactive({
     req(input$design_file, wd_path())
-    
-    extract_design_blocks(file.path(wd_path(), input$design_file))
-    
+
+    extract_design_blocks(
+      file.path(wd_path(), input$design_file),
+      design_file_format = input$design_file_format %||% "block"
+    )
+
   })
-  
-  design_blocks <- bindCache(design_blocks, input$design_file)
+
+  design_blocks <- bindCache(design_blocks, input$design_file, input$design_file_format)
   
   output$design_section <- shiny::renderUI({
     shiny::tagList(
@@ -3772,22 +3891,23 @@ B           0   0   1
     )
   })
   
-  shiny::observeEvent(input$design_file, {
+  shiny::observeEvent(list(input$design_file, input$design_file_format), {
     req(wd_path(), input$design_file)
-    
+
     file <- file.path(wd_path(), input$design_file)
-    
+
     vars <- tryCatch(
-      extract_design_blocks(file),
+      extract_design_blocks(file,
+                            design_file_format = input$design_file_format %||% "block"),
       error = function(e = NULL)
         character(0)
     )
-    
+
     updateSelectInput(session,
                       "design_vars",
                       choices  = vars,
                       selected = vars)
-    
+
   })
   
   output$stage_ui <- shiny::renderUI({
@@ -4093,18 +4213,22 @@ B           0   0   1
                      
                      gc_run_quiet(
                        run_gc(
-                         rawdatafile = raw_file_path,
-                         designfile  = design_file_path,
-                         design_vars = input$design_vars,
-                         hrs         = input$hrs,
-                         interval    = interval_hours(),
-                         minod       = input$minod,
-                         maxod       = input$maxod,
-                         instrument  = input$instrument,
-                         blank_mode  = blank_mode_effective,
-                         prefix      = input$prefix,
-                         batch       = FALSE,
-                         region      = region_selected()
+                         rawdatafile        = raw_file_path,
+                         designfile         = design_file_path,
+                         design_vars        = input$design_vars,
+                         hrs                = input$hrs,
+                         interval           = interval_hours(),
+                         minod              = input$minod,
+                         maxod              = input$maxod,
+                         instrument         = input$instrument,
+                         blank_mode         = blank_mode_effective,
+                         prefix             = input$prefix,
+                         batch              = FALSE,
+                         region             = region_selected(),
+                         raw_data_format    = if (input$instrument == "plate_reader")
+                                               input$raw_data_format %||% "block"
+                                             else NULL,
+                         design_file_format = input$design_file_format %||% "block"
                        )
                      )
                      
@@ -4307,17 +4431,19 @@ B           0   0   1
         res <- tryCatch({
           gc_run_quiet_worker(
             run_gc(
-              rawdatafile = pairs_val$data_file[i],
-              designfile  = pairs_val$design_file[i],
-              hrs         = params$hrs,
-              interval    = params$interval,
-              minod       = params$minod,
-              maxod       = params$maxod,
-              instrument  = params$instrument,
-              blank_mode  = params$blank_mode,
-              batch       = TRUE,
-              prefix      = plate_tag,
-              region      = region
+              rawdatafile        = pairs_val$data_file[i],
+              designfile         = pairs_val$design_file[i],
+              hrs                = params$hrs,
+              interval           = params$interval,
+              minod              = params$minod,
+              maxod              = params$maxod,
+              instrument         = params$instrument,
+              blank_mode         = params$blank_mode,
+              batch              = TRUE,
+              prefix             = plate_tag,
+              region             = region,
+              raw_data_format    = params$raw_data_format,
+              design_file_format = params$design_file_format
             )
           )
         }, error = function(e = NULL) {
@@ -4360,11 +4486,13 @@ B           0   0   1
         report_file <- file.path(plate_dir, "plate_report.pdf")
         gc_save_report(res$plots, report_file, plate_name = plate_tag)
         gc_write_summaries(
-          core        = res$core,
-          params      = res$params,
-          instrument  = res$instrument,
-          out_dir     = plate_dir,
-          region      = region
+          core               = res$core,
+          params             = res$params,
+          instrument         = res$instrument,
+          out_dir            = plate_dir,
+          region             = region,
+          raw_data_format    = res$raw_data_format,
+          design_file_format = res$design_file_format
         )
         
         list(success = TRUE)
@@ -4664,14 +4792,18 @@ B           0   0   1
     region_val <- region_selected()
     
     params <- list(
-      hrs        = input$batch_hrs,
-      interval   = input$batch_interval / 60,
-      minod      = input$batch_minod,
-      maxod      = input$batch_maxod,
-      instrument = input$batch_instrument,
-      blank_mode = input$batch_blank_mode,
-      prefix     = input$batch_prefix,
-      parallel   = input$batch_parallel
+      hrs                = input$batch_hrs,
+      interval           = input$batch_interval / 60,
+      minod              = input$batch_minod,
+      maxod              = input$batch_maxod,
+      instrument         = input$batch_instrument,
+      blank_mode         = input$batch_blank_mode,
+      prefix             = input$batch_prefix,
+      parallel           = input$batch_parallel,
+      raw_data_format    = if (input$batch_instrument == "plate_reader")
+                             input$batch_raw_data_format %||% "block"
+                           else NULL,
+      design_file_format = input$batch_design_file_format %||% "block"
     )
     
     later::later(function() {
@@ -4782,11 +4914,13 @@ B           0   0   1
       incProgress(0.8, "Writing summary tables")
       
       gc_write_summaries(
-        core        = res$core,
-        params      = res$params,
-        instrument  = res$instrument,
-        out_dir     = plate_dir,
-        region      = region_selected()
+        core               = res$core,
+        params             = res$params,
+        instrument         = res$instrument,
+        out_dir            = plate_dir,
+        region             = region_selected(),
+        raw_data_format    = res$raw_data_format,
+        design_file_format = res$design_file_format
       )
       
       incProgress(1)
