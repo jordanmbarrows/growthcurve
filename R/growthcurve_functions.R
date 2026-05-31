@@ -23,6 +23,14 @@
 # or regional formatting will break.
 # ============================================================
 
+gc_dbg <- function(...) {
+  txt <- paste0(..., collapse = "")
+  cat(txt, "\n", file = stderr())
+  flush.console()
+}
+
+
+
 extract_well_names <- function(colnames_vec) {
   sub("^([A-H][0-9]+).*", "\\1", colnames_vec)
 }
@@ -1572,14 +1580,13 @@ gc_import_data <- function(
     raw_data_format    = NULL,
     design_file_format = NULL
 ) {
-
+  
   format <- match.arg(format)
-
+  
   # ---- Blocklist ----
   blocklist <- c(list("Well_type"), as.list(design_vars))
-  
   vars <- unlist(blocklist[-1])
-
+  
   # ---- Validate design variables ----
   available_blocks <- extract_design_blocks(
     designfile,
@@ -1593,11 +1600,10 @@ gc_import_data <- function(
       paste(missing_vars, collapse = ", ")
     ))
   }
-
+  
   # ==========================================================
   # READ RAW DATA (instrument-specific)
   # ==========================================================
-
   imported_tidy <- gc_read_raw_data(
     rawdatafile     = rawdatafile,
     designfile      = designfile,
@@ -1607,15 +1613,6 @@ gc_import_data <- function(
     raw_data_format = raw_data_format
   )
   
-  dup_raw <- imported_tidy |>
-    dplyr::count(Well, Time, name = "n") |>
-    dplyr::filter(n > 1)
-  
-  if (nrow(dup_raw) > 0) {
-    message("Duplicate raw Well-Time pairs detected:")
-    print(dup_raw)
-  }
-
   if (is.null(imported_tidy) || nrow(imported_tidy) == 0) {
     gc_abort(paste(
       "No data available after import.",
@@ -1627,43 +1624,87 @@ gc_import_data <- function(
       sep = "\n"
     ))
   }
-
+  
+  gc_dbg("---- RAW IMPORT DEBUG ----")
+  gc_dbg("format = ", format)
+  gc_dbg("raw_data_format = ", raw_data_format %||% "NULL")
+  gc_dbg("rawdatafile = ", rawdatafile)
+  gc_dbg("designfile = ", designfile)
+  
+  raw_wells <- sort(unique(imported_tidy$Well))
+  gc_dbg("n raw rows = ", nrow(imported_tidy))
+  gc_dbg("n raw unique wells = ", length(raw_wells))
+  gc_dbg("first raw wells: ", paste(head(raw_wells, 20), collapse = ", "))
+  
+  dup_raw <- imported_tidy |>
+    dplyr::count(Well, Time, name = "n") |>
+    dplyr::filter(n > 1)
+  
+  if (nrow(dup_raw) > 0) {
+    gc_dbg("Duplicate raw Well-Time pairs detected:")
+    print(dup_raw)
+  }
+  
   if (max(imported_tidy$Time, na.rm = TRUE) > 200) {
     warning("Time appears to still be in minutes - expected hours.")
   }
+  
   # ==========================================================
   # READ DESIGN (shared)
   # ==========================================================
-
   my_design <- gc_read_design(
     designfile = designfile,
     blocklist  = blocklist,
     design_file_format = design_file_format
   )
   
-  keep <- !is.na(my_design$Well_type)
+  gc_dbg("---- DESIGN DEBUG ----")
+  design_wells_all <- sort(unique(my_design$Well))
+  gc_dbg("n design rows = ", nrow(my_design))
+  gc_dbg("n design unique wells = ", length(design_wells_all))
+  gc_dbg("first design wells: ", paste(head(design_wells_all, 20), collapse = ", "))
+  
+  keep_design <- !is.na(my_design$Well_type)
   for (v in vars) {
-    keep <- keep | !is.na(my_design[[v]])
+    keep_design <- keep_design | !is.na(my_design[[v]])
   }
   
-  mapping_table <- my_design[keep, c("Well", "Well_type", vars), drop = FALSE]
-  mapping_table <- mapping_table[order(mapping_table$Well), , drop = FALSE]
+  design_wells_active <- sort(unique(my_design$Well[keep_design]))
+  gc_dbg("n active design wells = ", length(design_wells_active))
+  gc_dbg("active design wells: ", paste(design_wells_active, collapse = ", "))
   
+  mapping_table <- my_design[keep_design, c("Well", "Well_type", vars), drop = FALSE]
+  plate_levels <- paste0(rep(LETTERS[1:8], each = 12), 1:12)
+  mapping_table$Well <- factor(mapping_table$Well, levels = plate_levels)
+  mapping_table <- mapping_table[order(mapping_table$Well), , drop = FALSE]
+  mapping_table$Well <- as.character(mapping_table$Well)
   print(mapping_table)
   
-  # ---- Extract design wells from SAME source ----
+  # ==========================================================
+  # COMPARE RAW VS DESIGN WELL SETS
+  # ==========================================================
   design_wells <- unique(my_design$Well)
   
-  # ---- Filter raw data using EXACT same mapping ----
+  in_raw_not_design <- setdiff(raw_wells, design_wells)
+  in_design_not_raw <- setdiff(design_wells, raw_wells)
+  in_common <- intersect(raw_wells, design_wells)
+  
+  gc_dbg("---- WELL SET COMPARISON ----")
+  gc_dbg("n common wells = ", length(in_common))
+  gc_dbg("raw not in design: ", paste(in_raw_not_design, collapse = ", "))
+  gc_dbg("design not in raw: ", paste(in_design_not_raw, collapse = ", "))
+  
+  # ---- Filter raw data using same design-well source ----
   imported_tidy <- imported_tidy[
     imported_tidy$Well %in% design_wells,
     , drop = FALSE
   ]
-
+  
+  gc_dbg("n raw rows after design filter = ", nrow(imported_tidy))
+  
   # ==========================================================
-  # MERGE + CLEAN (shared)
+  # MERGE + CLEAN
   # ==========================================================
-
   merged_data <- dplyr::left_join(
     imported_tidy,
     my_design,
@@ -1679,6 +1720,16 @@ gc_import_data <- function(
       )
     )
   }
+  
+  gc_dbg("---- MERGE DEBUG ----")
+  gc_dbg("n merged rows = ", nrow(merged_data))
+  gc_dbg("n merged unique wells = ", length(unique(merged_data$Well)))
+  
+  merged_keep <- !is.na(merged_data$Well_type)
+  for (v in vars) {
+    merged_keep <- merged_keep | !is.na(merged_data[[v]])
+  }
+  gc_dbg("n merged rows with actual design annotation = ", sum(merged_keep))
   
   bad_map <- merged_data |>
     dplyr::group_by(Well) |>
@@ -1699,7 +1750,7 @@ gc_import_data <- function(
     merged_data[vars],
     as.character
   )
-
+  
   dup_postmerge <- merged_data |>
     dplyr::count(Well, Time, name = "n") |>
     dplyr::filter(n > 1)
@@ -1707,15 +1758,14 @@ gc_import_data <- function(
   if (nrow(dup_postmerge) > 0) {
     gc_abort("Merge error: duplicate (Well, Time) pairs detected after joining design to raw data.")
   }
-
+  
   if (nrow(merged_data) == 0) {
     gc_abort("No overlapping wells between data and design.")
   }
-
+  
   merged_data <- na.omit(merged_data)
-
   merged_data$Time <- as.numeric(merged_data$Time)
-
+  
   list(
     merged_data = merged_data,
     blocklist   = blocklist
