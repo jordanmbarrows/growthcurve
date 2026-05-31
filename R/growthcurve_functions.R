@@ -3109,6 +3109,15 @@ run_gc <- function(
     debug_logfile      = NULL
 ) {
   
+  gc_dbg_file(debug_logfile, "==== RUN_GC START ====")
+  gc_dbg_file(debug_logfile, "rawdatafile = ", rawdatafile)
+  gc_dbg_file(debug_logfile, "designfile = ", designfile)
+  gc_dbg_file(debug_logfile, "instrument = ", instrument)
+  gc_dbg_file(debug_logfile, "batch = ", batch)
+  gc_dbg_file(debug_logfile, "raw_data_format = ", if (is.null(raw_data_format)) "NULL" else raw_data_format)
+  gc_dbg_file(debug_logfile, "design_file_format = ", if (is.null(design_file_format)) "NULL" else design_file_format)
+  gc_dbg_file(debug_logfile, "design_vars = ", if (is.null(design_vars)) "NULL" else paste(design_vars, collapse = ", "))
+  
   pkgs <- gc_check_packages()
   
   if (length(pkgs$missing) > 0 || length(pkgs$broken) > 0) {
