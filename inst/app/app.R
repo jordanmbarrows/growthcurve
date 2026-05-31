@@ -5044,6 +5044,22 @@ B           0   0   1
       shinyjs::disable("raw_file")
       shinyjs::disable("design_file")
       shinyjs::disable("instrument")
+      shinyjs::disable("blank_mode")
+    } else {
+      shinyjs::enable("hrs")
+      shinyjs::enable("interval_min")
+      shinyjs::enable("minod")
+      shinyjs::enable("maxod")
+      shinyjs::enable("prefix")
+      shinyjs::enable("design_vars")
+      shinyjs::enable("raw_file")
+      shinyjs::enable("design_file")
+      shinyjs::enable("instrument")
+      
+      # Let your existing instrument-specific rule decide whether
+      # blank_mode should be enabled/disabled and shown/hidden.
+      req(input$instrument)
+      enforce_blank_mode_state(session, input$instrument)
     }
   })
   
