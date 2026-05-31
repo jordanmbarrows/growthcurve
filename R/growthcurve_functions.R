@@ -23,13 +23,26 @@
 # or regional formatting will break.
 # ============================================================
 
+gc_debug_enabled <- function() {
+  isTRUE(getOption("gc.dev_mode"))
+}
+
 gc_dbg <- function(...) {
+  if (!gc_debug_enabled()) {
+    return(invisible(FALSE))
+  }
+  
   txt <- paste0(..., collapse = "")
   cat(txt, "\n", file = stderr())
   flush.console()
+  invisible(TRUE)
 }
 
 gc_dbg_file <- function(logfile = NULL, ...) {
+  if (!gc_debug_enabled()) {
+    return(invisible(FALSE))
+  }
+  
   if (is.null(logfile) || !nzchar(logfile)) {
     return(invisible(FALSE))
   }
@@ -47,6 +60,7 @@ gc_dbg_file <- function(logfile = NULL, ...) {
   
   invisible(TRUE)
 }
+
 
 
 extract_well_names <- function(colnames_vec) {
