@@ -4192,6 +4192,16 @@ B           0   0   1
                        )
                      )
                      
+                     single_debug_log <- file.path(
+                       wd_path(),
+                       "Analysis",
+                       "_single_debug_log.txt"
+                     )
+                     
+                     if (file.exists(single_debug_log)) {
+                       file.remove(single_debug_log)
+                     }
+                     
                      gc_run_quiet(
                        run_gc(
                          rawdatafile        = raw_file_path,
@@ -4207,7 +4217,8 @@ B           0   0   1
                          batch              = FALSE,
                          region             = region_selected(),
                          raw_data_format    = NULL,
-                         design_file_format = NULL
+                         design_file_format = NULL, 
+                         debug_logfile      = single_debug_log
                        )
                      )
                      
@@ -4407,6 +4418,18 @@ B           0   0   1
         
         # -- Paths defined above, but NO dir.create() yet --
         
+        cat(
+          paste0(
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+            " | APP BATCH | rawdatafile = ", pairs_val$data_file[i],
+            " | designfile = ", pairs_val$design_file[i],
+            " | vars = ", paste(params$design_vars, collapse = ", "),
+            "\n"
+          ),
+          file = params$debug_logfile,
+          append = TRUE
+        )
+        
         res <- tryCatch({
           gc_run_quiet_worker(
             run_gc(
@@ -4423,7 +4446,8 @@ B           0   0   1
               prefix             = plate_tag,
               region             = region,
               raw_data_format    = params$raw_data_format,
-              design_file_format = params$design_file_format
+              design_file_format = params$design_file_format,
+              debug_logfile      = params$debug_logfile
             )
           )
         }, error = function(e = NULL) {
@@ -4760,6 +4784,11 @@ B           0   0   1
     
     dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
     
+    batch_debug_log <- file.path(root_path, "_batch_debug_log.txt")
+    if (file.exists(batch_debug_log)) {
+      file.remove(batch_debug_log)
+    }
+    
     batch_root(root_path)
     clear_cancel_file(root_path)
     app_locked(TRUE)
@@ -4797,7 +4826,8 @@ B           0   0   1
         selected_vars = NULL,
         instrument = input$batch_instrument,
         design_file_format = NULL
-      )
+      ),
+      debug_logfile      = batch_debug_log
     )
     
     later::later(function() {
