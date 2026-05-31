@@ -4221,11 +4221,29 @@ B           0   0   1
                        )
                      )
                      
-                     single_debug_log <- file.path(
-                       wd_path(),
-                       "Analysis",
-                       "_single_debug_log.txt"
-                     )
+                     single_debug_log <- if (isTRUE(gc_dev_mode())) {
+                       file.path(wd_path(), "Analysis", "_single_debug_log.txt")
+                     } else {
+                       NULL
+                     }
+                     
+                     if (!is.null(single_debug_log)) {
+                       dir.create(dirname(single_debug_log), recursive = TRUE, showWarnings = FALSE)
+                       if (file.exists(single_debug_log)) file.remove(single_debug_log)
+                       
+                       cat(
+                         paste0(
+                           format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                           " | APP SINGLE | about to call run_gc",
+                           " | raw = ", raw_file_path,
+                           " | design = ", design_file_path,
+                           " | vars = ", paste(design_vars_effective, collapse = ", "),
+                           "\n"
+                         ),
+                         file = single_debug_log,
+                         append = TRUE
+                       )
+                     }
                      
                      dir.create(dirname(single_debug_log), recursive = TRUE, showWarnings = FALSE)
                      
@@ -4426,19 +4444,7 @@ B           0   0   1
       
       library(growthcurve)
       
-      cat(
-        paste0(
-          format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-          " | WORKER INFO | growthcurve version = ",
-          as.character(utils::packageVersion("growthcurve")),
-          " | run_gc has debug_logfile = ",
-          "debug_logfile" %in% names(formals(growthcurve::run_gc)),
-          "\n"
-        ),
-        file = params$debug_logfile,
-        append = TRUE
-      )
-      
+      options(gc.dev_mode = isTRUE(params$dev_mode))
       
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
@@ -4898,7 +4904,17 @@ B           0   0   1
     
     dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
     
-    batch_debug_log <- file.path(root_path, "_batch_debug_log.txt")
+    
+    batch_debug_log <- if (isTRUE(gc_dev_mode())) {
+      file.path(root_path, "_batch_debug_log.txt")
+    } else {
+      NULL
+    }
+    
+    if (!is.null(batch_debug_log) && file.exists(batch_debug_log)) {
+      file.remove(batch_debug_log)
+    }
+    
     if (file.exists(batch_debug_log)) {
       file.remove(batch_debug_log)
     }
