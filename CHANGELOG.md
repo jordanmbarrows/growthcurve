@@ -14,7 +14,8 @@
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
 - Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
   - Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
-- Debug logging is now dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
+- Added comprehensive debug logging including well/design/data matching and progress updates in the console as well as an exported debug file that includes progress flags, total and active wells, and several other informative metrics
+  -Debug logging is dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
 
 ### Fixed: oCelloscope well assignment in design parsing
 
