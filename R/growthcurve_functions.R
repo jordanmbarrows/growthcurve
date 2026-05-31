@@ -1865,12 +1865,16 @@ gc_core_compute <- function(
       
       deriv = gcplyr::calc_deriv(
         x = Time,
-        y = Measurements_used
+        y = Measurements_used,
+        subset_by = Well,
+        warn_ungrouped = FALSE
       ),
       
       deriv_percap = gcplyr::calc_deriv(
         x = Time,
         y = Measurements_used,
+        subset_by = Well,
+        warn_ungrouped = FALSE,
         percapita = TRUE,
         blank = 0
       ),
@@ -1878,6 +1882,8 @@ gc_core_compute <- function(
       deriv_percap3 = gcplyr::calc_deriv(
         x = Time,
         y = Measurements_used,
+        subset_by = Well,
+        warn_ungrouped = FALSE,
         percapita = TRUE,
         blank = 0,
         window_width_n = 3,
