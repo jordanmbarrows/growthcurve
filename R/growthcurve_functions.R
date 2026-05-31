@@ -476,6 +476,8 @@ gc_prepare_run <- function(rawdatafile,
   }
   
   analysis_dir <- "Analysis"
+  plots_dir    <- NULL
+  summary_dir  <- NULL
   
   # ---------------------------
   # Shared ggplot theme
