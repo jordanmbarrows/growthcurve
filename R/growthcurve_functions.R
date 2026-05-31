@@ -200,7 +200,7 @@ read_plate_block_flexible <- function(file, interval = NULL) {
     rownames(vals_num) <- b$row_labels
     colnames(vals_num) <- b$col_labels
     
-    well_names <- as.vector(outer(b$row_labels, b$col_labels, paste0))
+    well_names <- as.vector(t(outer(b$row_labels, b$col_labels, paste0)))
     row_vec <- as.list(as.vector(t(vals_num)))
     names(row_vec) <- well_names
     
@@ -235,7 +235,7 @@ read_design_block_strict <- function(designfile, blocklist) {
   df[] <- lapply(df, function(x) trimws(as.character(x)))
   
   expected_rows <- LETTERS[1:8]
-  well_names <- as.vector(outer(expected_rows, 1:12, paste0))
+  well_names <- as.vector(t(outer(expected_rows, 1:12, paste0)))
   
   out <- data.frame(Well = well_names, stringsAsFactors = FALSE)
   
