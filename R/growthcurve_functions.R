@@ -29,6 +29,24 @@ gc_dbg <- function(...) {
   flush.console()
 }
 
+gc_dbg_file <- function(logfile = NULL, ...) {
+  if (is.null(logfile) || !nzchar(logfile)) {
+    return(invisible(FALSE))
+  }
+  
+  dir.create(dirname(logfile), recursive = TRUE, showWarnings = FALSE)
+  
+  txt <- paste0(..., collapse = "")
+  stamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  
+  cat(
+    paste0(stamp, " | ", txt, "\n"),
+    file = logfile,
+    append = TRUE
+  )
+  
+  invisible(TRUE)
+}
 
 
 extract_well_names <- function(colnames_vec) {
@@ -1207,7 +1225,7 @@ gc_prepare_run <- function(rawdatafile,
 # ------------------------------------------------------------
 
 gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
-                             raw_data_format = NULL) {
+                             raw_data_format = NULL, debug_logfile = NULL) {
 
   format <- match.arg(format, c("plate_reader", "ocelloscope"))
 
@@ -1241,7 +1259,7 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
       detect_plate_format(rawdatafile)
     }
     
-    message("Detected format: ", plate_fmt)
+    gc_dbg_file(debug_logfile, "Detected format: ", plate_fmt)
 
     if (plate_fmt == "wide") {
 
@@ -1578,7 +1596,8 @@ gc_import_data <- function(
     interval,
     format = c("plate_reader", "ocelloscope"),
     raw_data_format    = NULL,
-    design_file_format = NULL
+    design_file_format = NULL,
+    debug_logfile      = NULL
 ) {
   
   format <- match.arg(format)
@@ -1610,7 +1629,8 @@ gc_import_data <- function(
     hrs             = hrs,
     interval        = interval,
     format          = format,
-    raw_data_format = raw_data_format
+    raw_data_format = raw_data_format,
+    debug_logfile   = debug_logfile
   )
   
   if (is.null(imported_tidy) || nrow(imported_tidy) == 0) {
@@ -3085,7 +3105,8 @@ run_gc <- function(
     cancel = NULL,
     region = "US",
     raw_data_format    = NULL,
-    design_file_format = NULL
+    design_file_format = NULL,
+    debug_logfile      = NULL
 ) {
   
   pkgs <- gc_check_packages()
@@ -3190,7 +3211,8 @@ run_gc <- function(
     interval           = prep$params$interval,
     format             = instrument,
     raw_data_format    = raw_data_format,
-    design_file_format = design_file_format
+    design_file_format = design_file_format, 
+    debug_logfile      = debug_logfile
   )
   
   use_blank <- instrument == "plate_reader"
