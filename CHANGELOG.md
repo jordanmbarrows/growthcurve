@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Nothing to see here...please come back later. :)
+- Addressing fatal worker error for oCelloscope batch analysis
 
 ## [1.0.10] - 2026-05-29
 
