@@ -10,7 +10,7 @@
     - Can detect partial blocks (rectangles that are not full 96-well plates)
     - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
   - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
-- Updated preview table for wide format (both plate reader and oCelloscope)
+- Updated preview table for `wide` format (both plate reader and oCelloscope)
 - Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
   - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
