@@ -578,6 +578,29 @@ server <- function(input, output, session) {
     }
   })
   
+  resolve_design_vars <- function(designfile,
+                                  selected_vars = NULL,
+                                  instrument = NULL,
+                                  design_file_format = NULL) {
+    
+    inferred <- extract_design_blocks(
+      designfile,
+      design_file_format = design_file_format
+    )
+    
+    # For oCelloscope: always use the inferred full structure
+    if (identical(instrument, "ocelloscope")) {
+      return(inferred)
+    }
+    
+    # For plate reader: use explicit user selection if present
+    if (!is.null(selected_vars) && length(selected_vars) > 0) {
+      return(selected_vars)
+    }
+    
+    inferred
+  }
+  
   observe({
     session$sendCustomMessage(
       "set_dark_class",
@@ -4152,13 +4175,20 @@ B           0   0   1
                      input$blank_mode
                    }
                    
+                   design_vars_effective <- resolve_design_vars(
+                     designfile = design_file_path,
+                     selected_vars = input$design_vars,
+                     instrument = input$instrument,
+                     design_file_format = NULL
+                   )
+                   
                    res <- tryCatch({
                      gc_log_block(
                        "SINGLE RUN PARAMS",
                        list(
                          raw_file = raw_file_path,
                          design   = design_file_path,
-                         vars     = input$design_vars
+                         vars     = design_vars_effective
                        )
                      )
                      
@@ -4166,7 +4196,7 @@ B           0   0   1
                        run_gc(
                          rawdatafile        = raw_file_path,
                          designfile         = design_file_path,
-                         design_vars        = input$design_vars,
+                         design_vars        = design_vars_effective,
                          hrs                = input$hrs,
                          interval           = interval_hours(),
                          minod              = input$minod,
@@ -4382,6 +4412,7 @@ B           0   0   1
             run_gc(
               rawdatafile        = pairs_val$data_file[i],
               designfile         = pairs_val$design_file[i],
+              design_vars        = params$design_vars,
               hrs                = params$hrs,
               interval           = params$interval,
               minod              = params$minod,
@@ -4659,6 +4690,14 @@ B           0   0   1
       }
     }
     
+    gc_log_block(
+      "BATCH PARAMS",
+      list(
+        instrument = params$instrument,
+        vars       = params$design_vars
+      )
+    )
+    
     launch_next <- function() {
       
       # CHECK CANCEL FIRST (before doing anything)
@@ -4740,6 +4779,8 @@ B           0   0   1
     # CAPTURE REACTIVE VALUES HERE
     region_val <- region_selected()
     
+    first_design_file <- pairs_val$design_file[1]
+    
     params <- list(
       hrs                = input$batch_hrs,
       interval           = input$batch_interval / 60,
@@ -4750,7 +4791,13 @@ B           0   0   1
       prefix             = input$batch_prefix,
       parallel           = input$batch_parallel,
       raw_data_format    = NULL,
-      design_file_format = NULL
+      design_file_format = NULL,
+      design_vars        = resolve_design_vars(
+        designfile = first_design_file,
+        selected_vars = NULL,
+        instrument = input$batch_instrument,
+        design_file_format = NULL
+      )
     )
     
     later::later(function() {
