@@ -2,7 +2,18 @@
 
 ## Unreleased
 
-- Nothing to see here...please come back later. :)
+- Added flexibility to input file strategy
+  - Plate reader vs oCelloscope detection works simply by searching for `TANormalized`
+  - Plate reader inputs are now quickly scanned to determine if `block` or `wide` format
+  - Both `block` and `wide` format are automatically parsed
+  - Plate reader `block` format parser is now more flexible and allows for detection of rectangular blocks anywhere in the source file
+    - Can detect partial blocks (rectangles that are not full 96-well plates)
+    - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
+  - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
+- Updated preview table for wide format (both plate reader and oCelloscope)
+- Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
+  - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
+- Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
 
 ## [1.0.10] - 2026-05-29
 
@@ -14,7 +25,7 @@
 - Added note at bottom of User Guide tab in app that displays current version number and provides a link to the repo for more info and latest updates
 - Enhanced Aggregate Results section in the User Guide tab
 - Made parallel processing the default for batch processing
-  
+
 ## [1.0.9] - 2026-05-28
 
 ### Improvements
