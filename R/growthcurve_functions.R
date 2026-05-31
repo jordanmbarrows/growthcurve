@@ -339,6 +339,32 @@ get_design_wells <- function(design_file) {
   design_wells
 }
 
+get_design_wells_any <- function(design_file) {
+  if (is.null(design_file) || !file.exists(design_file)) {
+    return(character(0))
+  }
+  
+  dfmt <- detect_design_format(design_file)
+  
+  if (dfmt == "wide") {
+    my_design <- read_design_wide(design_file)
+  } else {
+    block_names <- c("Well_type", extract_design_blocks(
+      design_file,
+      design_file_format = "block"
+    ))
+    my_design <- read_design_block_strict(design_file, as.list(block_names))
+  }
+  
+  keep <- !is.na(my_design$Well_type)
+  
+  extra_vars <- setdiff(names(my_design), c("Well", "Well_type"))
+  if (length(extra_vars) > 0) {
+    keep <- keep | rowSums(!is.na(my_design[extra_vars])) > 0
+  }
+  
+  unique(my_design$Well[keep])
+}
 
 validate_design_table <- function(my_design, strict_96 = TRUE) {
   
@@ -809,8 +835,14 @@ read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
 
   # ---- Filter to design wells if provided ----
   if (!is.null(designfile) && file.exists(designfile)) {
+    design_wells <- get_design_wells_any(designfile)
+    
+    if (length(design_wells) > 0) {
+      keep_cols <- names(df_wells) %in% design_wells
+      df_wells <- df_wells[, keep_cols, drop = FALSE]
+    }
   }
-
+  
   out <- data.frame(Time_min = time_min, df_wells, check.names = FALSE)
   out
 }
@@ -877,53 +909,51 @@ read_preview_file <- function(file, nrows = 20) {
 
 build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
                           raw_data_format = NULL, nrows = 20) {
-
+  
   if (!file.exists(file) || dir.exists(file)) return(NULL)
-
+  
   if (is_ocelloscope(file)) {
-
+    
     if (is.null(design_file) || !file.exists(design_file)) {
       return(structure(
         list(message = "Please select a valid oCelloscope design file to enable preview."),
         class = "preview_message"
       ))
     }
-
+    
     result <- tryCatch({
-
+      
       df  <- read_ocello_tanormalized(file)
       fmt <- format_ocelloscope_data(df, design_file, interval)
-
-      # Return first nrows, drop Time_min for display, round values
+      
+      # Return first nrows, keep Time_min for display
       out <- head(fmt, nrows)
       out
-
+      
     }, error = function(e) {
       structure(
         list(message = paste("Preview error:", gc_get_message(e))),
         class = "preview_message"
       )
     })
-
+    
     return(result)
-
+    
   } else if (instrument == "plate_reader") {
-
+    
     # Detect format for plate reader
     plate_fmt <- if (!is.null(raw_data_format)) {
       raw_data_format
     } else {
       tryCatch(detect_plate_format(file), error = function(e) "block")
     }
-
+    
     if (plate_fmt == "wide") {
       result <- tryCatch({
-        df_raw <- read_plate_wide(file, interval = interval, designfile = NULL)
-        
-        df_wide <- format_plate_reader_data(
-          df_raw[, -1, drop = FALSE],
-          design_file,
-          interval
+        df_wide <- read_plate_wide(
+          file,
+          interval = interval,
+          designfile = design_file
         )
         head(df_wide, nrows)
       }, error = function(e) {
@@ -934,21 +964,22 @@ build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
       })
       return(result)
     }
-
+    
     # Block: fall through to raw preview
     df <- read_preview_file(file, nrows = nrows)
     if (is.null(df)) return(NULL)
     colnames(df) <- NULL
     return(df)
-
+    
   } else {
-
+    
     df <- read_preview_file(file, nrows = nrows)
     if (is.null(df)) return(NULL)
     colnames(df) <- NULL
     return(df)
   }
 }
+
 
 build_preview_label <- function(file, preview_result, instrument = NULL,
                                 raw_data_format = NULL) {
