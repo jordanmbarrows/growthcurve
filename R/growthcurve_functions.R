@@ -27,6 +27,278 @@ extract_well_names <- function(colnames_vec) {
   sub("^([A-H][0-9]+).*", "\\1", colnames_vec)
 }
 
+gc_is_int_label <- function(x) {
+  x <- trimws(as.character(x))
+  grepl("^\\d+$", x)
+}
+
+gc_is_row_label <- function(x) {
+  x <- trimws(as.character(x))
+  grepl("^[A-Z]$", x)
+}
+
+gc_is_numericish <- function(x) {
+  x <- trimws(as.character(x))
+  out <- logical(length(x))
+  
+  empty <- is.na(x) | !nzchar(x)
+  out[empty] <- FALSE
+  
+  non_empty <- !empty
+  y <- gsub(",", ".", x[non_empty], fixed = TRUE)
+  out[non_empty] <- !is.na(suppressWarnings(as.numeric(y)))
+  
+  out
+}
+
+gc_contiguous_runs <- function(idx) {
+  if (length(idx) == 0) return(list())
+  split(idx, cumsum(c(1, diff(idx) != 1)))
+}
+
+gc_is_contiguous_letters <- function(x) {
+  x <- trimws(as.character(x))
+  pos <- match(x, LETTERS)
+  if (any(is.na(pos))) return(FALSE)
+  all(diff(pos) == 1)
+}
+
+find_plate_blocks_flexible <- function(file,
+                                       min_rows = 2L,
+                                       min_cols = 2L,
+                                       numeric_threshold = 0.8) {
+  df <- read_csv_safe(file, header = FALSE)
+  df[] <- lapply(df, function(x) trimws(as.character(x)))
+  
+  nr <- nrow(df)
+  nc <- ncol(df)
+  
+  candidates <- list()
+  cand_id <- 0L
+  
+  for (r in seq_len(nr - 1L)) {
+    row_vals <- as.character(unlist(df[r, , drop = FALSE]))
+    num_cols <- which(vapply(row_vals, gc_is_int_label, logical(1)))
+    
+    if (length(num_cols) == 0) next
+    
+    runs <- gc_contiguous_runs(num_cols)
+    
+    for (run in runs) {
+      run <- as.integer(run)
+      if (length(run) < min_cols) next
+      if (min(run) <= 1L) next  # need a row-label column immediately to the left
+      
+      row_label_col <- min(run) - 1L
+      startcol <- min(run)
+      endcol <- max(run)
+      
+      col_labels <- trimws(as.character(unlist(df[r, startcol:endcol, drop = FALSE])))
+      
+      # Walk downward from the header row
+      rr <- r + 1L
+      row_labels <- character(0)
+      data_rows <- integer(0)
+      
+      while (rr <= nr) {
+        lbl <- trimws(as.character(df[rr, row_label_col]))
+        if (!gc_is_row_label(lbl)) break
+        
+        body <- as.character(unlist(df[rr, startcol:endcol, drop = FALSE]))
+        frac_numeric <- mean(gc_is_numericish(body))
+        
+        if (frac_numeric < numeric_threshold) break
+        
+        row_labels <- c(row_labels, lbl)
+        data_rows <- c(data_rows, rr)
+        rr <- rr + 1L
+      }
+      
+      if (length(row_labels) < min_rows) next
+      if (!gc_is_contiguous_letters(row_labels)) next
+      
+      cand_id <- cand_id + 1L
+      candidates[[cand_id]] <- list(
+        header_row = r,
+        row_label_col = row_label_col,
+        startcol = startcol,
+        endcol = endcol,
+        data_start = min(data_rows),
+        data_end = max(data_rows),
+        row_labels = row_labels,
+        col_labels = col_labels
+      )
+    }
+  }
+  
+  if (length(candidates) == 0) {
+    gc_abort("No plate-like data blocks could be detected in the file.")
+  }
+  
+  # Group candidates by geometry so we can find the repeated block type
+  keys <- vapply(candidates, function(x) {
+    paste(
+      x$row_label_col,
+      x$startcol,
+      x$endcol,
+      paste(x$row_labels, collapse = ""),
+      paste(x$col_labels, collapse = ","),
+      sep = "|"
+    )
+  }, character(1))
+  
+  key_tab <- table(keys)
+  best_key <- names(key_tab)[which.max(key_tab)]
+  
+  blocks <- candidates[keys == best_key]
+  
+  # Sort by position in the file
+  ord <- order(vapply(blocks, `[[`, integer(1), "data_start"))
+  blocks <- blocks[ord]
+  
+  startrow_vec <- vapply(blocks, `[[`, integer(1), "data_start")
+  endrow_vec   <- vapply(blocks, `[[`, integer(1), "data_end")
+  stride <- if (length(startrow_vec) >= 2L) {
+    diff(startrow_vec)[1]
+  } else {
+    NA_integer_
+  }
+  
+  list(
+    blocks = blocks,
+    startrow_vec = startrow_vec,
+    endrow_vec = endrow_vec,
+    stride = stride,
+    startcol = blocks[[1]]$startcol,
+    endcol = blocks[[1]]$endcol,
+    row_label_col = blocks[[1]]$row_label_col
+  )
+}
+
+read_plate_block_flexible <- function(file, interval = NULL) {
+  df_raw <- read_csv_safe(file, header = FALSE)
+  df_chr <- df_raw
+  df_chr[] <- lapply(df_chr, function(x) trimws(as.character(x)))
+  
+  det <- find_plate_blocks_flexible(file)
+  
+  all_rows <- list()
+  
+  for (b in det$blocks) {
+    vals_chr <- df_chr[b$data_start:b$data_end, b$startcol:b$endcol, drop = FALSE]
+    vals_chr <- as.matrix(vals_chr)
+    
+    vals_num <- suppressWarnings(
+      matrix(
+        as.numeric(gsub(",", ".", vals_chr, fixed = TRUE)),
+        nrow = nrow(vals_chr),
+        ncol = ncol(vals_chr),
+        byrow = FALSE
+      )
+    )
+    
+    rownames(vals_num) <- b$row_labels
+    colnames(vals_num) <- b$col_labels
+    
+    well_names <- as.vector(outer(b$row_labels, b$col_labels, paste0))
+    row_vec <- as.list(as.vector(t(vals_num)))
+    names(row_vec) <- well_names
+    
+    all_rows[[length(all_rows) + 1L]] <- row_vec
+  }
+  
+  all_wells <- unique(unlist(lapply(all_rows, names)))
+  
+  out <- data.frame(
+    matrix(NA_real_, nrow = length(all_rows), ncol = length(all_wells)),
+    check.names = FALSE
+  )
+  colnames(out) <- all_wells
+  
+  for (i in seq_along(all_rows)) {
+    out[i, names(all_rows[[i]])] <- unlist(all_rows[[i]])
+  }
+  
+  n <- nrow(out)
+  if (!is.null(interval)) {
+    time_min <- seq(0, by = interval * 60, length.out = n)
+  } else {
+    time_min <- seq_len(n) - 1L
+  }
+  
+  out <- data.frame(Time_min = time_min, out, check.names = FALSE)
+  out
+}
+
+read_design_block_strict <- function(designfile, blocklist) {
+  df <- read_csv_safe(designfile, header = FALSE)
+  df[] <- lapply(df, function(x) trimws(as.character(x)))
+  
+  expected_rows <- LETTERS[1:8]
+  well_names <- as.vector(outer(expected_rows, 1:12, paste0))
+  
+  out <- data.frame(Well = well_names, stringsAsFactors = FALSE)
+  
+  for (k in seq_along(blocklist)) {
+    block_name <- blocklist[[k]]
+    
+    # Strict template: block headers in col 1, spaced every 10 rows
+    header_row <- 1 + (k - 1) * 10
+    data_rows  <- (header_row + 1):(header_row + 8)
+    
+    if (max(data_rows) > nrow(df)) {
+      gc_abort(
+        paste0(
+          "Design parsing error: block '", block_name,
+          "' does not have 8 data rows."
+        )
+      )
+    }
+    
+    header_val <- trimws(as.character(df[header_row, 1]))
+    if (!identical(header_val, block_name)) {
+      gc_abort(
+        paste0(
+          "Design parsing error: expected block header '", block_name,
+          "' at row ", header_row, " but found '", header_val, "'."
+        )
+      )
+    }
+    
+    row_labels <- trimws(as.character(df[data_rows, 1]))
+    if (!identical(row_labels, expected_rows)) {
+      gc_abort(
+        paste0(
+          "Design parsing error in block '", block_name,
+          "': expected row labels A-H."
+        )
+      )
+    }
+    
+    vals <- df[data_rows, 2:13, drop = FALSE]
+    vals <- as.matrix(vals)
+    vals[!nzchar(vals)] <- NA_character_
+    
+    out[[block_name]] <- as.vector(t(vals))
+  }
+  
+  # Optional cleanup for non-Well_type blocks:
+  for (v in setdiff(names(out), c("Well", "Well_type"))) {
+    out[[v]][out[[v]] %in% LETTERS[1:8]] <- NA_character_
+  }
+  
+  # Guardrails
+  if (any(out$Well_type %in% LETTERS[1:8], na.rm = TRUE)) {
+    gc_abort("Design parsing error: row labels A-H were imported as Well_type values.")
+  }
+  
+  if (any(grepl("^[A-H]13$", out$Well))) {
+    gc_abort("Design parsing error: phantom 13th design column detected.")
+  }
+  
+  out
+}
+
 get_design_wells <- function(design_file) {
   
   #  Read via safe parser ONLY (single source of truth)
@@ -65,6 +337,96 @@ get_design_wells <- function(design_file) {
   }
   
   design_wells
+}
+
+
+validate_design_table <- function(my_design, strict_96 = TRUE) {
+  
+  if (!"Well" %in% names(my_design)) {
+    gc_abort("Design parsing error: design table lacks a Well column.")
+  }
+  
+  if (!"Well_type" %in% names(my_design)) {
+    gc_abort("Design parsing error: design table lacks a Well_type column.")
+  }
+  
+  # Duplicate wells
+  dup_design <- my_design |>
+    dplyr::count(Well, name = "n") |>
+    dplyr::filter(n > 1)
+  
+  if (nrow(dup_design) > 0) {
+    gc_abort("Design parsing error: duplicate wells found in design file.")
+  }
+  
+  # Row letters should never appear as Well_type
+  if (any(my_design$Well_type %in% LETTERS[1:8], na.rm = TRUE)) {
+    gc_abort("Design parsing error: row labels A-H were imported as Well_type values.")
+  }
+  
+  # Optional strict 96-well check
+  if (strict_96 && any(grepl("^[A-H]13$", my_design$Well))) {
+    gc_abort("Design parsing error: phantom 13th design column detected.")
+  }
+  
+  my_design
+}
+
+format_plate_reader_data <- function(df, design_file, interval = NULL) {
+  
+  n <- nrow(df)
+  
+  # ---- TIME (identical logic) ----
+  if (!is.null(interval)) {
+    time_min <- seq(0, by = interval * 60, length.out = n)
+  } else {
+    time_min <- seq_len(n) - 1L
+  }
+  
+  # ---- RAW MATRIX ----
+  mat <- df
+  
+  mat[] <- lapply(mat, function(x) as.numeric(as.character(x)))
+  
+  max_val <- suppressWarnings(max(mat, na.rm = TRUE))
+  
+  if (!is.finite(max_val)) {
+    gc_abort("Plate reader parsing failed: non-numeric data.")
+  }
+  
+  raw_cols <- colnames(mat)
+  
+  wells <- extract_well_names(raw_cols)
+  
+  design_wells <- get_design_wells(design_file)
+  
+  # ---- TEMP UNIQUE ----
+  tmp_names <- make.unique(wells)
+  colnames(mat) <- tmp_names
+  
+  # ---- FILTER using ORIGINAL wells (critical!) ----
+  keep <- wells %in% design_wells
+  
+  if (!any(keep)) {
+    gc_abort("No matching wells between plate reader data and design file.")
+  }
+  
+  mat <- mat[, keep, drop = FALSE]
+  wells <- wells[keep]
+  
+  # ---- RESTORE TRUE WELL NAMES ----
+  colnames(mat) <- wells
+  
+  # ---- BUILD OUTPUT ----
+  clean_df <- data.frame(
+    Time = time_min,
+    mat,
+    check.names = FALSE
+  )
+  
+  colnames(clean_df)[1] <- "Time_min"
+  
+  clean_df
 }
 
 # ---------------------------
@@ -311,8 +673,13 @@ detect_plate_format <- function(file) {
     n_wells >= 2
   }, logical(1)))
 
-  if (n_wide_rows == 1) {
-    return("wide")
+  for (l in lines) {
+    fields <- trimws(strsplit(l, "[,;]")[[1]])
+    n_wells <- sum(grepl("^[A-H][0-9]{1,2}$", fields))
+    
+    if (n_wells >= 6) {  # require stronger signal
+      return("wide")
+    }
   }
 
   # ---- Test for block format ----
@@ -426,17 +793,22 @@ read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
   # ---- Extract well data ----
   df_wells <- df[, is_well_col, drop = FALSE]
   df_wells[] <- lapply(df_wells, function(x) as.numeric(as.character(x)))
+  colnames(df_wells) <- extract_well_names(names(df_wells))
+  
+  dup_cols <- unique(colnames(df_wells)[duplicated(colnames(df_wells))])
+  
+  if (length(dup_cols) > 0) {
+    gc_abort(
+      paste0(
+        "Wide plate reader file contains duplicated well columns after normalization: ",
+        paste(dup_cols, collapse = ", "),
+        ". Please remove duplicate/derived columns from the input file."
+      )
+    )
+  }
 
   # ---- Filter to design wells if provided ----
   if (!is.null(designfile) && file.exists(designfile)) {
-    design_wells <- tryCatch(
-      get_design_wells(designfile),
-      error = function(e) NULL
-    )
-    if (!is.null(design_wells)) {
-      keep <- names(df_wells) %in% design_wells
-      if (any(keep)) df_wells <- df_wells[, keep, drop = FALSE]
-    }
   }
 
   out <- data.frame(Time_min = time_min, df_wells, check.names = FALSE)
@@ -546,7 +918,13 @@ build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
 
     if (plate_fmt == "wide") {
       result <- tryCatch({
-        df_wide <- read_plate_wide(file, interval = interval, designfile = design_file)
+        df_raw <- read_plate_wide(file, interval = interval, designfile = NULL)
+        
+        df_wide <- format_plate_reader_data(
+          df_raw[, -1, drop = FALSE],
+          design_file,
+          interval
+        )
         head(df_wide, nrows)
       }, error = function(e) {
         structure(
@@ -823,11 +1201,19 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
     } else {
       detect_plate_format(rawdatafile)
     }
+    
+    message("Detected format: ", plate_fmt)
 
     if (plate_fmt == "wide") {
 
       # ---- Wide: single header row of well names ----
-      df_wide <- read_plate_wide(rawdatafile, interval = interval, designfile = designfile)
+      df_raw <- read_plate_wide(rawdatafile, interval = interval, designfile = NULL)
+      
+      df_wide <- format_plate_reader_data(
+        df_raw[, -1, drop = FALSE],
+        designfile,
+        interval
+      )
 
       # Attach block_name and pivot to tidy
       df_wide$Time    <- df_wide$Time_min / 60
@@ -846,54 +1232,26 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
 
     } else {
 
-      # ---- Block: auto-detect startrow / stride ----
-      n_timepoints <- round(hrs / interval) + 1
-
-      df_raw <- read_csv_safe(rawdatafile)
-
-      tmp_file <- tempfile(fileext = ".csv")
-      on.exit(unlink(tmp_file), add = TRUE)
-
-      utils::write.csv(df_raw, tmp_file, row.names = FALSE)
-
       # Try auto-detection; fall back to legacy fixed offsets
-      bp <- tryCatch(
-        find_block_params(tmp_file),
-        error = function(e) NULL
+      df_block <- read_plate_block_flexible(
+        rawdatafile,
+        interval = interval
       )
-
-      if (!is.null(bp)) {
-        startrow_vec <- seq(bp$startrow, by = bp$stride, length.out = n_timepoints)
-        endrow_vec   <- startrow_vec + 7L
-      } else {
-        # Legacy fallback: rows 3-10 per 12-row block
-        startrow_vec <- seq(3, by = 12, length.out = n_timepoints)
-        endrow_vec   <- seq(10, by = 12, length.out = n_timepoints)
-      }
-
-      imported_blockdata <- gcplyr::import_blockmeasures(
-        tmp_file,
-        startrow = startrow_vec,
-        endrow   = endrow_vec,
-        startcol = 1,
-        endcol   = 13
-      )
-
-      imported_blockdata <- imported_blockdata[, -1, drop = FALSE]
-
-      time_min <- seq(0, by = interval * 60, length.out = nrow(imported_blockdata))
-
-      imported_blockdata <- cbind(
-        imported_blockdata[, 1, drop = FALSE],
-        Time = time_min / 60,
-        imported_blockdata[, -1]
-      )
-
+      
+      df_block$Time <- df_block$Time_min / 60
+      df_block$Time_min <- NULL
+      df_block$block_name <- "plate_reader"
+      
+      df_block <- df_block[, c(
+        "block_name", "Time",
+        setdiff(names(df_block), c("block_name", "Time"))
+      )]
+      
       imported_tidy <- gcplyr::trans_wide_to_tidy(
-        imported_blockdata,
+        df_block,
         id_cols = c("block_name", "Time")
       )
-
+      
       imported_tidy$Time <- as.numeric(imported_tidy$Time)
     }
 
@@ -1097,44 +1455,8 @@ gc_read_design <- function(designfile, blocklist, design_file_format = NULL) {
     return(my_design)
   }
 
-  # ---- Block format (original logic) ----
-  designstartvector <- seq(2, by = 10, length.out = length(blocklist))
-  designendvector   <- seq(9, by = 10, length.out = length(blocklist))
-
-  # ----------------------------------------------------------
-  # Normalize design file BEFORE gcplyr
-  # ----------------------------------------------------------
-  df_clean <- read_csv_safe(designfile, header = FALSE)
-
-  tmp_design <- tempfile(fileext = ".csv")
-
-  utils::write.table(
-    df_clean,
-    tmp_design,
-    sep = ",",
-    row.names = FALSE,
-    col.names = FALSE,
-    na = "",
-    quote = TRUE,
-    fileEncoding = "UTF-8"
-  )
-
-  # ----------------------------------------------------------
-  # Use normalized temp file
-  # ----------------------------------------------------------
-  my_design <- gcplyr::import_blockdesigns(
-    tmp_design,
-    block_names = blocklist,
-    startrow    = designstartvector,
-    endrow      = designendvector
-  )
-
-  # Remove accidental row labels (A-H)
-  for (v in blocklist[-1]) {
-    my_design[[v]] <- as.character(my_design[[v]])
-    my_design[[v]][my_design[[v]] %in% LETTERS[1:8]] <- NA
-  }
-
+  my_design <- read_design_block_strict(designfile, blocklist)
+  validate_design_table(my_design, strict_96 = TRUE)
   my_design
 }
 
@@ -1224,11 +1546,15 @@ gc_import_data <- function(
 
   # ---- Blocklist ----
   blocklist <- c(list("Well_type"), as.list(design_vars))
+  
+  vars <- unlist(blocklist[-1])
 
   # ---- Validate design variables ----
-  available_blocks <- extract_design_blocks(designfile,
-                                            design_file_format = design_file_format)
-
+  available_blocks <- extract_design_blocks(
+    designfile,
+    design_file_format = design_file_format
+  )
+  
   missing_vars <- setdiff(design_vars, available_blocks)
   if (length(missing_vars) > 0) {
     gc_abort(paste0(
@@ -1249,6 +1575,15 @@ gc_import_data <- function(
     format          = format,
     raw_data_format = raw_data_format
   )
+  
+  dup_raw <- imported_tidy |>
+    dplyr::count(Well, Time, name = "n") |>
+    dplyr::filter(n > 1)
+  
+  if (nrow(dup_raw) > 0) {
+    message("Duplicate raw Well-Time pairs detected:")
+    print(dup_raw)
+  }
 
   if (is.null(imported_tidy) || nrow(imported_tidy) == 0) {
     gc_abort(paste(
@@ -1270,16 +1605,52 @@ gc_import_data <- function(
   # ==========================================================
 
   my_design <- gc_read_design(
-    designfile         = designfile,
-    blocklist          = blocklist,
+    designfile = designfile,
+    blocklist  = blocklist,
     design_file_format = design_file_format
   )
+  
+  # ---- Extract design wells from SAME source ----
+  design_wells <- unique(my_design$Well)
+  
+  # ---- Filter raw data using EXACT same mapping ----
+  imported_tidy <- imported_tidy[
+    imported_tidy$Well %in% design_wells,
+    , drop = FALSE
+  ]
 
   # ==========================================================
   # MERGE + CLEAN (shared)
   # ==========================================================
 
   merged_data <- gcplyr::merge_dfs(imported_tidy, my_design)
+  
+  bad_map <- merged_data |>
+    dplyr::group_by(Well) |>
+    dplyr::summarise(n_groups = dplyr::n_distinct(.data[[blocklist[[2]]]])) |>
+    dplyr::filter(n_groups > 1)
+  
+  if (nrow(bad_map) > 0) {
+    gc_abort(
+      paste(
+        "Design mapping error:",
+        "Some wells are assigned to multiple groups.",
+        "This indicates a mismatch between raw data and design file."
+      )
+    )
+  }
+  
+  mapping_table <- merged_data |>
+    dplyr::select(Well, Well_type, dplyr::all_of(vars)) |>
+    dplyr::distinct() |>
+    dplyr::arrange(Well, Well_type)
+  
+  print(mapping_table)
+  
+  merged_data[vars] <- lapply(
+    merged_data[vars],
+    as.character
+  )
 
   if (any(duplicated(merged_data[c("Well", "Time")]))) {
     warning(
