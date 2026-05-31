@@ -266,14 +266,219 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
 }
 
 is_ocelloscope <- function(file) {
-  
   lines <- base::readLines(file, n = 200)
-  
-  # Count repeated Time headers
-  n_headers <- sum(base::grepl("^Time \\(seconds\\)", lines))
-  
-  # If multiple > multi-block > oCelloscope
-  n_headers > 1
+  any(base::grepl("^\\s*TANormalized", lines, ignore.case = TRUE))
+}
+
+# ------------------------------------------------------------
+# detect_plate_format()
+#
+# Purpose:
+#   Determine whether a plate reader file is in wide format
+#   (single header row of well names) or block format
+#   (repeated 8-row blocks with row labels A-H).
+#
+# Strategy:
+#   - Wide: first data row contains well-name-like patterns (A1..H12)
+#           covering most columns, and there is only ONE such header row.
+#   - Block: file contains multiple rows that start with a row letter
+#            (A-H) followed by 12 numeric-looking cells.
+#
+# Returns: "wide" or "block"
+# ------------------------------------------------------------
+
+detect_plate_format <- function(file) {
+
+  lines <- base::readLines(file, warn = FALSE)
+
+  # Strip CR
+  lines <- gsub("\r", "", lines)
+
+  # ---- Test for TANormalized (oCelloscope) - caller should check first ----
+  if (any(base::grepl("^\\s*TANormalized", lines, ignore.case = TRUE))) {
+    return("wide")  # handled by read_ocello path; this is a fallback
+  }
+
+  # ---- Search for wide well-name header ----
+  # A wide header has >= 6 cells matching [A-H][0-9]{1,2}
+  # and appears only once (not repeated like block format).
+  well_pattern <- "[A-H][0-9]{1,2}"
+
+  n_wide_rows <- sum(vapply(lines, function(l) {
+    fields <- strsplit(l, "[,;]")[[1]]
+    fields <- trimws(fields)
+    n_wells <- sum(grepl(paste0("^", well_pattern, "$"), fields))
+    n_wells >= 6
+  }, logical(1)))
+
+  if (n_wide_rows == 1) {
+    return("wide")
+  }
+
+  # ---- Test for block format ----
+  # Block rows start with A-H in column 1
+  row_label_count <- sum(vapply(lines, function(l) {
+    fields <- strsplit(l, "[,;]")[[1]]
+    if (length(fields) < 2) return(FALSE)
+    grepl("^\\s*[A-H]\\s*$", trimws(fields[1]))
+  }, logical(1)))
+
+  if (row_label_count >= 8) {
+    return("block")
+  }
+
+  # Default: assume block
+  "block"
+}
+
+# ------------------------------------------------------------
+# read_plate_wide()
+#
+# Purpose:
+#   Read a plate reader file in wide format (single measurement
+#   row with column headers that are well names A1-H12).
+#
+# The file must have:
+#   - One row whose cells are well names (e.g. A1, A2 ... H12)
+#   - Time values in a preceding column (optional; can be absent)
+#   - Data rows immediately following
+#
+# Returns:
+#   data.frame with Time_min column + one column per well,
+#   matching the format of format_ocelloscope_data() output
+#   so it can feed directly into the same tidy pipeline.
+# ------------------------------------------------------------
+
+read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
+
+  lines <- base::readLines(file, warn = FALSE)
+  lines <- gsub("\r", "", lines)
+
+  well_pattern <- "^[A-H][0-9]{1,2}$"
+
+  # ---- Find header row ----
+  header_idx <- NA_integer_
+
+  for (i in seq_along(lines)) {
+    fields <- trimws(strsplit(lines[i], "[,;]")[[1]])
+    n_wells <- sum(grepl(well_pattern, fields))
+    if (n_wells >= 6) {
+      header_idx <- i
+      break
+    }
+  }
+
+  if (is.na(header_idx)) {
+    gc_abort("Wide format plate reader: could not find well-name header row.")
+  }
+
+  # ---- Collect data rows ----
+  data_lines <- character()
+  i <- header_idx + 1
+
+  while (i <= length(lines)) {
+    line <- lines[i]
+    stripped <- trimws(gsub("[,;]", "", line))
+    if (!nzchar(stripped)) break
+    data_lines <- c(data_lines, line)
+    i <- i + 1
+  }
+
+  if (length(data_lines) == 0) {
+    gc_abort("Wide format plate reader: no data rows found after header.")
+  }
+
+  # ---- Parse ----
+  csv_text <- paste(c(lines[header_idx], data_lines), collapse = "\n")
+
+  df <- read_csv_safe_text(text = csv_text, header = TRUE)
+
+  # ---- Identify well columns vs time/metadata columns ----
+  is_well_col <- grepl(well_pattern, names(df))
+
+  time_col_idx <- which(grepl("^Time", names(df), ignore.case = TRUE))[1]
+
+  # ---- Build time vector ----
+  n <- nrow(df)
+
+  if (!is.na(time_col_idx)) {
+    time_raw <- suppressWarnings(as.numeric(as.character(df[[time_col_idx]])))
+
+    # Heuristic: if values look like seconds (>> 1000) convert; else assume minutes
+    if (!all(is.na(time_raw)) && max(time_raw, na.rm = TRUE) > 1000) {
+      time_min <- time_raw / 60
+    } else {
+      time_min <- time_raw
+    }
+  } else if (!is.null(interval)) {
+    time_min <- seq(0, by = interval * 60, length.out = n)
+  } else {
+    time_min <- seq_len(n) - 1L
+  }
+
+  # ---- Extract well data ----
+  df_wells <- df[, is_well_col, drop = FALSE]
+  df_wells[] <- lapply(df_wells, function(x) as.numeric(as.character(x)))
+
+  # ---- Filter to design wells if provided ----
+  if (!is.null(designfile) && file.exists(designfile)) {
+    design_wells <- tryCatch(
+      get_design_wells(designfile),
+      error = function(e) NULL
+    )
+    if (!is.null(design_wells)) {
+      keep <- names(df_wells) %in% design_wells
+      if (any(keep)) df_wells <- df_wells[, keep, drop = FALSE]
+    }
+  }
+
+  out <- data.frame(Time_min = time_min, df_wells, check.names = FALSE)
+  out
+}
+
+# ------------------------------------------------------------
+# find_block_params()
+#
+# Purpose:
+#   Auto-detect startrow and stride for a block-format plate
+#   reader file by scanning for rows whose first column is A-H
+#   and subsequent 12 cells look numeric.
+#
+# Returns: list(startrow, endrow, stride, n_blocks)
+# ------------------------------------------------------------
+
+find_block_params <- function(file) {
+
+  df <- read_csv_safe(file, header = FALSE)
+
+  col1 <- trimws(as.character(df[[1]]))
+
+  # Find all rows where col1 is exactly A
+  a_rows <- which(col1 == "A")
+
+  if (length(a_rows) == 0) {
+    gc_abort("Block format: could not find any row starting with 'A'. Check plate reader file format.")
+  }
+
+  # stride = gap between first A rows (if multiple timepoints)
+  if (length(a_rows) >= 2) {
+    stride <- a_rows[2] - a_rows[1]
+  } else {
+    # Single timepoint: stride doesn't matter but endrow = startrow + 7
+    stride <- nrow(df) + 10
+  }
+
+  # First block: A row starts 2 rows after block header (row 1 = header, row 2 = col numbers, row 3 = A)
+  # More robustly: startrow is the A row, endrow is startrow + 7 (A-H)
+  first_a <- a_rows[1]
+  n_blocks <- length(a_rows)
+
+  list(
+    startrow = first_a,
+    endrow   = first_a + 7,
+    stride   = stride,
+    n_blocks = n_blocks
+  )
 }
 
 read_preview_file <- function(file, nrows = 20) {
@@ -291,39 +496,68 @@ read_preview_file <- function(file, nrows = 20) {
   })
 }
 
-build_preview <- function(file, design_file = NULL, interval = NULL, instrument, nrows = 20) {
-  
+build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
+                          raw_data_format = NULL, nrows = 20) {
+
   if (!file.exists(file) || dir.exists(file)) return(NULL)
-  
+
   if (is_ocelloscope(file)) {
-    
+
     if (is.null(design_file) || !file.exists(design_file)) {
       return(structure(
         list(message = "Please select a valid oCelloscope design file to enable preview."),
         class = "preview_message"
       ))
     }
-    
+
     result <- tryCatch({
-      
+
       df  <- read_ocello_tanormalized(file)
       fmt <- format_ocelloscope_data(df, design_file, interval)
-      
+
       # Return first nrows, drop Time_min for display, round values
       out <- head(fmt, nrows)
       out
-      
+
     }, error = function(e) {
       structure(
         list(message = paste("Preview error:", gc_get_message(e))),
         class = "preview_message"
       )
     })
-    
+
     return(result)
-    
+
+  } else if (instrument == "plate_reader") {
+
+    # Detect format for plate reader
+    plate_fmt <- if (!is.null(raw_data_format)) {
+      raw_data_format
+    } else {
+      tryCatch(detect_plate_format(file), error = function(e) "block")
+    }
+
+    if (plate_fmt == "wide") {
+      result <- tryCatch({
+        df_wide <- read_plate_wide(file, interval = interval, designfile = design_file)
+        head(df_wide, nrows)
+      }, error = function(e) {
+        structure(
+          list(message = paste("Preview error:", gc_get_message(e))),
+          class = "preview_message"
+        )
+      })
+      return(result)
+    }
+
+    # Block: fall through to raw preview
+    df <- read_preview_file(file, nrows = nrows)
+    if (is.null(df)) return(NULL)
+    colnames(df) <- NULL
+    return(df)
+
   } else {
-    
+
     df <- read_preview_file(file, nrows = nrows)
     if (is.null(df)) return(NULL)
     colnames(df) <- NULL
@@ -331,20 +565,31 @@ build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
   }
 }
 
-build_preview_label <- function(file, preview_result, instrument = NULL) {
-  
+build_preview_label <- function(file, preview_result, instrument = NULL,
+                                raw_data_format = NULL) {
+
   #  Do NOT show label if preview is message
   if (inherits(preview_result, "preview_message")) {
     return(NULL)
   }
-  
+
   if (is_ocelloscope(file)) {
     return(paste(
       "Preview: extracted growth data (oCelloscope)",
       "- time values use selected interval"
     ))
   }
-  
+
+  if (identical(instrument, "plate_reader")) {
+    plate_fmt <- if (!is.null(raw_data_format)) raw_data_format else
+      tryCatch(detect_plate_format(file), error = function(e) "block")
+
+    if (plate_fmt == "wide") {
+      return("Preview: extracted growth data (plate reader, wide format) - time values use selected interval")
+    }
+    return("Preview: raw file (plate reader, block format)")
+  }
+
   return("Preview: raw file")
 }
 
@@ -476,8 +721,8 @@ gc_prepare_run <- function(rawdatafile,
   }
   
   analysis_dir <- "Analysis"
-  plots_dir    <- NULL
-  summary_dir  <- NULL
+  plots_dir <- NULL
+  summary_dir <- NULL
   
   # ---------------------------
   # Shared ggplot theme
@@ -543,21 +788,22 @@ gc_prepare_run <- function(rawdatafile,
 #     block_name, Time, Well, Measurements
 # ------------------------------------------------------------
 
-gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
-  
+gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
+                             raw_data_format = NULL) {
+
   format <- match.arg(format, c("plate_reader", "ocelloscope"))
-  
+
   # ----------------------------------------------------------
   #  SAFETY: detect file/instrument mismatch
   # ----------------------------------------------------------
-  
+
   is_occo <- is_ocelloscope(rawdatafile)
-  
+
   format_mismatch <- (
     (format == "plate_reader" && is_occo) ||
       (format == "ocelloscope" && !is_occo)
   )
-  
+
   if (format_mismatch) {
     message(
       sprintf(
@@ -567,78 +813,120 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
         )
       )
     }
-  
-  if (format == "plate_reader") {
-    
-    n_timepoints <- round(hrs / interval) + 1
-    
-    # ---- NEW: normalize CSV first ----
-    df_raw <- read_csv_safe(rawdatafile)
-    
-    # ---- TEMP FILE (gcplyr requires file input) ----
-    tmp_file <- tempfile(fileext = ".csv")
-    
-    #  Ensure cleanup ALWAYS happens
-    on.exit(unlink(tmp_file), add = TRUE)
-    
-    utils::write.csv(df_raw, tmp_file, row.names = FALSE)
-    
-    imported_blockdata <- gcplyr::import_blockmeasures(
-      tmp_file,
-      startrow = seq(3, by = 12, length.out = n_timepoints),
-      endrow   = seq(10, by = 12, length.out = n_timepoints),
-      startcol = 1,
-      endcol   = 13
-    )
-    
-    imported_blockdata <- imported_blockdata[, -1, drop = FALSE]
-    
-    time_min <- seq(0, by = interval * 60, length.out = nrow(imported_blockdata))
-    
-    imported_blockdata <- cbind(
-      imported_blockdata[, 1, drop = FALSE],
-      Time = time_min / 60,   
-      imported_blockdata[, -1]
-    )
-    
-    imported_tidy <- gcplyr::trans_wide_to_tidy(
-      imported_blockdata,
-      id_cols = c("block_name", "Time")
-    )
 
-    imported_tidy$Time <- as.numeric(imported_tidy$Time)
-    
+  if (format == "plate_reader") {
+
+    # ---- Detect sub-format (wide or block) ----
+    plate_fmt <- if (!is.null(raw_data_format)) {
+      raw_data_format
+    } else {
+      detect_plate_format(rawdatafile)
+    }
+
+    if (plate_fmt == "wide") {
+
+      # ---- Wide: single header row of well names ----
+      df_wide <- read_plate_wide(rawdatafile, interval = interval, designfile = designfile)
+
+      # Attach block_name and pivot to tidy
+      df_wide$Time    <- df_wide$Time_min / 60
+      df_wide$Time_min <- NULL
+      df_wide$block_name <- "plate_reader"
+
+      df_wide <- df_wide[, c("block_name", "Time",
+                              setdiff(names(df_wide), c("block_name", "Time")))]
+
+      imported_tidy <- gcplyr::trans_wide_to_tidy(
+        df_wide,
+        id_cols = c("block_name", "Time")
+      )
+
+      imported_tidy$Time <- as.numeric(imported_tidy$Time)
+
+    } else {
+
+      # ---- Block: auto-detect startrow / stride ----
+      n_timepoints <- round(hrs / interval) + 1
+
+      df_raw <- read_csv_safe(rawdatafile)
+
+      tmp_file <- tempfile(fileext = ".csv")
+      on.exit(unlink(tmp_file), add = TRUE)
+
+      utils::write.csv(df_raw, tmp_file, row.names = FALSE)
+
+      # Try auto-detection; fall back to legacy fixed offsets
+      bp <- tryCatch(
+        find_block_params(tmp_file),
+        error = function(e) NULL
+      )
+
+      if (!is.null(bp)) {
+        startrow_vec <- seq(bp$startrow, by = bp$stride, length.out = n_timepoints)
+        endrow_vec   <- startrow_vec + 7L
+      } else {
+        # Legacy fallback: rows 3-10 per 12-row block
+        startrow_vec <- seq(3, by = 12, length.out = n_timepoints)
+        endrow_vec   <- seq(10, by = 12, length.out = n_timepoints)
+      }
+
+      imported_blockdata <- gcplyr::import_blockmeasures(
+        tmp_file,
+        startrow = startrow_vec,
+        endrow   = endrow_vec,
+        startcol = 1,
+        endcol   = 13
+      )
+
+      imported_blockdata <- imported_blockdata[, -1, drop = FALSE]
+
+      time_min <- seq(0, by = interval * 60, length.out = nrow(imported_blockdata))
+
+      imported_blockdata <- cbind(
+        imported_blockdata[, 1, drop = FALSE],
+        Time = time_min / 60,
+        imported_blockdata[, -1]
+      )
+
+      imported_tidy <- gcplyr::trans_wide_to_tidy(
+        imported_blockdata,
+        id_cols = c("block_name", "Time")
+      )
+
+      imported_tidy$Time <- as.numeric(imported_tidy$Time)
+    }
+
   } else {
-    
+
     # ---- Read raw block ----
     df <- NULL
-    
+
     df <- read_ocello_tanormalized(rawdatafile)
-    
+
     if (is.null(df)) {
       gc_abort("Failed to read TANormalized block from oCelloscope file.")
     }
 
     df <- format_ocelloscope_data(df, designfile, interval)
-    
+
     #  canonical conversion point
     df$Time <- df$Time_min / 60
-    
+
     #  drop raw minutes column
     df$Time_min <- NULL
-    
+
     # ---- Add block_name ----
     df$block_name <- "ocelloscope"
-    
+
     df <- df[, c("block_name", "Time", setdiff(names(df), c("block_name", "Time")))]
-    
+
     # ---- Convert to tidy ----
     imported_tidy <- gcplyr::trans_wide_to_tidy(
       df,
       id_cols = c("block_name", "Time")
     )
   }
-  
+
   imported_tidy
 }
 
@@ -661,18 +949,164 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format) {
 #   Cleaned design data.frame ready for merging
 # ------------------------------------------------------------
 
-gc_read_design <- function(designfile, blocklist) {
-  
+# ------------------------------------------------------------
+# detect_design_format()
+#
+# Purpose:
+#   Detect whether a design file is in block or wide format.
+#
+# Block: first column contains variable names (Well_type, etc.)
+#        followed by row letters A-H.
+# Wide:  first row contains well names (A1..H12) and subsequent
+#        rows are labelled design variables.
+# ------------------------------------------------------------
+
+detect_design_format <- function(file) {
+
+  df <- read_csv_safe(file, header = FALSE, nrows = 5)
+
+  if (nrow(df) == 0 || ncol(df) < 2) return("block")
+
+  # Check if the FIRST row (row 1) has well-name-like column headers
+  # (skipping col 1 which would be a row-name label)
+  first_row_vals <- trimws(as.character(unlist(df[1, -1])))
+  n_wells <- sum(grepl("^[A-H][0-9]{1,2}$", first_row_vals))
+
+  if (n_wells >= 6) return("wide")
+
+  "block"
+}
+
+# ------------------------------------------------------------
+# read_design_wide()
+#
+# Purpose:
+#   Read a wide-format design file.
+#
+# Expected layout:
+#   Row 1: blank/label | A1 | A2 | ... | H12  (well names)
+#   Row 2: Well_type   | Sample | Blank | ...
+#   Row 3: Strain      | WT | WT | ...
+#   ...
+#
+# Returns:
+#   data.frame in the same format as gcplyr::import_blockdesigns():
+#     Well | Well_type | Var1 | Var2 | ...
+# ------------------------------------------------------------
+
+read_design_wide <- function(file) {
+
+  df <- read_csv_safe(file, header = FALSE)
+
+  if (nrow(df) < 2) {
+    gc_abort("Wide design file must have at least 2 rows (well names + Well_type).")
+  }
+
+  # ---- Row 1: well names ----
+  well_row <- trimws(as.character(unlist(df[1, ])))
+
+  # Find which columns are well names
+  well_pattern <- "^[A-H][0-9]{1,2}$"
+  well_col_idx <- which(grepl(well_pattern, well_row))
+
+  if (length(well_col_idx) < 6) {
+    gc_abort("Wide design file: first row must contain well names (e.g. A1, B2 ... H12).")
+  }
+
+  well_names <- well_row[well_col_idx]
+
+  # ---- Remaining rows: design variables ----
+  design_rows <- df[seq(2, nrow(df)), , drop = FALSE]
+
+  # First column = variable name; subsequent cols = values for each well
+  var_names <- trimws(as.character(design_rows[[1]]))
+
+  # Remove empty variable rows
+  keep_rows <- nzchar(var_names)
+  design_rows <- design_rows[keep_rows, , drop = FALSE]
+  var_names   <- var_names[keep_rows]
+
+  if (length(var_names) == 0) {
+    gc_abort("Wide design file: no design variable rows found.")
+  }
+
+  # ---- Build output data.frame ----
+  out <- data.frame(Well = well_names, stringsAsFactors = FALSE)
+
+  for (r in seq_len(nrow(design_rows))) {
+    vals <- trimws(as.character(unlist(design_rows[r, well_col_idx])))
+    # Replace empty strings with NA
+    vals[!nzchar(vals)] <- NA_character_
+    out[[var_names[r]]] <- vals
+  }
+
+  out
+}
+
+# ------------------------------------------------------------
+# extract_design_blocks_wide()
+#
+# Purpose:
+#   Extract variable names from a wide design file
+#   (all row labels except Well_type).
+# ------------------------------------------------------------
+
+extract_design_blocks_wide <- function(file) {
+
+  df <- read_csv_safe(file, header = FALSE)
+
+  if (nrow(df) < 2) return(character(0))
+
+  var_names <- trimws(as.character(df[[1]][seq(2, nrow(df))]))
+  var_names <- var_names[nzchar(var_names)]
+
+  setdiff(var_names, "Well_type")
+}
+
+gc_read_design <- function(designfile, blocklist, design_file_format = NULL) {
+
+  # ---- Detect format ----
+  dfmt <- if (!is.null(design_file_format)) {
+    design_file_format
+  } else {
+    detect_design_format(designfile)
+  }
+
+  if (dfmt == "wide") {
+
+    # Wide: read directly and return
+    my_design <- read_design_wide(designfile)
+
+    # Validate requested variables exist
+    avail <- setdiff(names(my_design), "Well")
+    missing_vars <- setdiff(unlist(blocklist), c(avail, "Well_type"))
+    if (length(missing_vars) > 0) {
+      gc_abort(paste0(
+        "Wide design file is missing requested variable(s): ",
+        paste(missing_vars, collapse = ", ")
+      ))
+    }
+
+    # Remove accidental row labels (A-H) for non-Well_type vars
+    for (v in setdiff(names(my_design), c("Well", "Well_type"))) {
+      my_design[[v]] <- as.character(my_design[[v]])
+      my_design[[v]][my_design[[v]] %in% LETTERS[1:8]] <- NA
+    }
+
+    return(my_design)
+  }
+
+  # ---- Block format (original logic) ----
   designstartvector <- seq(2, by = 10, length.out = length(blocklist))
   designendvector   <- seq(9, by = 10, length.out = length(blocklist))
-  
+
   # ----------------------------------------------------------
   # Normalize design file BEFORE gcplyr
   # ----------------------------------------------------------
   df_clean <- read_csv_safe(designfile, header = FALSE)
-  
+
   tmp_design <- tempfile(fileext = ".csv")
-  
+
   utils::write.table(
     df_clean,
     tmp_design,
@@ -683,7 +1117,7 @@ gc_read_design <- function(designfile, blocklist) {
     quote = TRUE,
     fileEncoding = "UTF-8"
   )
-  
+
   # ----------------------------------------------------------
   # Use normalized temp file
   # ----------------------------------------------------------
@@ -693,13 +1127,13 @@ gc_read_design <- function(designfile, blocklist) {
     startrow    = designstartvector,
     endrow      = designendvector
   )
-  
+
   # Remove accidental row labels (A-H)
   for (v in blocklist[-1]) {
     my_design[[v]] <- as.character(my_design[[v]])
     my_design[[v]][my_design[[v]] %in% LETTERS[1:8]] <- NA
   }
-  
+
   my_design
 }
 
@@ -711,24 +1145,35 @@ gc_read_design <- function(designfile, blocklist) {
 # ------------------------------------------------------------
 extract_design_blocks <- function(designfile,
                                   start_row = 1,
-                                  stride    = 10) {
-  
+                                  stride    = 10,
+                                  design_file_format = NULL) {
+
+  dfmt <- if (!is.null(design_file_format)) {
+    design_file_format
+  } else {
+    detect_design_format(designfile)
+  }
+
+  if (dfmt == "wide") {
+    return(extract_design_blocks_wide(designfile))
+  }
+
   df <- read_csv_safe(
     designfile,
     header = FALSE,
     nrows = -1
   )
-  
+
   blocks <- character()
   r      <- start_row
-  
+
   while (r <= nrow(df)) {
     val <- trimws(as.character(df[r, 1]))
     if (is.na(val) || val == "") break
     blocks <- c(blocks, val)
     r <- r + stride
   }
-  
+
   setdiff(blocks, "Well_type")
 }
 
@@ -769,17 +1214,20 @@ gc_import_data <- function(
     design_vars,
     hrs,
     interval,
-    format = c("plate_reader", "ocelloscope")
+    format = c("plate_reader", "ocelloscope"),
+    raw_data_format    = NULL,
+    design_file_format = NULL
 ) {
-  
+
   format <- match.arg(format)
-  
+
   # ---- Blocklist ----
   blocklist <- c(list("Well_type"), as.list(design_vars))
-  
+
   # ---- Validate design variables ----
-  available_blocks <- extract_design_blocks(designfile)
-  
+  available_blocks <- extract_design_blocks(designfile,
+                                            design_file_format = design_file_format)
+
   missing_vars <- setdiff(design_vars, available_blocks)
   if (length(missing_vars) > 0) {
     gc_abort(paste0(
@@ -787,19 +1235,20 @@ gc_import_data <- function(
       paste(missing_vars, collapse = ", ")
     ))
   }
-  
+
   # ==========================================================
   # READ RAW DATA (instrument-specific)
   # ==========================================================
-  
+
   imported_tidy <- gc_read_raw_data(
-    rawdatafile = rawdatafile,
-    designfile  = designfile,   
-    hrs         = hrs,
-    interval    = interval,
-    format      = format
-  )  
-  
+    rawdatafile     = rawdatafile,
+    designfile      = designfile,
+    hrs             = hrs,
+    interval        = interval,
+    format          = format,
+    raw_data_format = raw_data_format
+  )
+
   if (is.null(imported_tidy) || nrow(imported_tidy) == 0) {
     gc_abort(paste(
       "No data available after import.",
@@ -811,39 +1260,40 @@ gc_import_data <- function(
       sep = "\n"
     ))
   }
-  
+
   if (max(imported_tidy$Time, na.rm = TRUE) > 200) {
     warning("Time appears to still be in minutes - expected hours.")
   }
   # ==========================================================
   # READ DESIGN (shared)
   # ==========================================================
-  
+
   my_design <- gc_read_design(
-    designfile = designfile,
-    blocklist  = blocklist
+    designfile         = designfile,
+    blocklist          = blocklist,
+    design_file_format = design_file_format
   )
-  
+
   # ==========================================================
   # MERGE + CLEAN (shared)
   # ==========================================================
-  
+
   merged_data <- gcplyr::merge_dfs(imported_tidy, my_design)
-  
+
   if (any(duplicated(merged_data[c("Well", "Time")]))) {
     warning(
       "Duplicate (Well, Time) pairs detected after merging raw data and design."
     )
   }
-  
+
   if (nrow(merged_data) == 0) {
     gc_abort("No overlapping wells between data and design.")
   }
-  
+
   merged_data <- na.omit(merged_data)
-  
+
   merged_data$Time <- as.numeric(merged_data$Time)
-  
+
   list(
     merged_data = merged_data,
     blocklist   = blocklist
@@ -1867,7 +2317,9 @@ gc_write_summaries <- function(core,
                                params,
                                instrument,
                                out_dir,
-                               region) {
+                               region,
+                               raw_data_format    = NULL,
+                               design_file_format = NULL) {
   
   if (!is.data.frame(core$data_forplots)) {
     gc_abort("Core data is invalid - cannot write summaries.")
@@ -1922,6 +2374,8 @@ gc_write_summaries <- function(core,
       "rawdatafile",
       "designfile",
       "instrument",
+      "raw_data_format",
+      "design_file_format",
       "blank_correction_mode",
       "duration (hrs)",
       "interval (min)",
@@ -1933,6 +2387,8 @@ gc_write_summaries <- function(core,
       safe_val(gc_normalize_path_for_export(params$rawdatafile)),
       safe_val(gc_normalize_path_for_export(params$designfile)),
       safe_val(instrument),
+      safe_val(if (!is.null(raw_data_format)) raw_data_format else "block"),
+      safe_val(if (!is.null(design_file_format)) design_file_format else "block"),
       safe_val(if (!is.null(core$blank_mode)) core$blank_mode else "none"),
       safe_val(params$hrs),
       safe_val(params$interval * 60),
@@ -2149,7 +2605,9 @@ run_gc <- function(
     blank_mode = "plate",
     batch  = TRUE,
     cancel = NULL,
-    region = "US"
+    region = "US",
+    raw_data_format    = NULL,
+    design_file_format = NULL
 ) {
   
   pkgs <- gc_check_packages()
@@ -2249,12 +2707,14 @@ run_gc <- function(
   # ==========================================================
   
   imported <- gc_import_data(
-    rawdatafile = prep$inputs$rawdatafile,
-    designfile  = prep$inputs$designfile,
-    design_vars = prep$params$design_vars,
-    hrs         = prep$params$hrs,
-    interval    = prep$params$interval,
-    format      = instrument
+    rawdatafile        = prep$inputs$rawdatafile,
+    designfile         = prep$inputs$designfile,
+    design_vars        = prep$params$design_vars,
+    hrs                = prep$params$hrs,
+    interval           = prep$params$interval,
+    format             = instrument,
+    raw_data_format    = raw_data_format,
+    design_file_format = design_file_format
   )
   
   use_blank <- instrument == "plate_reader"
@@ -2312,7 +2772,9 @@ run_gc <- function(
     blank_mode    = core$blank_mode,
     core          = core,
     plots         = plots,
-    blankmed      = core$blankmed
+    blankmed      = core$blankmed,
+    raw_data_format    = raw_data_format %||% detect_plate_format(rawdatafile),
+    design_file_format = design_file_format %||% detect_design_format(designfile)
   )
 }
 
