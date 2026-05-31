@@ -1725,6 +1725,8 @@ server <- function(input, output, session) {
   
   last_export_dir <- reactiveVal(NULL)
   
+  single_run_root <- reactiveVal(NULL)
+  
   shiny::observeEvent(input$install_no, {
     stopApp()
   })
@@ -4221,8 +4223,18 @@ B           0   0   1
                        )
                      )
                      
+                     
+                     dirs <- make_export_dirs(
+                       wd = wd_path(),
+                       prefix = input$prefix %||% ""
+                     )
+                     
+                     single_run_root(dirs$analysis_dir)
+                     
+                     dir.create(single_run_root(), recursive = TRUE, showWarnings = FALSE)
+                     
                      single_debug_log <- if (isTRUE(gc_dev_mode())) {
-                       file.path(wd_path(), "Analysis", "_single_debug_log.txt")
+                       file.path(single_run_root(), "_single_debug_log.txt")
                      } else {
                        NULL
                      }
@@ -4352,6 +4364,7 @@ B           0   0   1
     enforce_blank_mode_state(session, input$instrument)
     
     shinyjs::disable("export_files")
+    single_run_root(NULL)
     
   })
   
@@ -5033,13 +5046,21 @@ B           0   0   1
     f <- res$params
     
     # Build output directories explicitly
-    dirs <- make_export_dirs(wd = wd_path(), prefix = f$prefix)
+    analysis_dir <- single_run_root()
+    
+    if (is.null(analysis_dir) || !nzchar(analysis_dir)) {
+      analysis_dir <- make_export_dirs(
+        wd = wd_path(),
+        prefix = f$prefix
+      )$analysis_dir
+      single_run_root(analysis_dir)
+    }
     
     # Derive plate name from raw file
     fname <- tools::file_path_sans_ext(input$raw_file)
     
     # Nest inside per-plate folder
-    plate_dir <- file.path(dirs$analysis_dir, fname)
+    plate_dir <- file.path(analysis_dir, fname)
     
     last_export_dir(plate_dir)
     
