@@ -464,7 +464,7 @@ format_plate_reader_data <- function(df, design_file, interval = NULL) {
   
   wells <- extract_well_names(raw_cols)
   
-  design_wells <- get_design_wells(design_file)
+  design_wells <- get_design_wells_any(design_file)
   
   # ---- TEMP UNIQUE ----
   tmp_names <- make.unique(wells)
@@ -653,7 +653,7 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   # ----------------------------------------------------------
   # 4. GET DESIGN WELLS (DO THIS EARLY)
   # ----------------------------------------------------------
-  design_wells <- get_design_wells(design_file)
+  design_wells <- get_design_wells_any(design_file)
 
   # ----------------------------------------------------------
   # 5. TEMPORARY UNIQUE NAMES (SAFETY ONLY)
