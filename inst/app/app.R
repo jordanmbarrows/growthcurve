@@ -4948,9 +4948,10 @@ B           0   0   1
     
     dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
     
-    
+    batch_debug_name <- paste0(basename(root_path), "_debug_log.txt")
+
     batch_debug_log <- if (isTRUE(gc_dev_mode())) {
-      file.path(root_path, "_batch_debug_log.txt")
+      file.path(root_path, batch_debug_name)
     } else {
       NULL
     }
@@ -5111,6 +5112,22 @@ B           0   0   1
       incProgress(0.2, "Creating directories")
       
       dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
+      
+      if (isTRUE(gc_dev_mode()) &&
+          !is.null(single_debug_temp()) &&
+          file.exists(single_debug_temp())) {
+        
+        debug_name <- paste0(
+          basename(analysis_dir),
+          "_debug_log.txt"
+        )
+        
+        file.copy(
+          from = single_debug_temp(),
+          to   = file.path(analysis_dir, debug_name),
+          overwrite = TRUE
+        )
+      }
       
       incProgress(0.5, "Saving plots")
       
