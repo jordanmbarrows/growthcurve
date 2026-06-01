@@ -571,10 +571,15 @@ server <- function(input, output, session) {
     b
   
   batch_trace <- function(...) {
-    if (isTRUE(gc_dev_mode())) {
-      message(...)
+    if (!isTRUE(getOption("gc.dev_mode", FALSE))) {
+      return(invisible(NULL))
     }
+    message(...)
+    invisible(TRUE)
   }
+  
+  print(getOption("gc.dev_mode"))
+  print(gc_dev_mode())
   
   
   output$startup_error <- shiny::renderText({
@@ -4470,7 +4475,7 @@ B           0   0   1
                                    maybe_finish_fn,
                                    region) {
     
-    message(sprintf("BATCH: entered run_one_plate_future for plate %s", i))
+    batch_trace(sprintf("BATCH: entered run_one_plate_future for plate %s", i))
     
     plate_name <- basename(pairs_val$data_file[i])
     
@@ -4482,7 +4487,7 @@ B           0   0   1
       region    = region
     )
     
-    message(sprintf("BATCH: creating future_promise for plate %s", i))
+    batch_trace(sprintf("BATCH: creating future_promise for plate %s", i))
     
     prom <- promises::future_promise(expr = {
       
@@ -4921,7 +4926,7 @@ B           0   0   1
       }
       
       i <- bs$queue[[1]]
-      message(sprintf("BATCH: launching plate index %s", i))
+      batch_trace(sprintf("BATCH: launching plate index %s", i))
       
       bs$queue <- bs$queue[-1]
       bs$running <- bs$running + 1L
