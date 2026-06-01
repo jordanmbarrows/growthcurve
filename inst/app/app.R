@@ -578,10 +578,6 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
   
-  print(getOption("gc.dev_mode"))
-  print(gc_dev_mode())
-  
-  
   output$startup_error <- shiny::renderText({
     if (exists("gc_startup_error", envir = .GlobalEnv)) {
       paste("Startup error:\n", gc_startup_error)

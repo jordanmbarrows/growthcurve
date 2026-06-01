@@ -2827,8 +2827,12 @@ gc_save_report <- function(plots, file, plate_name = NULL) {
     p <- plots[[name]]
     
     if (!is.null(p)) {
-      print(p)
+      if (isTRUE(getOption("gc.dev_mode", FALSE))) {
+        print(p)
+      } else {
+        suppressWarnings(print(p))
       }
+    }
   }
   
   dev.off()
