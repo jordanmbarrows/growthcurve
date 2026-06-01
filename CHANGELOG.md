@@ -17,6 +17,7 @@
 - Added comprehensive debug logging including well/design/data matching and progress updates in the console as well as an exported debug file that includes progress flags, total and active wells, and several other informative metrics.
   - Exported file is written to timestamped run directory
   - Debug logging is dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
+  - All console output (including ggplot2 warnings) is now suppressed in production mode
 
 ### Fixed: oCelloscope well assignment in design parsing
 
