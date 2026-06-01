@@ -19,13 +19,14 @@
   - Debug logging is dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
   - All console output (including ggplot2 warnings) is now suppressed in production mode
 
-### Fixed: oCelloscope well assignment in design parsing
+### Fixes
 
 - Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches
   - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
   -Corrected oCelloscope design parsing so that active wells are assigned according to the actual design file layout. Active values in the oCelloscope design template begin in plate column 2; older output behavior was consistent with a one-column-right shift followed by truncation during raw/design overlap.
     -This affected oCelloscope well assignment and replicate grouping in previous versions. Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
 - Fixed bug where blank mode radio buttons were not disabled after running single plate analysis
+- Fixed bug where batch mode was writing `plate_name` to `prefix` column in `plate_tidy.csv`
 
 
 ## [1.0.10] - 2026-05-29
