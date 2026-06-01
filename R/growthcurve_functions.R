@@ -1721,7 +1721,18 @@ gc_import_data <- function(
   mapping_table$Well <- factor(mapping_table$Well, levels = plate_levels)
   mapping_table <- mapping_table[order(mapping_table$Well), , drop = FALSE]
   mapping_table$Well <- as.character(mapping_table$Well)
-  print(mapping_table)
+  if (isTRUE(getOption("gc.dev_mode", FALSE)) &&
+      !is.null(debug_logfile) &&
+      is.character(debug_logfile) &&
+      length(debug_logfile) == 1 &&
+      nzchar(debug_logfile)) {
+    
+    capture.output(
+      print(mapping_table),
+      file = debug_logfile,
+      append = TRUE
+    )
+  }
   
   gc_dbg_file(debug_logfile, "---- ACTIVE WELL SET COMPARISON ----")
   gc_dbg_file(debug_logfile, "n common active wells = ", length(in_active_common))
