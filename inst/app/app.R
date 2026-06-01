@@ -1993,38 +1993,50 @@ server <- function(input, output, session) {
 
   # Wide design preview: highlight first row (well names) and first col (variable names)
   build_design_preview_table_wide <- function(df) {
-    rows <- lapply(seq_len(min(30, nrow(df))), function(i) {
-      cells <- lapply(seq_len(ncol(df)), function(j) {
-        val <- df[i, j]
+    df[] <- lapply(df, function(x) ifelse(is.na(x), "", as.character(x)))
+    
+    # First row becomes the visible table header
+    header_vals <- unlist(df[1, , drop = TRUE])
+    body_df <- if (nrow(df) > 1) df[-1, , drop = FALSE] else df[0, , drop = FALSE]
+    
+    header_row <- tags$tr(
+      lapply(seq_along(header_vals), function(j) {
+        val <- header_vals[[j]]
+        style_parts <- c(
+          "border: 1px solid rgba(120,120,120,0.2);",
+          "font-weight: bold;",
+          "background-color: rgba(0,0,0,0.04);"
+        )
+        if (j == 1) {
+          style_parts <- c(style_parts, "border: 2px solid rgba(80,80,80,0.4);")
+        }
+        tags$th(style = paste(style_parts, collapse = " "), val)
+      })
+    )
+    
+    body_rows <- lapply(seq_len(nrow(body_df)), function(i) {
+      cells <- lapply(seq_len(ncol(body_df)), function(j) {
+        val <- body_df[i, j]
         if (is.na(val)) val <- ""
+        
         style_parts <- c("border: 1px solid rgba(120,120,120,0.2);")
-        # First col = variable name
-        if (j == 1)
-          style_parts <- c(style_parts, "font-weight: bold; border: 2px solid rgba(80,80,80,0.4);")
+        if (j == 1) {
+          style_parts <- c(style_parts, "font-weight: bold;")
+        }
+        
         tags$td(style = paste(style_parts, collapse = " "), val)
       })
       tags$tr(cells)
     })
-
-    # Header row: well names
-    header_cells <- lapply(seq_len(ncol(df)), function(j) {
-      val <- names(df)[j]
-      style_parts <- c(
-        "border: 1px solid rgba(120,120,120,0.2);",
-        "font-weight: bold; background: rgba(80,80,80,0.07);"
-      )
-      tags$th(style = paste(style_parts, collapse = " "), val)
-    })
-
-    needs_expand <- any(nchar(unlist(df)) > 10, na.rm = TRUE)
+    
     tags$table(
-      class = paste("design-preview-table", if (needs_expand) "expanding" else ""),
+      class = "design-preview-table expanding",
       style = "border-collapse: collapse;",
-      tags$thead(tags$tr(header_cells)),
-      tags$tbody(rows)
+      tags$thead(header_row),
+      tags$tbody(body_rows)
     )
   }
-  
+    
   shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
@@ -3459,29 +3471,28 @@ B           0   0   1
   
   output$batch_design_preview <- shiny::renderUI({
     req(input$batch_design_dir)
+    
     files <- list.files(input$batch_design_dir, full.names = TRUE)
     if (length(files) == 0) return(NULL)
+    
     file <- files[1]
     req(!is.na(file), file.exists(file))
-
+    
     dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
-
+    
     if (dfmt == "wide") {
-      return(tryCatch({
-        df_wide <- read_design_wide(file)
-        df_wide <- format_preview_df(df_wide, region_selected())
-        build_design_preview_table_wide(df_wide)
-      }, error = function(e) {
-        preview_warning_box(paste("Wide design preview error:", gc_get_message(e)))
-      }))
+      df <- read_preview_file(file, nrows = 20)
+      req(df)
+      df <- format_preview_df(df, region_selected())
+      return(build_design_preview_table_wide(df))
     }
-
+    
     df <- read_preview_file(file, nrows = 100)
     req(df)
     df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
-  
+    
   output$aggregate_ui <- shiny::renderUI({
     if (!wd_set())
       return(NULL)
