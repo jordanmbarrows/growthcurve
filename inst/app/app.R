@@ -570,6 +570,13 @@ server <- function(input, output, session) {
   else
     b
   
+  batch_trace <- function(...) {
+    if (isTRUE(gc_dev_mode())) {
+      message(...)
+    }
+  }
+  
+  
   output$startup_error <- shiny::renderText({
     if (exists("gc_startup_error", envir = .GlobalEnv)) {
       paste("Startup error:\n", gc_startup_error)
@@ -4463,6 +4470,8 @@ B           0   0   1
                                    maybe_finish_fn,
                                    region) {
     
+    message(sprintf("BATCH: entered run_one_plate_future for plate %s", i))
+    
     plate_name <- basename(pairs_val$data_file[i])
     
     future_globals <- list(
@@ -4472,6 +4481,8 @@ B           0   0   1
       root_path = root_path,
       region    = region
     )
+    
+    message(sprintf("BATCH: creating future_promise for plate %s", i))
     
     prom <- promises::future_promise(expr = {
       
@@ -4501,7 +4512,7 @@ B           0   0   1
         suppressWarnings(suppressMessages(expr))
       }
       
-      if (exists("gc_log") && gc_dev_mode()) {
+      if (exists("gc_log") && isTRUE(getOption("gc.dev_mode"))) {
         try(gc_log(paste("Worker starting plate", i)), silent = TRUE)
       }
       
@@ -4540,8 +4551,7 @@ B           0   0   1
               region             = region,
               raw_data_format    = params$raw_data_format,
               design_file_format = params$design_file_format,
-              debug_logfile      = params$debug_logfile,
-              dev_mode           = isTRUE(gc_dev_mode())
+              debug_logfile      = params$debug_logfile
             )
           )
           
@@ -4819,6 +4829,8 @@ B           0   0   1
   
   run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params, old_plan) {
     
+    batch_trace("BATCH: entered run_batch_async")
+    
     max_workers <- if (isTRUE(params$parallel)) 2L else 1L
     
     batch_abort(FALSE)
@@ -4833,6 +4845,8 @@ B           0   0   1
     bs$successes <- character(0)
     bs$finished <- FALSE
     bs$cancelled <- FALSE
+    
+    batch_trace("BATCH: state initialized")
     
     all_plate_names <- basename(pairs_val$data_file)
     
@@ -4887,6 +4901,8 @@ B           0   0   1
     
     launch_next <- function() {
       
+      batch_trace("BATCH: launch_next called")
+      
       # CHECK CANCEL FIRST (before doing anything)
       if (cancel_requested(root_path)) {
         bs$aborted <- TRUE
@@ -4905,6 +4921,8 @@ B           0   0   1
       }
       
       i <- bs$queue[[1]]
+      message(sprintf("BATCH: launching plate index %s", i))
+      
       bs$queue <- bs$queue[-1]
       bs$running <- bs$running + 1L
       
@@ -4922,6 +4940,7 @@ B           0   0   1
         region = region
       )
     }
+    batch_trace("BATCH: launching initial workers")
     
     for (k in seq_len(max_workers)) {
       launch_next()
@@ -4930,6 +4949,8 @@ B           0   0   1
   
   observeEvent(input$run_batch, {
     req(validated_pairs_cached(), nrow(validated_pairs_cached()) > 0)
+    
+    batch_trace("BATCH: entered observeEvent(run_batch)")
     
     pairs_val <- validated_pairs_cached()
     n <- nrow(pairs_val)
@@ -4997,9 +5018,13 @@ B           0   0   1
         instrument = input$batch_instrument,
         design_file_format = NULL
       ),
-      debug_logfile      = batch_debug_log
+      debug_logfile      = batch_debug_log,
+      dev_mode           = isTRUE(gc_dev_mode())
     )
     
+    batch_trace("BATCH: params built")
+    
+    batch_trace("BATCH: scheduling run_batch_async")
     later::later(function() {
       run_batch_async(
         pairs_val = pairs_val,
