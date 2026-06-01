@@ -4523,7 +4523,7 @@ B           0   0   1
               instrument         = params$instrument,
               blank_mode         = params$blank_mode,
               batch              = TRUE,
-              prefix             = plate_tag,
+              prefix             = params$prefix,
               region             = region,
               raw_data_format    = params$raw_data_format,
               design_file_format = params$design_file_format,
