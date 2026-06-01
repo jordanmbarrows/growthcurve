@@ -3281,20 +3281,16 @@ B           0   0   1
     req(input$design_file, wd_path())
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
-
+    
     dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
-
+    
     if (dfmt == "wide") {
-      result <- tryCatch({
-        df_wide <- read_design_wide(file)
-        df_wide <- format_preview_df(df_wide, region_selected())
-        build_design_preview_table_wide(df_wide)
-      }, error = function(e) {
-        preview_warning_box(paste("Wide design preview error:", gc_get_message(e)))
-      })
-      return(result)
+      df <- read_preview_file(file, nrows = 20)
+      req(df)
+      df <- format_preview_df(df, region_selected())
+      return(build_design_preview_table_wide(df))
     }
-
+    
     df <- read_preview_file(file, nrows = 100)
     req(df)
     df <- format_preview_df(df, region_selected())
