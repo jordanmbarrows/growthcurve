@@ -4479,6 +4479,21 @@ B           0   0   1
       
       options(gc.dev_mode = isTRUE(params$dev_mode))
       
+      worker_log <- function(...) {
+        logfile <- params$debug_logfile
+        
+        if (!isTRUE(getOption("gc.dev_mode"))) {
+          return(invisible(FALSE))
+        }
+        
+        if (!is.character(logfile) || length(logfile) != 1 || is.na(logfile) || !nzchar(logfile)) {
+          return(invisible(FALSE))
+        }
+        
+        cat(..., file = logfile, append = TRUE)
+        invisible(TRUE)
+      }
+      
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
         if (isTRUE(getOption("gc.dev_mode"))) return(expr)
@@ -4498,16 +4513,14 @@ B           0   0   1
         
         # -- Paths defined above, but NO dir.create() yet --
         
-        cat(
+        worker_log(
           paste0(
             format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
             " | APP BATCH | rawdatafile = ", pairs_val$data_file[i],
             " | designfile = ", pairs_val$design_file[i],
             " | vars = ", paste(params$design_vars, collapse = ", "),
             "\n"
-          ),
-          file = params$debug_logfile,
-          append = TRUE
+          )
         )
         
         res <- tryCatch({
@@ -4527,7 +4540,8 @@ B           0   0   1
               region             = region,
               raw_data_format    = params$raw_data_format,
               design_file_format = params$design_file_format,
-              debug_logfile      = params$debug_logfile
+              debug_logfile      = params$debug_logfile,
+              dev_mode           = isTRUE(gc_dev_mode())
             )
           )
           
@@ -4536,7 +4550,7 @@ B           0   0   1
           raw_err <- tryCatch(conditionMessage(e), error = function(...) "Unknown worker error")
           raw_cls <- tryCatch(class(e)[1], error = function(...) "unknown_class")
           
-          cat(
+          worker_log(
             paste0(
               format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
               " | WORKER RAW ERROR | rawdatafile = ", pairs_val$data_file[i],
@@ -4544,9 +4558,7 @@ B           0   0   1
               " | class = ", raw_cls,
               " | error = ", raw_err,
               "\n"
-            ),
-            file = params$debug_logfile,
-            append = TRUE
+             )
           )
           
           err <- growthcurve:::gc_format_error(e, dev = gc_dev_mode())
@@ -4569,16 +4581,14 @@ B           0   0   1
             "Run failed before producing valid output"
           }
           
-          cat(
+          worker_log(
             paste0(
               format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
               " | APP BATCH ERROR | rawdatafile = ", pairs_val$data_file[i],
               " | designfile = ", pairs_val$design_file[i],
               " | error = ", err_msg,
               "\n"
-            ),
-            file = params$debug_logfile,
-            append = TRUE
+            )
           )
           
           return(
@@ -4601,17 +4611,6 @@ B           0   0   1
         
         dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
-        
-        if (isTRUE(gc_dev_mode()) &&
-            !is.null(single_debug_temp()) &&
-            file.exists(single_debug_temp())) {
-          
-          file.copy(
-            from = single_debug_temp(),
-            to   = file.path(plate_dir, "_single_debug_log.txt"),
-            overwrite = TRUE
-          )
-        }
         
         # Re-check after directories exist but before writing outputs
         if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
@@ -4957,10 +4956,6 @@ B           0   0   1
     }
     
     if (!is.null(batch_debug_log) && file.exists(batch_debug_log)) {
-      file.remove(batch_debug_log)
-    }
-    
-    if (file.exists(batch_debug_log)) {
       file.remove(batch_debug_log)
     }
     
