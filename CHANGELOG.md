@@ -9,6 +9,7 @@
   - Plate reader `block` format parser is now more flexible and allows for detection of rectangular blocks anywhere in the source file
     - Can detect partial blocks (rectangles that are not full 96-well plates)
     - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
+  - Design files can also be uploaded in either `block` or `wide` format, and the app will parse each automatically as well
   - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
 - Updated preview table for `wide` format (both plate reader and oCelloscope)
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
