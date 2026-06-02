@@ -89,7 +89,7 @@ This opens the interactive Shiny app.
 
 Example interface for analyzing microbial growth curves:
 
-![Screenshot](inst/app/www/screenshot.png)
+![Screenshot](inst/app/www/app_screenshot.png)
 
 ## Data Requirements
 
@@ -109,7 +109,7 @@ Example interface for analyzing microbial growth curves:
 
 ### Templates
 
-The app includes downloadable design file templates for both **US** and **EU** CSV conventions. Wide-format templates are also available.
+The app includes downloadable block- and wide-format design file templates for both **US** and **EU** CSV conventions.
 
 See the **User Guide** tab in the app for full format specifications and examples.
 
