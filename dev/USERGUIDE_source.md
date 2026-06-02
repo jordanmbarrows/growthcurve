@@ -300,24 +300,25 @@ Duplicate detection key: the combination of plate name and prefix forms a unique
 Plate reader raw exports are technically CSVs, but they are often produced in a format that is not directly parseable by R without preprocessing. The required workflow is:
 
 1.  Open the exported file in Excel
-2.  Save As CSV (standard comma-separated format)
+2.  Save As CSV using your local Excel default CSV format (comma- or semicolon-delimited)
 3.  Use this saved file as the raw data input
 
 Skipping this step may cause parsing to fail.
 
 **Supported formats:** Plate reader files may be in either `block` or `wide` format. The app automatically detects which format is present and parses it accordingly.
 
-- **Block format** is the traditional repeating layout: In the traditional block layout, each timepoint appears as a plate-like numeric block with row labels in the first column. The current parser detects plate-like rectangular data regions flexibly rather than requiring fixed hard-coded positions. The parser (`read_plate_block_flexible()`) scans the file to locate all data blocks automatically, which allows it to handle non-standard layouts and partial plates (blocks smaller than a full 96-well plate). Block detection adds a small amount of runtime compared to fixed-position parsing.
+- **Block format** is the traditional repeating layout: each timepoint appears as a plate-like numeric block with row labels in the first column. The parser (`read_plate_block_flexible()`) detects these rectangular data regions flexibly rather than requiring fixed hard-coded positions.
 - **Wide format** has a single header row of well names and one row per timepoint. The parser (`read_plate_wide()`) reads this directly without block detection.
 
 ### 3.2 Raw Data File — oCelloscope
 
 oCelloscope files require a specific export and preparation workflow:
 
-4.  Export the .xlsx file from the oCelloscope software
-5.  Open in Excel
-6.  Select the raw data sheet
-7.  Use Save As to save that sheet as a CSV
+1.  Export the .xlsx file from the oCelloscope software
+2.  Open in Excel
+3.  Select the raw data sheet
+4.  Use Save As to save that sheet as a CSV using your local Excel default CSV format (comma- or semicolon-delimited)
+5.  Use this saved file as the raw data input
 
 Direct oCelloscope CSV exports are not compatible with this pipeline. Only the workflow above produces a correctly formatted file.
 
@@ -361,6 +362,8 @@ The design file defines the experimental layout of the plate. It must be a CSV f
 - Blocks are separated by exactly one empty row
 - The stride between block headers is exactly 10 rows (1 header + 8 data rows + 1 empty row)
 
+These requirements apply specifically to block-format design files, which are parsed using a strict 8×12 template.
+
 **Wide format** (transposed layout):
 
 - The first row contains well names (e.g., A1, A2, … H12)
@@ -387,8 +390,7 @@ Design parsing is handled internally by `gc_read_design()`, which dispatches to 
 
 | Parameter                | Description |
 |-------------------------|-------------|
-| Design variables        | One or more variable names selected from the design file blocks (excluding `Well_type`). These define the grouping structure for mean curve calculation, derivative computation, and summary statistics. |
-| Duration (hours)        | Duration (hours) is currently validated and recorded for analysis metadata, while the time vector itself is reconstructed from the selected interval and the imported data structure. Must be a positive number. |
+| Duration (hours)        | Recorded as an analysis parameter and included in metadata. The time vector used during import is reconstructed from the selected interval and the imported data structure. Must be a positive number. |
 | Interval (minutes)      | Measurement frequency in minutes. Used to generate the time vector for both instrument types. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
 | Min OD                  | Lower bound of the OD window used for growth rate calculation. Only timepoints with blank-corrected OD greater than this value are analyzed. Default: 0.05 for plate reader, 0.01 for oCelloscope. |
 | Max OD                  | Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Max OD value must be a greater than Min OD. |
@@ -572,9 +574,9 @@ All 11 plots are produced by `gc_build_plots()`, which takes the core compute re
 | Plot 6: Raw derivatives | Absolute growth rate (`deriv`) over time per well within the OD window, colored by `QC_flag`. Useful for checking the magnitude and timing of the growth rate signal. |
 | Plot 7: Per-capita derivatives | Per-capita growth rate (`deriv_percap`, no windowing) over time, colored by `QC_flag`. Shows the unsmoothed growth rate trajectory. |
 | Plot 8: Fitted per-capita with maximum | Windowed and fitted per-capita derivative (`deriv_percap3`), colored by `QC_flag`, with a point at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
-| Plot 9: OD curves with max growth marked | OD curves (from `merged_data_sub`) with a vertical line marking the timepoint of maximum growth for each well, colored by `QC_flag`. |
-| Plot 10: Doubling time summary | Summary dot plots with jitter of doubling time (hours) per experimental group, mean, and 95% CI. Wells are colored by the first design variable. |
-| Plot 11: Maximum growth rate summary | Summary dot plots with jitter of maximum growth rate (per hour) per experimental group, mean, and 95% CI. Wells are colored by the first design variable. |
+| Plot 9: OD curves with max growth marked | OD curves (from `merged_data`, excluding blank wells) with a vertical line marking the timepoint of maximum growth for each well, colored by `QC_flag`. |
+| Plot 10: Doubling time summary | Summary dot plots showing per-well doubling time (hours) values, jittered points, group mean, and 95% CI. Wells are colored by the first design variable. |
+| Plot 11: Maximum growth rate summary | Summary dot plots showing per-well maximum growth rate (per hour) values, jittered points, group mean, and 95% CI. Wells are colored by the first design variable. |
 
 ## 7. Output Files
 
@@ -609,8 +611,8 @@ Note: Some `Argument` names are adjusted from their derived variable names for e
 
 | `Argument` | `Value` |
 |------|---------------------|
-| `rawdatafile` | Full path to the raw data file |
-| `designfile` | Full path to the design file |
+| `rawdatafile` | Path to the raw data file recorded for reproducibility |
+| `designfile` | Path to the design file recorded for reproducibility |
 | `instrument` | `plate_reader` or `ocelloscope` |
 | `raw_data_format` | `block` or `wide` — the detected or recorded format of the raw data file |
 | `design_file_format` | `block` or `wide` — the detected or recorded format of the design file |
@@ -718,7 +720,7 @@ When a raw data file is selected, the app attempts to build a preview of the fil
 When a design file is selected, a separate design preview is also rendered:
 
 - For **block format** design files: the raw file contents are displayed as a styled table with variable block headers highlighted
-- For **wide format** design files: the file is displayed with well names in the header row and variable names in the first column highlighted
+- For **wide format** design files: the file is displayed with well names in the header row and only rows with a defined variable name in the first column shown in the preview
 - In Batch Processing mode, the preview shows the first design file found in the selected design directory
 
 The preview helps users verify that the correct file has been selected and that it is being parsed in the expected format before running analysis.
@@ -733,7 +735,7 @@ Batch Processing can be cancelled mid-run using a Cancel button that appears dur
 
 ### 10.4 Navigation Lock
 
-In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the page is refreshed. Navigation between plot stages is provided by Previous and Next buttons that are enabled/disabled according to the current stage index.
+In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the analysis state is reset. Navigation between plot stages is provided by Previous and Next buttons that are enabled/disabled according to the current stage index.
 
 ### 10.5 User Guide
 
