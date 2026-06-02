@@ -15,6 +15,7 @@ pak::pak("jordanmbarrows/growthcurve")
 library(growthcurve)
 run_growthcurve()
 ```
+Run the above commands in an R session (typically in RStudio) to launch the app.
 
 ## Installation
 
