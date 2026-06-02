@@ -3463,9 +3463,16 @@ server <- function(input, output, session) {
     dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
     
     if (dfmt == "wide") {
-      df <- read_preview_file(file, nrows = 20)
+      df <- read_preview_file(file, nrows = 100)
       req(df)
+      
+      # Keep row 1 (the Well row), and then only rows whose first column is non-empty
+      keep_rows <- seq_len(nrow(df)) == 1 |
+        nzchar(trimws(as.character(df[[1]])))
+      
+      df <- df[keep_rows, , drop = FALSE]
       df <- format_preview_df(df, region_selected())
+      
       return(build_design_preview_table_wide(df))
     }
     
@@ -3647,9 +3654,16 @@ server <- function(input, output, session) {
     dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
     
     if (dfmt == "wide") {
-      df <- read_preview_file(file, nrows = 20)
+      df <- read_preview_file(file, nrows = 100)
       req(df)
+      
+      # Keep row 1 (the Well row), and then only rows whose first column is non-empty
+      keep_rows <- seq_len(nrow(df)) == 1 |
+        nzchar(trimws(as.character(df[[1]])))
+      
+      df <- df[keep_rows, , drop = FALSE]
       df <- format_preview_df(df, region_selected())
+      
       return(build_design_preview_table_wide(df))
     }
     
