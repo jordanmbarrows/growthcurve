@@ -2,35 +2,35 @@
 
 ## Unreleased
 
-- Added flexibility to input file strategy
-  - Plate reader vs oCelloscope detection works simply by searching for `TANormalized`
-  - Plate reader inputs are now quickly scanned to determine if `block` or `wide` format
-  - Both `block` and `wide` format are automatically parsed
-  - Plate reader `block` format parser is now more flexible and allows for detection of rectangular blocks anywhere in the source file
-    - Can detect partial blocks (rectangles that are not full 96-well plates)
-    - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
-  - Design files can also be uploaded in either `block` or `wide` format, and the app will parse each automatically as well
-  - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
-  - Updated User Guide tab sections with relevant info for new file import capabilities
-    - Added us and eu format wide preview file templates
-- Updated preview table for `wide` format (both plate reader and oCelloscope)
-- Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
-- Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
-  - Completed plates are now defined as those that have results written to the disk, rather than those that started processing.  
-- Added comprehensive debug logging including well/design/data matching and progress updates in the console as well as an exported debug file that includes progress flags, total and active wells, and several other informative metrics.
-  - Exported file is written to timestamped run directory
-  - Debug logging is dev-mode only. Console debug output and temporary debug log files are suppressed for normal users and enabled only when `gc.dev_mode` is active.
-  - All console output (including ggplot2 warnings) is now suppressed in production mode
+- Nothing to see here...please come back later. :)
 
-### Fixes
+## [1.1.0]
 
-- Fixed hidden bug with design file input leading to phantom 13th column and well assignment mismatches for oCelloscope analyses
-  - Replaced `gcplyr::import_block_designs` and `gcplyr::merge_dfs` because the updated pipeline handles those actions better
-  -Corrected oCelloscope design parsing so that active wells are assigned according to the actual design file layout. Active values in the oCelloscope design template begin in plate column 2; older output behavior was consistent with a one-column-right shift followed by truncation during raw/design overlap.
-    -This affected oCelloscope well assignment and replicate grouping in previous versions. Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
-- Fixed bug where blank mode radio buttons were not disabled after running single plate analysis
-- Fixed bug where batch mode was writing `plate_name` to `prefix` column in `plate_tidy.csv`
+This release adds flexible block/wide input support, improves batch cancellation and debugging, and fixes several important design parsing issues.
 
+### Added
+
+- Automatic detection of block vs wide raw data formats
+- Support for wide design files
+- `raw_data_format` and `design_file_format` recorded in `Analysis_arguments.csv`
+- Wide-format preview updates
+- Dev-mode debug logging files and structured import diagnostics
+- Wide-format template downloads
+
+### Changed
+
+- Plate reader block parser is now more flexible and can detect rectangular data blocks more broadly within source files
+- Batch cancellation now interrupts active analyses earlier and defines completed plates based on files written to disk
+- Console output is suppressed in production mode
+- User Guide updated to document new import behavior
+
+### Fixed
+
+- Phantom 13th-column / oCelloscope design alignment bug affecting well assignment
+  - **Important:** Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
+- Blank mode radio-button state after single runs
+- Batch `prefix` column writing plate name instead of prefix
+- Explicit `subset_by = Well` in derivative calculations for future-proofing and cleaner behavior
 
 ## [1.0.10] - 2026-05-29
 
