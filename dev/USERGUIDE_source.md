@@ -335,7 +335,7 @@ After locating the `TANormalized` header, the parser:
 
 **Instrument detection** happens before any parsing. The app scans the incoming file for a line beginning with `TANormalized`. Files containing this marker are classified as oCelloscope format; all others are treated as plate reader files.
 
-**Well name extraction** applies to any file read in wide format — both oCelloscope data and wide-format plate reader files. Some instruments include extra text appended to well names in column headers (e.g., `A1_raw` or `A1 (OD600)`). Well identifiers are extracted from column headers using the regex pattern `^([A-H][0-9]+).*` via `extract_well_names()`, which strips any trailing suffixes, leaving only the bare well identifier. If duplicate well names result after stripping, analysis aborts with an error asking the user to remove the redundant columns from the input file. Block-format plate reader files are not affected, as well names are constructed from row labels and column indices rather than read from headers.
+**Well name extraction** applies to any file read in wide format — both oCelloscope data and wide-format plate reader files. Some instruments include extra text appended to well names in column headers (e.g., `A1_raw` or `A1 (OD600)`). Well identifiers are extracted from column headers using the regex pattern `^([A-H][0-9]+).*` via `extract_well_names()`, which strips any trailing suffixes, leaving only the bare well identifier. In the wide plate-reader import path, if duplicate well names result after stripping, analysis aborts with an error asking the user to remove the redundant columns from the input file. Block-format plate reader files are not affected, as well names are constructed from row labels and column indices rather than read from headers.
 
 ### 3.4 CSV Format Compatibility
 
@@ -380,7 +380,7 @@ Block format
 Wide format
 ![an image showing an example layout of a design file with well type, strain, and treatment variables in wide format with example designations in corresponding wells](inst/app/www/wide_design_file_image.png)
 
-Design variable selection: the app reads all design variable names from the design file. Design variables are detected automatically from the design file and used to populate the analysis grouping structure.
+Design variables are extracted automatically from the design file and used to define the grouping structure for downstream analysis.
 
 Design parsing is handled internally by `gc_read_design()`, which dispatches to format-specific parsers (`read_design_block_strict()` for block format, `read_design_wide()` for wide format) without requiring any external package functions for the design import step. Row labels (single letters A–H) that appear in design variable columns as an artifact of the block format are removed after import.
 
@@ -391,7 +391,7 @@ Design parsing is handled internally by `gc_read_design()`, which dispatches to 
 | Parameter                | Description |
 |-------------------------|-------------|
 | Duration (hours)        | Recorded as an analysis parameter and included in metadata. The time vector used during import is reconstructed from the selected interval and the imported data structure. Must be a positive number. |
-| Interval (minutes)      | Measurement frequency in minutes. Used to generate the time vector for both instrument types. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
+| Interval (minutes) | Measurement frequency in minutes. Used to reconstruct the analysis time vector during import for both instrument types in normal app use. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
 | Min OD                  | Lower bound of the OD window used for growth rate calculation. Only timepoints with blank-corrected OD greater than this value are analyzed. Default: 0.05 for plate reader, 0.01 for oCelloscope. |
 | Max OD                  | Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Max OD value must be a greater than Min OD. |
 
@@ -484,7 +484,6 @@ After either raw-data path, the tidy imported data is merged with the parsed des
 
 The design file format (`block` or `wide`) is normally detected automatically by `detect_design_format()`. Internally, this can be overridden by passing `design_file_format` explicitly, but this is not exposed as a user-facing option in the current app.
 
-- `detect_design_format()` determines the design format unless `design_file_format` is already known.
 - `read_design_block_strict()` is used for block-format design files.
 - `read_design_wide()` is used for wide-format design files.
 - `extract_design_blocks()` / `extract_design_blocks_wide()` are used to validate that requested design variables are present before import proceeds.
@@ -560,7 +559,7 @@ QC flags are joined back onto the `merged_data`, `merged_data_sub`, and `ex_dat_
 
 ## 6. Diagnostic Plots
 
-All 11 plots are produced by `gc_build_plots()`, which takes the core compute results and the shared `ggplot` theme as inputs. In Single Plate mode, plots are displayed one at a time with stage navigation. In Batch Processing mode, all plots are rendered directly to the PDF report without display.
+Up to 11 plots are produced by `gc_build_plots()`, which takes the core compute results and the shared `ggplot` theme as inputs. In Single Plate mode, plots are displayed one at a time with stage navigation. In Batch Processing mode, all plots are rendered directly to the PDF report without display.
 
 `QC_flag` coloring is applied to relevant plots using `gc_qc_scale()`, which maps `OK` wells to black, `WARN` wells to orange (`#E69F00`), and `FAIL` wells to light grey at reduced opacity (alpha = 0.3). This allows rapid visual identification of problematic wells across all summary plots.
 
@@ -582,7 +581,7 @@ All 11 plots are produced by `gc_build_plots()`, which takes the core compute re
 
 ### 7.1 Plot Report (`plate_report.pdf`)
 
-The PDF report contains all 11 diagnostic plots, one per page. It is generated by `gc_save_report()`, which renders each `ggplot` object sequentially to a PDF device. The plate name (derived from the raw data filename) is used as the report title. This file is intended as a visual quality-control record accompanying each analysis.
+The PDF report contains up to 11 diagnostic plots, one per page. It is generated by `gc_save_report()`, which renders each `ggplot` object sequentially to a PDF device. The plate name (derived from the raw data filename) is used as the report title. This file is intended as a visual quality-control record accompanying each analysis.
 
 ### 7.2 Tidy Results (`plate_tidy.csv`)
 
@@ -607,7 +606,7 @@ The tidy format means that `max_growth` and `doub_time` appear as separate rows 
 ### 7.3 Analysis Metadata (`Analysis_arguments.csv`)
 
 A two-column key-value CSV recording the parameters used for the analysis. This file provides a complete audit trail for reproducibility. 
-Note: Some `Argument` names are adjusted from their derived variable names for extra clarity. 
+Note: Several exported `Argument` labels are human-readable metadata labels rather than the internal variable names used in code.
 
 | `Argument` | `Value` |
 |------|---------------------|
@@ -713,7 +712,7 @@ The Open export folder button in export dialogs uses `open_folder()`, which disp
 When a raw data file is selected, the app attempts to build a preview of the file contents:
 
 - For plate reader files in **block format**: the first 20 rows of the raw CSV are displayed as a table
-- For plate reader files in **wide format**: the growth data is extracted and the first 20 rows are displayed, using the selected interval to compute approximate time values
+- For plate reader files in **wide format**: the growth data is extracted and the first 20 rows are displayed, with the preview time axis reconstructed from the selected interval when needed
 - For oCelloscope files: the `TANormalized` data block is extracted and the first 20 rows are displayed, using the selected interval to compute approximate time values
 - If the oCelloscope preview requires a design file that has not yet been selected, a message is shown instead of a table
 
