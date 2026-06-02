@@ -2873,8 +2873,10 @@ server <- function(input, output, session) {
           ),
           
           fluidRow(
-            column(6, downloadButton("download_template_us", "US format (comma)")),
-            column(6, downloadButton("download_template_eu", "European format (semicolon)"))
+            column(6, downloadButton("download_block_template_us", "US block format (comma)")),
+            column(6, downloadButton("download_block_template_eu", "European block format (semicolon)")),
+            column(6, downloadButton("download_wide_template_us", "US wide format (comma)")),
+            column(6, downloadButton("download_wide_template_eu", "European wide format (semicolon)"))
           )
         )
       ),
@@ -3166,8 +3168,10 @@ server <- function(input, output, session) {
     )
   }
   
-  output$download_template_us <- make_template_handler("design_template_us.csv")
-  output$download_template_eu <- make_template_handler("design_template_eu.csv")
+  output$download_block_template_us <- make_template_handler("block_design_template_us.csv")
+  output$download_block_template_eu <- make_template_handler("block_design_template_eu.csv")
+  output$download_wide_template_us  <- make_template_handler("wide_design_template_us.csv")
+  output$download_wide_template_eu  <- make_template_handler("wide_design_template_eu.csv")
   
   output$stage_ready <- reactive({
     !is.null(analysis_result())

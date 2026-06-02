@@ -1,18 +1,18 @@
 Well_type,1,2,3,4,5,6,7,8,9,10,11,12,,,,,,
 A,,,,,,,,,,,,,,,,,,IMPORTANT:
 B,,,,,,,,,,,,,<---Fill in each well with either:,,,,,Remove all unused blocks
-C,,,,,,,,,,,,,"Blank (for blank wells: use exactly ""Blank"")",,,,,"If adding more blocks, make sure blocks are separated by exactly one row"
+C,,,,,,,,,,,,,"Blank (for blank wells: use exactly ""Blank"")",,,,,If adding more blocks: make sure blocks are separated by exactly one row
 D,,,,,,,,,,,,,Sample (for sample wells: can use any name),,,,,Minimum of 1 design variable is necessary for analysis
 E,,,,,,,,,,,,,,,,,,Make sure to name your design variable(s) in the top-left cell of each block
-F,,,,,,,,,,,,,,,,,,"Do not modify the ""Well_type"" cell text, as the analysis will look for that specific format to detect the first block"
+F,,,,,,,,,,,,,,,,,,"Do not modify the ""Well_type"" cell text. The analysis will look for that specific format to detect the first block"
 G,,,,,,,,,,,,,,,,,,Leave cells corresponding to empty wells empty
 H,,,,,,,,,,,,,,,,,,"(Optional) Copy ""Blank"" wells from Well_type into each design variable block"
  ,,,,,,,,,,,,,,,,,,
 Design variable 1,1,2,3,4,5,6,7,8,9,10,11,12,,,,,,
 A,,,,,,,,,,,,,,,,,,
 B,,,,,,,,,,,,,<---Fill in these wells with:,,,,,
-C,,,,,,,,,,,,,"Design variable 1 identifiers (e.g., strain number for Strain)",,,,,
-D,,,,,,,,,,,,,"Values can be any identifiers you choose (e.g., strain names, treatments, plate IDs, etc.)",,,,,
+C,,,,,,,,,,,,,Design variable 1 identifiers (eg strain number for Strain),,,,,
+D,,,,,,,,,,,,,Values can be any identifiers you choose (eg strain names/treatments/plate IDs etc),,,,,
 E,,,,,,,,,,,,,,,,,,
 F,,,,,,,,,,,,,,,,,,
 G,,,,,,,,,,,,,,,,,,
@@ -21,8 +21,8 @@ H,,,,,,,,,,,,,,,,,,
 Design variable 2,1,2,3,4,5,6,7,8,9,10,11,12,,,,,,
 A,,,,,,,,,,,,,,,,,,
 B,,,,,,,,,,,,,<---Fill in these wells with:,,,,,
-C,,,,,,,,,,,,,"Design variable 2 identifiers (e.g., treatment types for Treatment)",,,,,
-D,,,,,,,,,,,,,"Values can be any identifiers you choose (e.g., strain names, treatments, plate IDs, etc.)",,,,,
+C,,,,,,,,,,,,,Design variable 2 identifiers (eg treatment types for Treatment),,,,,
+D,,,,,,,,,,,,,Values can be any identifiers you choose (eg strain names/treatments/plate IDs etc),,,,,
 E,,,,,,,,,,,,,,,,,,
 F,,,,,,,,,,,,,,,,,,
 G,,,,,,,,,,,,,,,,,,
@@ -31,8 +31,8 @@ H,,,,,,,,,,,,,,,,,,
 Design variable 3,1,2,3,4,5,6,7,8,9,10,11,12,,,,,,
 A,,,,,,,,,,,,,,,,,,
 B,,,,,,,,,,,,,<---Fill in these wells with:,,,,,
-C,,,,,,,,,,,,,"Design variable 3 identifiers (e.g., plate IDs for Plate ID)",,,,,
-D,,,,,,,,,,,,,"Values can be any identifiers you choose (e.g., strain names, treatments, plate IDs, etc.)",,,,,
+C,,,,,,,,,,,,,Design variable 3 identifiers (eg plate IDs for Plate ID),,,,,
+D,,,,,,,,,,,,,Values can be any identifiers you choose (eg strain names/treatments/plate IDs etc),,,,,
 E,,,,,,,,,,,,,,,,,,
 F,,,,,,,,,,,,,,,,,,
 G,,,,,,,,,,,,,,,,,,
