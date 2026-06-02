@@ -176,9 +176,13 @@ ui <- shiny::fluidPage(
       :root[data-bs-theme='dark'] .guide-note { opacity: 0.9; }
       html.dark-mode .guide-container pre { background: #2d2d2d !important; }
 
-    /* ---- Design example table ---- */
-      #design_example_table table { table-layout: fixed; }
-      #design_example_table td { min-width: 70px; text-align: center; }
+    /* ---- Design example block ---- */
+      #design_example_block table { table-layout: fixed; }
+      #design_example_block td { min-width: 70px; text-align: center; }
+      
+      /* ---- Design example wide ---- */
+      #design_example_wide table { table-layout: fixed; }
+      #design_example_wide td { min-width: 70px; text-align: center; }
 
     /* ---- Preview table ---- */
       .preview-table table {
@@ -1631,16 +1635,16 @@ server <- function(input, output, session) {
     list(run_flags = run_flags, duplicate_map = duplicate_map)
   }
   
-  design_example <- reactive({
+  design_example_block <- reactive({
     path <- system.file(
       "app/preview_files",
-      "plate_design_for_preview.csv",
+      "block_design_for_preview.csv",
       package = "growthcurve"
     )
     
     # fallback for development
     if (path == "") {
-      path <- file.path("preview_files", "plate_design_for_preview.csv")
+      path <- file.path("preview_files", "block_design_for_preview.csv")
     }
     
     if (!file.exists(path))
@@ -1649,8 +1653,34 @@ server <- function(input, output, session) {
     read_preview_file(path, nrows = 30)
   })
   
-  output$design_example_table <- shiny::renderTable({
-    df <- design_example()
+  output$design_example_block <- shiny::renderTable({
+    df <- design_example_block()
+    req(df)
+    df <- format_preview_df(df, region_selected())
+    df
+    
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = FALSE, na = "")
+  
+  design_example_wide <- reactive({
+    path <- system.file(
+      "app/preview_files",
+      "wide_design_for_preview.csv",
+      package = "growthcurve"
+    )
+    
+    # fallback for development
+    if (path == "") {
+      path <- file.path("preview_files", "wide_design_for_preview.csv")
+    }
+    
+    if (!file.exists(path))
+      return(NULL)
+    
+    read_preview_file(path, nrows = 4)
+  })
+  
+  output$design_example_wide <- shiny::renderTable({
+    df <- design_example_wide()
     req(df)
     df <- format_preview_df(df, region_selected())
     df
@@ -2336,7 +2366,7 @@ server <- function(input, output, session) {
           h4("Design variables"),
           
           tags$p(
-            "Design variables describe the experimental layout of the plate (e.g., strain, treatment, replicate)."
+            "Design variables describe the experimental layout of the plate (e.g., strain, treatment, plate ID)."
           ),
           
           tags$ul(
@@ -2400,17 +2430,16 @@ server <- function(input, output, session) {
         tags$div(
           style = guide_body_style(),
           
-          p(strong(
-            "Important: file preparation step required"
-          )),
+          p(strong("Important: file preparation step required")),
           
           p(
-            "Plate reader output files must be re-saved to ensure a consistent CSV format."
+            "Plate reader output files should be re-saved in Excel before analysis ",
+            "to ensure a consistent CSV format."
           ),
           
           tags$ol(
             tags$li("Open the CSV file in Excel"),
-            tags$li("If prompted, import it as a comma-separated table"),
+            tags$li("If prompted, import it as a comma- or semicolon-separated table"),
             tags$li("Use File -> Save As and save it again as a CSV file")
           ),
           
@@ -2422,14 +2451,18 @@ server <- function(input, output, session) {
           
           tags$hr(),
           
-          p("Expected structure:"),
+          p("Supported structures:"),
           
           tags$ul(
-            tags$li("96-well plate layout (rows A-H, columns 1-12)"),
-            tags$li("May contain multiple reads (kinetic measurements)"),
             tags$li(
-              "Includes header/metadata rows (these are handled automatically)"
-            )
+              strong("Block format:"),
+              " repeated 96-well plate layouts (rows A-H, columns 1-12) across timepoints"
+            ),
+            tags$li(
+              strong("Wide format:"),
+              " a single table with well names as column headers (e.g., A1, B2, C3)"
+            ),
+            tags$li("Both formats may include extra metadata or header rows, which are handled automatically")
           ),
           
           tags$p(
@@ -2438,16 +2471,32 @@ server <- function(input, output, session) {
             "No manual reformatting is required beyond re-saving the file in Excel."
           ),
           
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Raw data files are flexible with respect to well-name labels. For example, a raw data column such as 'B10_sample' will automatically be interpreted as well 'B10'."
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Raw data files may include a time column, and this does not need to be removed. For consistency, the app reconstructs the time axis from the selected interval rather than relying on the file's time column."
+          ),
+          
           tags$hr(),
           
-          p("Example data format snippet:"),
+          p("Example block-format snippet:"),
           
           tags$pre(
-            "      1     2     3     ...\n
-A   0.09  0.09  0.09\n
-B   0.09  0.09  0.09\n
-C   0.09  0.09  0.09\n
-...\n"
+            "      1     2     3     ...\nA   0.09  0.09  0.09\nB   0.09  0.09  0.09\nC   0.09  0.09  0.09\n..."
+          ),
+          
+          tags$hr(),
+          
+          p("Example wide-format snippet:"),
+          
+          tags$pre(
+            "Time   A1    A2    A3    ...    B1    B2    B3  ...\n0      0.09  0.09  0.09  ...  0.09  0.09  0.09  ...\n15     0.10  0.10  0.10  ...  0.10  0.11  0.10  ...\n30     0.12  0.12  0.13  ...  0.11  0.13  0.12  ..."
           )
         )
       ),
@@ -2520,6 +2569,18 @@ C   0.09  0.09  0.09\n
             style = guide_note_style(),
             class = "guide-note",
             "The app automatically extracts the correct TANormalized block and formats it for analysis."
+          ),
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The raw export may include time information, but this does not need to be modified. For consistency across analyses, the app reconstructs the time axis from the selected interval during import."
+          ),
+          
+          tags$hr(),
+          p("Example oCelloscope snippet:"),
+          
+          tags$pre(
+            "Time   A1    A2    A3    ...    B1    B2    B3  ...\n0      0.01  0.01  0.02  ...  0.01  0.01  0.01  ...\n10     0.02  0.02  0.03  ...  0.03  0.02  0.02  ...\n20     0.04  0.03  0.03  ...  0.04  0.03  0.04  ..."
           )
         )
       ),
@@ -2536,110 +2597,205 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             "The design file describes what each well in your plate contains ",
-            "(e.g., strain, treatment, replicate). It is used to group wells and calculate summary statistics."
+            "(e.g., strain, treatment, plate ID). It is used to group wells and calculate summary statistics."
           ),
           
           tags$p(
-            "It is structured as multiple full plate layouts stacked on top of each other, ",
-            "where each block defines a single variable."
+            "Two design file formats are supported: ",
+            strong("block format"), " and ", strong("wide format"), "."
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Think of it as a stack of identical 96-well plates, each labeling a different attribute."
+            "Both formats are supported for plate reader and oCelloscope data in single and batch mode."
           ),
           
-          hr(),
+          tags$hr(),
           
-          h4("Structure rules"),
+          # -----------------------------------------------------
+          # BLOCK FORMAT
+          # -----------------------------------------------------
+          h4("Block format (stacked layout)"),
           
-          tags$ul(
-            tags$li("Each variable is one block (e.g., Strain, Treatment)."),
-            tags$li("Each block must be a complete 96-well layout (A-H, 1-12)."),
-            tags$li("The top-left cell of each block contains the variable name.",
-              tags$ul(
-                tags$li("Design variable names should not end with _ (e.g., Strain_), as names ending with _ are reserved for internal use during analysis and aggregation.")
-              )      
-                    ),
-            tags$li(
-              "Each block must contain one header row followed by eight rows (A-H)."
-            ),
-            tags$li("All blocks must have identical dimensions and alignment."),
-            tags$li("Each block must be separated by one completely empty row."),
-            tags$li(
-              "The 'Well_type' variable must always be included as the first block."
-            ),
-            tags$li(
-              "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
-            ),
-            tags$li(
-              "Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."
-            ),
-            tags$li("Cells representing unused wells must be left empty")
+          tags$p(
+            "Block format represents the design as multiple full plate layouts stacked vertically, ",
+            "where each block defines one variable."
           ),
           
           tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Each block must begin with the variable name in the top-left cell (e.g., 'Strain')."
+            style = guide_note_style(),
+            class = "guide-note",
+            "Think of this as a stack of identical 96-well plates, each labeling a different attribute."
           ),
           
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Empty wells must remain completely empty and must not contain any text."
-          ),
+          tags$p("Structure:"),
           
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Important: 'Well_type' and 'Blank' must be written exactly as shown (including capitalization). These are interpreted specially by the analysis. All other names and values are read as-is."
-          ),
-          
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Important: If blocks are misaligned or incomplete, the analysis will fail."
-          ),
-          
-          hr(),
-          
-          h4("Visual layout"),
-          
-          tags$p("Example of two variables (Strain and Treatment):"),
           
           tags$pre(
-            "Strain   1   2   3   ...
-A        WT  WT  KO
-B        WT  KO  KO
-...
-
-[empty row required]
-
-Treatment   1   2   3   ...
-A           0   1   1
-B           0   0   1
-..."
+            "Strain      1    2    3   ...\nA          WT   WT   KO\nB          WT   KO   KO\n...\n[empty row required]\nTreatment   1    2    3   ...\nA           0    1    1\nA           0    1    1\n...",
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Every position (e.g., B3) must correspond across all blocks."
+            "Every well position must correspond across all variables."
+          ),
+          
+          h5("Structure rules"),
+          
+          tags$ul(
+            tags$li("Each variable is stored in its own block (e.g., Strain, Treatment)."),
+            tags$li("Each block must be a complete 96-well layout (rows A-H, columns 1-12)."),
+            tags$li(
+              "The top-left cell of each block must contain the variable name.",
+              tags$ul(
+                tags$li("Variable names should not end with '_' because this is reserved internally.")
+              )
+            ),
+            tags$li("Each block must contain one header row followed by eight rows (A-H)."),
+            tags$li("All blocks must be aligned and separated by one completely empty row."),
+            tags$li("The 'Well_type' block must always be included as the first block."),
+            tags$li("'Well_type' and 'Blank' are case-sensitive and must be written exactly like this."),
+            tags$li("Cells representing unused wells must be left empty.")
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Blocks must be complete, aligned, and correctly spaced or the analysis will fail."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # WIDE FORMAT
+          # -----------------------------------------------------
+          h4("Wide format (spreadsheet layout)"),
+          
+          tags$p(
+            "Wide format represents the design as a single table where each column corresponds to one well."
+          ),
+          
+          tags$p("Structure:"),
+          
+          tags$pre(
+            "Well         A1       A2       A3      ...\nWell_type    Sample   Sample   Blank\nStrain       WT       WT       KO\nTreatment    Drug     Drug     Control\n...",
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "The example and preview use different plate layouts and values. Only the structure (block format and alignment) must match - the contents will depend on your experiment."
+            "Every well position must correspond across all variables."
           ),
           
-          hr(),
+          h5("Structure rules"),
           
-          div(class = "preview-table-fixed-rows", tableOutput("design_example_table")),
+          tags$ul(
+            tags$li("The first row defines well names (A1-H12)."),
+            tags$li("Each subsequent row defines one variable (e.g., Well_type, Strain, Treatment)."),
+            tags$li("The Well_type row must always be included as the first row below Well."),
+            tags$li("Column 1 contains variable names."),
+            tags$li("Each remaining column corresponds to one well."),
+            tags$li("Unused wells should be left empty.")
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Well names in design files must be exact plate positions (e.g., A1-H12)."
+          ),
+          
+          tags$ul(
+            tags$li("Valid examples: A1, B2, H12"),
+            tags$li("Invalid examples: B2_sample, C3_raw, H12_OD")
+          ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "This preview shows how blocks are stacked and aligned."
+            "If wide-format design well names contain additional text, they will not be recognized."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # WELL NAME HANDLING
+          # -----------------------------------------------------
+          h4("Well name handling (important)"),
+          
+          tags$p(
+            "Design files and raw data files are handled differently:"
+          ),
+          
+          tags$ul(
+            tags$li(
+              strong("Design files:"),
+              " well names must be exact well positions (A1-H12)."
+            ),
+            tags$li(
+              strong("Raw data files:"),
+              " longer labels are accepted and trimmed automatically (e.g., B10_sample -> B10)."
+            )
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "You do not need to rename raw data columns to match the design file format."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # REPLICATE HANDLING
+          # -----------------------------------------------------
+          h4("Replicate handling"),
+          
+          tags$p(
+            "Do not include technical replicate as a design variable. ",
+            "Technical replicates are identified automatically from repeated wells ",
+            "with the same design values."
+          ),
+          
+          tags$p(
+            "If your experiment includes biological replicates, include them as a normal ",
+            "design variable (e.g., BioRep)."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # VISUAL EXAMPLE
+          # -----------------------------------------------------
+          h4("Visual preview examples"),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The preview examples may use different values. Only the structure must be followed."
+          ),
+          
+          tags$p("Block layout"),
+          
+          div(class = "preview-table-fixed-rows", tableOutput("design_example_block")),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "This preview illustrates block layout."
+          ),
+          
+          tags$hr(),
+          
+          tags$p("Wide layout"),
+          
+          div(class = "preview-table-fixed-rows", tableOutput("design_example_wide")),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "This preview illustrates wide layout."
           )
+          
         )
       ),
       
@@ -2652,28 +2808,38 @@ B           0   0   1
           style = guide_body_style(),
           
           p(
-            "Templates provide a ready-to-use design file with the correct structure."
+            "Templates provide ready-to-use design files with the correct structure."
           ),
           
           tags$ul(
-            tags$li("Each block represents one variable."),
+            tags$li("Templates are available in both block format and wide format."),
+            
             tags$li(
-              "Replace the template cells with your own experimental design."
+              strong("Block format templates:"),
+              tags$ul(
+                tags$li("Each block represents one variable."),
+                tags$li("Blocks must remain aligned and separated by one empty row."),
+                tags$li("Do not insert, delete, or move rows or columns.")
+              )
             ),
+            
             tags$li(
-              "Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."
+              strong("Wide format templates:"),
+              tags$ul(
+                tags$li("The first row defines well names (A1-H12)."),
+                tags$li("Each subsequent row defines one variable."),
+                tags$li("Do not modify the well-name row.")
+              )
             ),
-            tags$li(
-              "To add a variable, copy a full block, paste it below, and rename it. Remember to leave one empty row between blocks."
-            ),
-            tags$li(
-              "Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty."
-            )
+            
+            tags$li("Replace template values with your own experimental design."),
+            tags$li("Blank wells only need to be defined in the Well_type row/block."),
+            tags$li("Cells can contain any identifiers appropriate for your experiment (e.g., strain, treatment, plate ID).")
           ),
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Do not change the layout of a block (do not insert, delete, or move rows or columns). Only modify the values inside existing cells."
+            "Do not modify the structure of the template (block layout or well-name row). Only edit cell values."
           ),
           
           tags$p(
@@ -2683,26 +2849,22 @@ B           0   0   1
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Remove any unused blocks from the template before running the analysis."
-          ),
-          
-          tags$p(
-            style = "color: #1f78b4;",
-            "The template files include instructions to the right of the blocks. They will not interfere with analysis."
-          ),
-          
-          tags$p(
-            style = guide_note_style(),
-            "Minimum requirement: one experimental variable (in addition to Well_type) is enough to run an analysis."
+            "Remove any unused blocks or variable rows from the template before running the analysis."
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Tip: Start by editing the template rather than creating a file from scratch."
+            "Wide format templates may be easier to edit in spreadsheet software, while block format more closely reflects plate layout."
           ),
           
-          hr(),
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Tip: Start by editing a template rather than creating a design file from scratch."
+          ),
+          
+          tags$hr(),
           
           tags$p(
             style = guide_note_style(),
