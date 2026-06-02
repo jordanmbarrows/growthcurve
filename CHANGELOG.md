@@ -4,7 +4,7 @@
 
 - Nothing to see here...please come back later. :)
 
-## [1.1.0]
+## [1.1.0] - 2026-06-02
 
 This release adds flexible block/wide input support, improves batch cancellation and debugging, and fixes several important design parsing issues.
 
