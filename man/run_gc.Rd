@@ -19,7 +19,8 @@ run_gc(
   cancel = NULL,
   region = "US",
   raw_data_format = NULL,
-  design_file_format = NULL
+  design_file_format = NULL,
+  debug_logfile = NULL
 )
 }
 \description{
