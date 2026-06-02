@@ -11,6 +11,8 @@
     - Increases analysis runtime because scanning files and designing custom detection vectors takes longer
   - Design files can also be uploaded in either `block` or `wide` format, and the app will parse each automatically as well
   - Added `raw_data_format` and `design_file_format` fields to `Analysis_args.csv` to record `block` vs `wide` format
+  - Updated User Guide tab sections with relevant info for new file import capabilities
+    - Added us and eu format wide preview file templates
 - Updated preview table for `wide` format (both plate reader and oCelloscope)
 - Explicitly assigned `subset_by = Well` in all `gcplyr::calc_deriv` calls for future-proofing and console noise
 - Cancellation during batch mode now kills current plate analyses so that it happens more quickly after user presses button.
