@@ -176,9 +176,13 @@ ui <- shiny::fluidPage(
       :root[data-bs-theme='dark'] .guide-note { opacity: 0.9; }
       html.dark-mode .guide-container pre { background: #2d2d2d !important; }
 
-    /* ---- Design example table ---- */
-      #design_example_table table { table-layout: fixed; }
-      #design_example_table td { min-width: 70px; text-align: center; }
+    /* ---- Design example block ---- */
+      #design_example_block table { table-layout: fixed; }
+      #design_example_block td { min-width: 70px; text-align: center; }
+      
+      /* ---- Design example wide ---- */
+      #design_example_wide table { table-layout: fixed; }
+      #design_example_wide td { min-width: 70px; text-align: center; }
 
     /* ---- Preview table ---- */
       .preview-table table {
@@ -252,7 +256,6 @@ ui <- shiny::fluidPage(
   });
 "))
   ),
-  
   
   
   shiny::tagList(if (!gc_backend_ready()) {
@@ -390,7 +393,9 @@ ui <- shiny::fluidPage(
             ),
             
             selectInput("batch_data_dir", "Raw data directory", choices = NULL),
-            
+
+
+
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data (first file)")),
               tags$div(
@@ -399,9 +404,11 @@ ui <- shiny::fluidPage(
                 uiOutput("batch_raw_preview_ui")
               )
             ),
-            
+
             selectInput("batch_design_dir", "Design file directory", choices = NULL),
-            
+
+
+
             tags$details(
               tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file (first pair)")),
               tags$div(style = guide_body_style(), div(
@@ -409,7 +416,7 @@ ui <- shiny::fluidPage(
               ))
             ),
           ),
-          
+
           uiOutput("batch_ui")  # rest of UI
         ),
         tabPanel(
@@ -494,9 +501,14 @@ server <- function(input, output, session) {
   read_preview_file <- growthcurve:::read_preview_file
   
   # --- Parsing / preview ---
-  extract_design_blocks <- growthcurve:::extract_design_blocks
-  build_preview         <- growthcurve:::build_preview
-  build_preview_label   <- growthcurve:::build_preview_label
+  extract_design_blocks    <- growthcurve:::extract_design_blocks
+  build_preview            <- growthcurve:::build_preview
+  build_preview_label      <- growthcurve:::build_preview_label
+  detect_plate_format      <- growthcurve:::detect_plate_format
+  detect_design_format     <- growthcurve:::detect_design_format
+  read_plate_wide          <- growthcurve:::read_plate_wide
+  read_design_wide         <- growthcurve:::read_design_wide
+  extract_design_blocks_wide <- growthcurve:::extract_design_blocks_wide
   
   # --- Utilities ---
   pretty_export_path       <- growthcurve:::pretty_export_path
@@ -562,6 +574,14 @@ server <- function(input, output, session) {
   else
     b
   
+  batch_trace <- function(...) {
+    if (!isTRUE(getOption("gc.dev_mode", FALSE))) {
+      return(invisible(NULL))
+    }
+    message(...)
+    invisible(TRUE)
+  }
+  
   output$startup_error <- shiny::renderText({
     if (exists("gc_startup_error", envir = .GlobalEnv)) {
       paste("Startup error:\n", gc_startup_error)
@@ -569,6 +589,29 @@ server <- function(input, output, session) {
       ""
     }
   })
+  
+  resolve_design_vars <- function(designfile,
+                                  selected_vars = NULL,
+                                  instrument = NULL,
+                                  design_file_format = NULL) {
+    
+    inferred <- extract_design_blocks(
+      designfile,
+      design_file_format = design_file_format
+    )
+    
+    # For oCelloscope: always use the inferred full structure
+    if (identical(instrument, "ocelloscope")) {
+      return(inferred)
+    }
+    
+    # For plate reader: use explicit user selection if present
+    if (!is.null(selected_vars) && length(selected_vars) > 0) {
+      return(selected_vars)
+    }
+    
+    inferred
+  }
   
   observe({
     session$sendCustomMessage(
@@ -1107,10 +1150,35 @@ server <- function(input, output, session) {
         "Successfully processed plate(s):"
       }
       
-      processed <- unique(successes)
+      
+      # --- Determine processed plates from actual written outputs ---
+      processed <- character(0)
+      
+      if (dir.exists(root_path)) {
+        tidy_files <- list.files(
+          path = root_path,
+          pattern = "^plate_tidy\\.csv$",
+          recursive = TRUE,
+          full.names = TRUE
+        )
+        
+        if (length(tidy_files) > 0) {
+          # plate_tidy.csv lives inside the per-plate folder
+          processed_dirs <- basename(dirname(tidy_files))
+          
+          # Map folder names back to original plate filenames
+          # because all_plate_names still include ".csv"
+          processed <- all_plate_names[
+            tools::file_path_sans_ext(all_plate_names) %in% processed_dirs
+          ]
+        }
+      }
+      
+      processed <- unique(processed)
       not_processed <- setdiff(all_plate_names, processed)
       
-      completed_str <- paste0(completed_val, " of ", n)
+      completed_count <- length(processed)
+      completed_str <- paste0(completed_count, " of ", n)
       
       # --- Close progress ---
       if (isTRUE(batch_state$progress_open)) {
@@ -1131,11 +1199,11 @@ server <- function(input, output, session) {
       failure_ui <- shiny::tagList()
       
       # successes
-      if (length(successes) > 0) {
+      if (length(processed) > 0) {
         failure_ui <- tagAppendChildren(
           failure_ui,
           p(strong(label_success)),
-          tags$ul(lapply(successes, tags$li))
+          tags$ul(lapply(processed, tags$li))
         )
       }
       
@@ -1165,13 +1233,22 @@ server <- function(input, output, session) {
         )
       }
       
-      if (length(successes) == 0) {
-        if (completed_val > 0) {
+      if (length(processed) == 0) {
+        if (isTRUE(cancelled)) {
+          failure_ui <- shiny::tagList(
+            p(strong("Remaining plate(s):")),
+            tags$ul(
+              lapply(not_processed, function(x) {
+                tags$li(tags$span(style = "color: #555;", x))
+              })
+            )
+          )
+        } else if (completed_val > 0) {
           failure_ui <- tagList(
             p(
               HTML(paste0(
                 "The analysis could not be completed. Please check that:
-                <br><br>",
+          <br><br>",
                 "1. You have selected the correct instrument.<br>",
                 "2. You have selected the correct input files.<br>",
                 "3. Your input files are formatted correctly."
@@ -1558,16 +1635,16 @@ server <- function(input, output, session) {
     list(run_flags = run_flags, duplicate_map = duplicate_map)
   }
   
-  design_example <- reactive({
+  design_example_block <- reactive({
     path <- system.file(
       "app/preview_files",
-      "plate_design_for_preview.csv",
+      "block_design_for_preview.csv",
       package = "growthcurve"
     )
     
     # fallback for development
     if (path == "") {
-      path <- file.path("preview_files", "plate_design_for_preview.csv")
+      path <- file.path("preview_files", "block_design_for_preview.csv")
     }
     
     if (!file.exists(path))
@@ -1576,8 +1653,34 @@ server <- function(input, output, session) {
     read_preview_file(path, nrows = 30)
   })
   
-  output$design_example_table <- shiny::renderTable({
-    df <- design_example()
+  output$design_example_block <- shiny::renderTable({
+    df <- design_example_block()
+    req(df)
+    df <- format_preview_df(df, region_selected())
+    df
+    
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", colnames = FALSE, na = "")
+  
+  design_example_wide <- reactive({
+    path <- system.file(
+      "app/preview_files",
+      "wide_design_for_preview.csv",
+      package = "growthcurve"
+    )
+    
+    # fallback for development
+    if (path == "") {
+      path <- file.path("preview_files", "wide_design_for_preview.csv")
+    }
+    
+    if (!file.exists(path))
+      return(NULL)
+    
+    read_preview_file(path, nrows = 4)
+  })
+  
+  output$design_example_wide <- shiny::renderTable({
+    df <- design_example_wide()
     req(df)
     df <- format_preview_df(df, region_selected())
     df
@@ -1604,7 +1707,8 @@ server <- function(input, output, session) {
       }
       
       vars <- tryCatch(
-        extract_design_blocks(dfile),
+        extract_design_blocks(dfile,
+                              design_file_format = NULL),
         error = function(e = NULL)
           character(0)
       )
@@ -1658,6 +1762,10 @@ server <- function(input, output, session) {
   analysis_result <- reactiveVal(NULL)
   
   last_export_dir <- reactiveVal(NULL)
+  
+  single_run_root <- reactiveVal(NULL)
+  
+  single_debug_temp <- reactiveVal(NULL)
   
   shiny::observeEvent(input$install_no, {
     stopApp()
@@ -1912,7 +2020,53 @@ server <- function(input, output, session) {
       tags$tbody(rows)
     )
   }
-  
+
+  # Wide design preview: highlight first row (well names) and first col (variable names)
+  build_design_preview_table_wide <- function(df) {
+    df[] <- lapply(df, function(x) ifelse(is.na(x), "", as.character(x)))
+    
+    # First row becomes the visible table header
+    header_vals <- unlist(df[1, , drop = TRUE])
+    body_df <- if (nrow(df) > 1) df[-1, , drop = FALSE] else df[0, , drop = FALSE]
+    
+    header_row <- tags$tr(
+      lapply(seq_along(header_vals), function(j) {
+        val <- header_vals[[j]]
+        style_parts <- c(
+          "border: 1px solid rgba(120,120,120,0.2);",
+          "font-weight: bold;",
+          "background-color: rgba(0,0,0,0.04);"
+        )
+        if (j == 1) {
+          style_parts <- c(style_parts, "border: 2px solid rgba(80,80,80,0.4);")
+        }
+        tags$th(style = paste(style_parts, collapse = " "), val)
+      })
+    )
+    
+    body_rows <- lapply(seq_len(nrow(body_df)), function(i) {
+      cells <- lapply(seq_len(ncol(body_df)), function(j) {
+        val <- body_df[i, j]
+        if (is.na(val)) val <- ""
+        
+        style_parts <- c("border: 1px solid rgba(120,120,120,0.2);")
+        if (j == 1) {
+          style_parts <- c(style_parts, "font-weight: bold;")
+        }
+        
+        tags$td(style = paste(style_parts, collapse = " "), val)
+      })
+      tags$tr(cells)
+    })
+    
+    tags$table(
+      class = "design-preview-table expanding",
+      style = "border-collapse: collapse;",
+      tags$thead(header_row),
+      tags$tbody(body_rows)
+    )
+  }
+    
   shiny::observeEvent(list(wd_set(), file_refresh()), {
     req(wd_set(), wd_path())
     
@@ -2212,7 +2366,7 @@ server <- function(input, output, session) {
           h4("Design variables"),
           
           tags$p(
-            "Design variables describe the experimental layout of the plate (e.g., strain, treatment, replicate)."
+            "Design variables describe the experimental layout of the plate (e.g., strain, treatment, plate ID)."
           ),
           
           tags$ul(
@@ -2276,17 +2430,16 @@ server <- function(input, output, session) {
         tags$div(
           style = guide_body_style(),
           
-          p(strong(
-            "Important: file preparation step required"
-          )),
+          p(strong("Important: file preparation step required")),
           
           p(
-            "Plate reader output files must be re-saved to ensure a consistent CSV format."
+            "Plate reader output files should be re-saved in Excel before analysis ",
+            "to ensure a consistent CSV format."
           ),
           
           tags$ol(
             tags$li("Open the CSV file in Excel"),
-            tags$li("If prompted, import it as a comma-separated table"),
+            tags$li("If prompted, import it as a comma- or semicolon-separated table"),
             tags$li("Use File -> Save As and save it again as a CSV file")
           ),
           
@@ -2298,14 +2451,18 @@ server <- function(input, output, session) {
           
           tags$hr(),
           
-          p("Expected structure:"),
+          p("Supported structures:"),
           
           tags$ul(
-            tags$li("96-well plate layout (rows A-H, columns 1-12)"),
-            tags$li("May contain multiple reads (kinetic measurements)"),
             tags$li(
-              "Includes header/metadata rows (these are handled automatically)"
-            )
+              strong("Block format:"),
+              " repeated 96-well plate layouts (rows A-H, columns 1-12) across timepoints"
+            ),
+            tags$li(
+              strong("Wide format:"),
+              " a single table with well names as column headers (e.g., A1, B2, C3)"
+            ),
+            tags$li("Both formats may include extra metadata or header rows, which are handled automatically")
           ),
           
           tags$p(
@@ -2314,16 +2471,32 @@ server <- function(input, output, session) {
             "No manual reformatting is required beyond re-saving the file in Excel."
           ),
           
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Raw data files are flexible with respect to well-name labels. For example, a raw data column such as 'B10_sample' will automatically be interpreted as well 'B10'."
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Raw data files may include a time column, and this does not need to be removed. For consistency, the app reconstructs the time axis from the selected interval rather than relying on the file's time column."
+          ),
+          
           tags$hr(),
           
-          p("Example data format snippet:"),
+          p("Example block-format snippet:"),
           
           tags$pre(
-            "      1     2     3     ...\n
-A   0.09  0.09  0.09\n
-B   0.09  0.09  0.09\n
-C   0.09  0.09  0.09\n
-...\n"
+            "      1     2     3     ...\nA   0.09  0.09  0.09\nB   0.09  0.09  0.09\nC   0.09  0.09  0.09\n..."
+          ),
+          
+          tags$hr(),
+          
+          p("Example wide-format snippet:"),
+          
+          tags$pre(
+            "Time   A1    A2    A3    ...    B1    B2    B3  ...\n0      0.09  0.09  0.09  ...  0.09  0.09  0.09  ...\n15     0.10  0.10  0.10  ...  0.10  0.11  0.10  ...\n30     0.12  0.12  0.13  ...  0.11  0.13  0.12  ..."
           )
         )
       ),
@@ -2396,6 +2569,18 @@ C   0.09  0.09  0.09\n
             style = guide_note_style(),
             class = "guide-note",
             "The app automatically extracts the correct TANormalized block and formats it for analysis."
+          ),
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The raw export may include time information, but this does not need to be modified. For consistency across analyses, the app reconstructs the time axis from the selected interval during import."
+          ),
+          
+          tags$hr(),
+          p("Example oCelloscope snippet:"),
+          
+          tags$pre(
+            "Time   A1    A2    A3    ...    B1    B2    B3  ...\n0      0.01  0.01  0.02  ...  0.01  0.01  0.01  ...\n10     0.02  0.02  0.03  ...  0.03  0.02  0.02  ...\n20     0.04  0.03  0.03  ...  0.04  0.03  0.04  ..."
           )
         )
       ),
@@ -2412,110 +2597,205 @@ C   0.09  0.09  0.09\n
           
           tags$p(
             "The design file describes what each well in your plate contains ",
-            "(e.g., strain, treatment, replicate). It is used to group wells and calculate summary statistics."
+            "(e.g., strain, treatment, plate ID). It is used to group wells and calculate summary statistics."
           ),
           
           tags$p(
-            "It is structured as multiple full plate layouts stacked on top of each other, ",
-            "where each block defines a single variable."
+            "Two design file formats are supported: ",
+            strong("block format"), " and ", strong("wide format"), "."
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Think of it as a stack of identical 96-well plates, each labeling a different attribute."
+            "Both formats are supported for plate reader and oCelloscope data in single and batch mode."
           ),
           
-          hr(),
+          tags$hr(),
           
-          h4("Structure rules"),
+          # -----------------------------------------------------
+          # BLOCK FORMAT
+          # -----------------------------------------------------
+          h4("Block format (stacked layout)"),
           
-          tags$ul(
-            tags$li("Each variable is one block (e.g., Strain, Treatment)."),
-            tags$li("Each block must be a complete 96-well layout (A-H, 1-12)."),
-            tags$li("The top-left cell of each block contains the variable name.",
-              tags$ul(
-                tags$li("Design variable names should not end with _ (e.g., Strain_), as names ending with _ are reserved for internal use during analysis and aggregation.")
-              )      
-                    ),
-            tags$li(
-              "Each block must contain one header row followed by eight rows (A-H)."
-            ),
-            tags$li("All blocks must have identical dimensions and alignment."),
-            tags$li("Each block must be separated by one completely empty row."),
-            tags$li(
-              "The 'Well_type' variable must always be included as the first block."
-            ),
-            tags$li(
-              "The reserved names 'Well_type' and 'Blank' are case-sensitive and must be written exactly like this for the analysis to work."
-            ),
-            tags$li(
-              "Blank wells are identified exclusively through the Well_type block. In other variable blocks, these wells can be left empty without affecting the analysis."
-            ),
-            tags$li("Cells representing unused wells must be left empty")
+          tags$p(
+            "Block format represents the design as multiple full plate layouts stacked vertically, ",
+            "where each block defines one variable."
           ),
           
           tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Each block must begin with the variable name in the top-left cell (e.g., 'Strain')."
+            style = guide_note_style(),
+            class = "guide-note",
+            "Think of this as a stack of identical 96-well plates, each labeling a different attribute."
           ),
           
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Empty wells must remain completely empty and must not contain any text."
-          ),
+          tags$p("Structure:"),
           
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Important: 'Well_type' and 'Blank' must be written exactly as shown (including capitalization). These are interpreted specially by the analysis. All other names and values are read as-is."
-          ),
-          
-          tags$p(
-            style = "color: #b22222; font-weight: 600;",
-            "Important: If blocks are misaligned or incomplete, the analysis will fail."
-          ),
-          
-          hr(),
-          
-          h4("Visual layout"),
-          
-          tags$p("Example of two variables (Strain and Treatment):"),
           
           tags$pre(
-            "Strain   1   2   3   ...
-A        WT  WT  KO
-B        WT  KO  KO
-...
-
-[empty row required]
-
-Treatment   1   2   3   ...
-A           0   1   1
-B           0   0   1
-..."
+            "Strain      1    2    3   ...\nA          WT   WT   KO\nB          WT   KO   KO\n...\n[empty row required]\nTreatment   1    2    3   ...\nA           0    1    1\nA           0    1    1\n...",
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Every position (e.g., B3) must correspond across all blocks."
+            "Every well position must correspond across all variables."
+          ),
+          
+          h5("Structure rules"),
+          
+          tags$ul(
+            tags$li("Each variable is stored in its own block (e.g., Strain, Treatment)."),
+            tags$li("Each block must be a complete 96-well layout (rows A-H, columns 1-12)."),
+            tags$li(
+              "The top-left cell of each block must contain the variable name.",
+              tags$ul(
+                tags$li("Variable names should not end with '_' because this is reserved internally.")
+              )
+            ),
+            tags$li("Each block must contain one header row followed by eight rows (A-H)."),
+            tags$li("All blocks must be aligned and separated by one completely empty row."),
+            tags$li("The 'Well_type' block must always be included as the first block."),
+            tags$li("'Well_type' and 'Blank' are case-sensitive and must be written exactly like this."),
+            tags$li("Cells representing unused wells must be left empty.")
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Blocks must be complete, aligned, and correctly spaced or the analysis will fail."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # WIDE FORMAT
+          # -----------------------------------------------------
+          h4("Wide format (spreadsheet layout)"),
+          
+          tags$p(
+            "Wide format represents the design as a single table where each column corresponds to one well."
+          ),
+          
+          tags$p("Structure:"),
+          
+          tags$pre(
+            "Well         A1       A2       A3      ...\nWell_type    Sample   Sample   Blank\nStrain       WT       WT       KO\nTreatment    Drug     Drug     Control\n...",
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "The example and preview use different plate layouts and values. Only the structure (block format and alignment) must match - the contents will depend on your experiment."
+            "Every well position must correspond across all variables."
           ),
           
-          hr(),
+          h5("Structure rules"),
           
-          div(class = "preview-table-fixed-rows", tableOutput("design_example_table")),
+          tags$ul(
+            tags$li("The first row defines well names (A1-H12)."),
+            tags$li("Each subsequent row defines one variable (e.g., Well_type, Strain, Treatment)."),
+            tags$li("The Well_type row must always be included as the first row below Well."),
+            tags$li("Column 1 contains variable names."),
+            tags$li("Each remaining column corresponds to one well."),
+            tags$li("Unused wells should be left empty.")
+          ),
+          
+          tags$p(
+            style = "color: #b22222; font-weight: 600;",
+            "Well names in design files must be exact plate positions (e.g., A1-H12)."
+          ),
+          
+          tags$ul(
+            tags$li("Valid examples: A1, B2, H12"),
+            tags$li("Invalid examples: B2_sample, C3_raw, H12_OD")
+          ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "This preview shows how blocks are stacked and aligned."
+            "If wide-format design well names contain additional text, they will not be recognized."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # WELL NAME HANDLING
+          # -----------------------------------------------------
+          h4("Well name handling (important)"),
+          
+          tags$p(
+            "Design files and raw data files are handled differently:"
+          ),
+          
+          tags$ul(
+            tags$li(
+              strong("Design files:"),
+              " well names must be exact well positions (A1-H12)."
+            ),
+            tags$li(
+              strong("Raw data files:"),
+              " longer labels are accepted and trimmed automatically (e.g., B10_sample -> B10)."
+            )
+          ),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "You do not need to rename raw data columns to match the design file format."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # REPLICATE HANDLING
+          # -----------------------------------------------------
+          h4("Replicate handling"),
+          
+          tags$p(
+            "Do not include technical replicate as a design variable. ",
+            "Technical replicates are identified automatically from repeated wells ",
+            "with the same design values."
+          ),
+          
+          tags$p(
+            "If your experiment includes biological replicates, include them as a normal ",
+            "design variable (e.g., BioRep)."
+          ),
+          
+          tags$hr(),
+          
+          # -----------------------------------------------------
+          # VISUAL EXAMPLE
+          # -----------------------------------------------------
+          h4("Visual preview examples"),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "The preview examples may use different values. Only the structure must be followed."
+          ),
+          
+          tags$p("Block layout"),
+          
+          div(class = "preview-table-fixed-rows", tableOutput("design_example_block")),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "This preview illustrates block layout."
+          ),
+          
+          tags$hr(),
+          
+          tags$p("Wide layout"),
+          
+          div(class = "preview-table-fixed-rows", tableOutput("design_example_wide")),
+          
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "This preview illustrates wide layout."
           )
+          
         )
       ),
       
@@ -2528,28 +2808,38 @@ B           0   0   1
           style = guide_body_style(),
           
           p(
-            "Templates provide a ready-to-use design file with the correct structure."
+            "Templates provide ready-to-use design files with the correct structure."
           ),
           
           tags$ul(
-            tags$li("Each block represents one variable."),
+            tags$li("Templates are available in both block format and wide format."),
+            
             tags$li(
-              "Replace the template cells with your own experimental design."
+              strong("Block format templates:"),
+              tags$ul(
+                tags$li("Each block represents one variable."),
+                tags$li("Blocks must remain aligned and separated by one empty row."),
+                tags$li("Do not insert, delete, or move rows or columns.")
+              )
             ),
+            
             tags$li(
-              "Cells can contain any identifiers (e.g., strain, treatment, replicate, or plate ID)."
+              strong("Wide format templates:"),
+              tags$ul(
+                tags$li("The first row defines well names (A1-H12)."),
+                tags$li("Each subsequent row defines one variable."),
+                tags$li("Do not modify the well-name row.")
+              )
             ),
-            tags$li(
-              "To add a variable, copy a full block, paste it below, and rename it. Remember to leave one empty row between blocks."
-            ),
-            tags$li(
-              "Blank wells only need to be defined in the Well_type block; other blocks can leave these cells empty."
-            )
+            
+            tags$li("Replace template values with your own experimental design."),
+            tags$li("Blank wells only need to be defined in the Well_type row/block."),
+            tags$li("Cells can contain any identifiers appropriate for your experiment (e.g., strain, treatment, plate ID).")
           ),
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Do not change the layout of a block (do not insert, delete, or move rows or columns). Only modify the values inside existing cells."
+            "Do not modify the structure of the template (block layout or well-name row). Only edit cell values."
           ),
           
           tags$p(
@@ -2559,26 +2849,22 @@ B           0   0   1
           
           tags$p(
             style = "color: #b22222; font-weight: 600;",
-            "Remove any unused blocks from the template before running the analysis."
-          ),
-          
-          tags$p(
-            style = "color: #1f78b4;",
-            "The template files include instructions to the right of the blocks. They will not interfere with analysis."
-          ),
-          
-          tags$p(
-            style = guide_note_style(),
-            "Minimum requirement: one experimental variable (in addition to Well_type) is enough to run an analysis."
+            "Remove any unused blocks or variable rows from the template before running the analysis."
           ),
           
           tags$p(
             style = guide_note_style(),
             class = "guide-note",
-            "Tip: Start by editing the template rather than creating a file from scratch."
+            "Wide format templates may be easier to edit in spreadsheet software, while block format more closely reflects plate layout."
           ),
           
-          hr(),
+          tags$p(
+            style = guide_note_style(),
+            class = "guide-note",
+            "Tip: Start by editing a template rather than creating a design file from scratch."
+          ),
+          
+          tags$hr(),
           
           tags$p(
             style = guide_note_style(),
@@ -2587,8 +2873,10 @@ B           0   0   1
           ),
           
           fluidRow(
-            column(6, downloadButton("download_template_us", "US format (comma)")),
-            column(6, downloadButton("download_template_eu", "European format (semicolon)"))
+            column(6, downloadButton("download_block_template_us", "US block format (comma)")),
+            column(6, downloadButton("download_block_template_eu", "European block format (semicolon)")),
+            column(6, downloadButton("download_wide_template_us", "US wide format (comma)")),
+            column(6, downloadButton("download_wide_template_eu", "European wide format (semicolon)"))
           )
         )
       ),
@@ -2880,8 +3168,10 @@ B           0   0   1
     )
   }
   
-  output$download_template_us <- make_template_handler("design_template_us.csv")
-  output$download_template_eu <- make_template_handler("design_template_eu.csv")
+  output$download_block_template_us <- make_template_handler("block_design_template_us.csv")
+  output$download_block_template_eu <- make_template_handler("block_design_template_eu.csv")
+  output$download_wide_template_us  <- make_template_handler("wide_design_template_us.csv")
+  output$download_wide_template_eu  <- make_template_handler("wide_design_template_eu.csv")
   
   output$stage_ready <- reactive({
     !is.null(analysis_result())
@@ -2931,7 +3221,9 @@ B           0   0   1
         choices = c(empty_choice, files),
         selected = ""
       ),
-      
+
+
+
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#128065; Preview raw data")),
         tags$div(
@@ -2940,28 +3232,30 @@ B           0   0   1
           uiOutput("single_raw_preview_ui")
         )
       ),
-      
-      
+
+
       selectInput(
         "design_file",
         "Design file",
         choices = c(empty_choice, files),
         selected = ""
       ),
-      
+
+
+
       tags$details(
         tags$summary(style = guide_summary_style(), HTML("&#129516; Preview design file")),
         tags$div(style = guide_body_style(), div(class = "preview-table", uiOutput(
           "design_preview"
         )))
       ),
-      
+
       hr(),
-      
+
       # =========================================================
       # PARAMETERS
       # =========================================================
-      
+
       numericInput("hrs", "Duration (hours)", 24),
       numericInput("interval_min", "Interval (minutes)", 15, step = 1),
       numericInput("minod", "Min OD", 0.05),
@@ -3031,22 +3325,23 @@ B           0   0   1
   
   single_preview_raw <- reactive({
     req(input$raw_file, wd_path(), input$instrument)
-    
+
     file <- file.path(wd_path(), input$raw_file)
-    
+
     design <- if (nzchar(input$design_file %||% "")) {
       file.path(wd_path(), input$design_file)
     } else {
       NULL
     }
-    
+
     build_preview(file,
                   design,
                   interval = interval_hours(),
-                  instrument = input$instrument)
-    
+                  instrument = input$instrument,
+                  raw_data_format = NULL)
+
   })
-  
+
   single_preview_raw <- bindCache(
     single_preview_raw,
     input$raw_file,
@@ -3102,11 +3397,12 @@ B           0   0   1
       file,
       design,
       interval = input$batch_interval / 60,
-      instrument = input$batch_instrument
+      instrument = input$batch_instrument,
+      raw_data_format = NULL
     )
-    
+
   })
-  
+
   batch_preview_raw <- bindCache(
     batch_preview_raw,
     input$batch_data_dir,
@@ -3136,12 +3432,13 @@ B           0   0   1
   
   output$single_preview_label <- shiny::renderText({
     req(input$raw_file, wd_path())
-    
+
     file <- file.path(wd_path(), input$raw_file)
-    
+
     res <- single_preview_raw()
-    
-    build_preview_label(file, res, instrument = input$instrument)
+
+    build_preview_label(file, res, instrument = input$instrument,
+                        raw_data_format = NULL)
   })
   
   output$single_raw_preview_ui <- shiny::renderUI({
@@ -3162,6 +3459,23 @@ B           0   0   1
     req(input$design_file, wd_path())
     file <- file.path(wd_path(), input$design_file)
     req(file.exists(file))
+    
+    dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
+    
+    if (dfmt == "wide") {
+      df <- read_preview_file(file, nrows = 100)
+      req(df)
+      
+      # Keep row 1 (the Well row), and then only rows whose first column is non-empty
+      keep_rows <- seq_len(nrow(df)) == 1 |
+        nzchar(trimws(as.character(df[[1]])))
+      
+      df <- df[keep_rows, , drop = FALSE]
+      df <- format_preview_df(df, region_selected())
+      
+      return(build_design_preview_table_wide(df))
+    }
+    
     df <- read_preview_file(file, nrows = 100)
     req(df)
     df <- format_preview_df(df, region_selected())
@@ -3323,34 +3637,42 @@ B           0   0   1
     }
     
     res <- batch_preview_raw()
-    
-    build_preview_label(file, res, instrument = isolate(input$batch_instrument))
+
+    build_preview_label(file, res, instrument = isolate(input$batch_instrument),
+                        raw_data_format = NULL)
   })
   
   output$batch_design_preview <- shiny::renderUI({
     req(input$batch_design_dir)
+    
     files <- list.files(input$batch_design_dir, full.names = TRUE)
     if (length(files) == 0) return(NULL)
+    
     file <- files[1]
     req(!is.na(file), file.exists(file))
+    
+    dfmt <- tryCatch(detect_design_format(file), error = function(e) "block")
+    
+    if (dfmt == "wide") {
+      df <- read_preview_file(file, nrows = 100)
+      req(df)
+      
+      # Keep row 1 (the Well row), and then only rows whose first column is non-empty
+      keep_rows <- seq_len(nrow(df)) == 1 |
+        nzchar(trimws(as.character(df[[1]])))
+      
+      df <- df[keep_rows, , drop = FALSE]
+      df <- format_preview_df(df, region_selected())
+      
+      return(build_design_preview_table_wide(df))
+    }
+    
     df <- read_preview_file(file, nrows = 100)
     req(df)
-    
-    print("=== BEFORE FORMATTING ===")
-    print(df)
-    print(sapply(df, class))
-    
-    df2 <- format_preview_df(df, region_selected())
-    
-    print("=== AFTER FORMATTING ===")
-    print(df2)
-    
-    df2
-    
     df <- format_preview_df(df, region_selected())
     build_design_preview_table(df)
   })
-  
+    
   output$aggregate_ui <- shiny::renderUI({
     if (!wd_set())
       return(NULL)
@@ -3664,11 +3986,6 @@ B           0   0   1
           disabled = TRUE
         ),
         
-      ),
-      
-      tags$p(
-        style = "font-size: 0.9em; color: #666; margin-top: 6px;",
-        "Note: Cancelling a batch will stop the analysis after the current plate finishes processing."
       )
     )
   })
@@ -3732,11 +4049,14 @@ B           0   0   1
   
   design_blocks <- reactive({
     req(input$design_file, wd_path())
-    
-    extract_design_blocks(file.path(wd_path(), input$design_file))
-    
+
+    extract_design_blocks(
+      file.path(wd_path(), input$design_file),
+      design_file_format = NULL
+    )
+
   })
-  
+
   design_blocks <- bindCache(design_blocks, input$design_file)
   
   output$design_section <- shiny::renderUI({
@@ -3775,20 +4095,21 @@ B           0   0   1
   
   shiny::observeEvent(input$design_file, {
     req(wd_path(), input$design_file)
-    
+
     file <- file.path(wd_path(), input$design_file)
-    
+
     vars <- tryCatch(
-      extract_design_blocks(file),
+      extract_design_blocks(file,
+                            design_file_format = NULL),
       error = function(e = NULL)
         character(0)
     )
-    
+
     updateSelectInput(session,
                       "design_vars",
                       choices  = vars,
                       selected = vars)
-    
+
   })
   
   output$stage_ui <- shiny::renderUI({
@@ -4082,30 +4403,64 @@ B           0   0   1
                      input$blank_mode
                    }
                    
+                   design_vars_effective <- resolve_design_vars(
+                     designfile = design_file_path,
+                     selected_vars = input$design_vars,
+                     instrument = input$instrument,
+                     design_file_format = NULL
+                   )
+                   
                    res <- tryCatch({
                      gc_log_block(
                        "SINGLE RUN PARAMS",
                        list(
                          raw_file = raw_file_path,
                          design   = design_file_path,
-                         vars     = input$design_vars
+                         vars     = design_vars_effective
                        )
                      )
                      
-                     gc_run_quiet(
+                     single_debug_log <- NULL
+                     
+                     if (isTRUE(gc_dev_mode())) {
+                       single_debug_log <- tempfile(
+                         pattern = "gc_single_debug_",
+                         fileext = ".log"
+                       )
+                       
+                       single_debug_temp(single_debug_log)
+                       
+                       cat(
+                         paste0(
+                           format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                           " | APP SINGLE | about to call run_gc",
+                           " | raw = ", raw_file_path,
+                           " | design = ", design_file_path,
+                           " | vars = ", paste(design_vars_effective, collapse = ", "),
+                           "\n"
+                         ),
+                         file = single_debug_log,
+                         append = TRUE
+                       )
+                     }
+                     
+                     res <- gc_run_quiet(
                        run_gc(
-                         rawdatafile = raw_file_path,
-                         designfile  = design_file_path,
-                         design_vars = input$design_vars,
-                         hrs         = input$hrs,
-                         interval    = interval_hours(),
-                         minod       = input$minod,
-                         maxod       = input$maxod,
-                         instrument  = input$instrument,
-                         blank_mode  = blank_mode_effective,
-                         prefix      = input$prefix,
-                         batch       = FALSE,
-                         region      = region_selected()
+                         rawdatafile        = raw_file_path,
+                         designfile         = design_file_path,
+                         design_vars        = design_vars_effective,
+                         hrs                = input$hrs,
+                         interval           = interval_hours(),
+                         minod              = input$minod,
+                         maxod              = input$maxod,
+                         instrument         = input$instrument,
+                         blank_mode         = blank_mode_effective,
+                         prefix             = input$prefix,
+                         batch              = FALSE,
+                         region             = region_selected(),
+                         raw_data_format    = NULL,
+                         design_file_format = NULL, 
+                         debug_logfile      = single_debug_log
                        )
                      )
                      
@@ -4121,6 +4476,29 @@ B           0   0   1
                      err <- gc_format_error(e)
                      
                      msg <- err$user_message
+                     
+                     if (isTRUE(gc_dev_mode()) &&
+                         !is.null(single_debug_temp()) &&
+                         file.exists(single_debug_temp())) {
+                       
+                       fail_dir <- file.path(wd_path(), "Analysis", "_failed_debug")
+                       dir.create(fail_dir, recursive = TRUE, showWarnings = FALSE)
+                       
+                       fail_stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+                       fail_prefix <- input$prefix %||% ""
+                       
+                       fail_name <- if (nzchar(fail_prefix)) {
+                         paste0(fail_stamp, "_", fail_prefix, "_single_failed_debug.log")
+                       } else {
+                         paste0(fail_stamp, "_single_failed_debug.log")
+                       }
+                       
+                       file.copy(
+                         from = single_debug_temp(),
+                         to   = file.path(fail_dir, fail_name),
+                         overwrite = TRUE
+                       )
+                     }
                      
                      showModal(modalDialog(
                        title = "Analysis failed",
@@ -4194,6 +4572,14 @@ B           0   0   1
     enforce_blank_mode_state(session, input$instrument)
     
     shinyjs::disable("export_files")
+    
+    last_export_dir(NULL)
+    single_run_root(NULL)
+    
+    if (!is.null(single_debug_temp()) && file.exists(single_debug_temp())) {
+      unlink(single_debug_temp())
+    }
+    single_debug_temp(NULL)
     
   })
   
@@ -4272,6 +4658,8 @@ B           0   0   1
                                    maybe_finish_fn,
                                    region) {
     
+    batch_trace(sprintf("BATCH: entered run_one_plate_future for plate %s", i))
+    
     plate_name <- basename(pairs_val$data_file[i])
     
     future_globals <- list(
@@ -4282,9 +4670,28 @@ B           0   0   1
       region    = region
     )
     
+    batch_trace(sprintf("BATCH: creating future_promise for plate %s", i))
+    
     prom <- promises::future_promise(expr = {
       
       library(growthcurve)
+      
+      options(gc.dev_mode = isTRUE(params$dev_mode))
+      
+      worker_log <- function(...) {
+        logfile <- params$debug_logfile
+        
+        if (!isTRUE(getOption("gc.dev_mode"))) {
+          return(invisible(FALSE))
+        }
+        
+        if (!is.character(logfile) || length(logfile) != 1 || is.na(logfile) || !nzchar(logfile)) {
+          return(invisible(FALSE))
+        }
+        
+        cat(..., file = logfile, append = TRUE)
+        invisible(TRUE)
+      }
       
       # Worker-safe version (no sinks / handlers)
       gc_run_quiet_worker <- function(expr) {
@@ -4293,7 +4700,7 @@ B           0   0   1
         suppressWarnings(suppressMessages(expr))
       }
       
-      if (exists("gc_log") && gc_dev_mode()) {
+      if (exists("gc_log") && isTRUE(getOption("gc.dev_mode"))) {
         try(gc_log(paste("Worker starting plate", i)), silent = TRUE)
       }
       
@@ -4305,39 +4712,87 @@ B           0   0   1
         
         # -- Paths defined above, but NO dir.create() yet --
         
+        worker_log(
+          paste0(
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+            " | APP BATCH | rawdatafile = ", pairs_val$data_file[i],
+            " | designfile = ", pairs_val$design_file[i],
+            " | vars = ", paste(params$design_vars, collapse = ", "),
+            "\n"
+          )
+        )
+        
         res <- tryCatch({
           gc_run_quiet_worker(
             run_gc(
-              rawdatafile = pairs_val$data_file[i],
-              designfile  = pairs_val$design_file[i],
-              hrs         = params$hrs,
-              interval    = params$interval,
-              minod       = params$minod,
-              maxod       = params$maxod,
-              instrument  = params$instrument,
-              blank_mode  = params$blank_mode,
-              batch       = TRUE,
-              prefix      = plate_tag,
-              region      = region
+              rawdatafile        = pairs_val$data_file[i],
+              designfile         = pairs_val$design_file[i],
+              design_vars        = params$design_vars,
+              hrs                = params$hrs,
+              interval           = params$interval,
+              minod              = params$minod,
+              maxod              = params$maxod,
+              instrument         = params$instrument,
+              blank_mode         = params$blank_mode,
+              batch              = TRUE,
+              prefix             = params$prefix,
+              region             = region,
+              raw_data_format    = params$raw_data_format,
+              design_file_format = params$design_file_format,
+              debug_logfile      = params$debug_logfile
             )
           )
+          
         }, error = function(e = NULL) {
           
-          err <- gc_format_error(e, dev = gc_dev_mode())
+          raw_err <- tryCatch(conditionMessage(e), error = function(...) "Unknown worker error")
+          raw_cls <- tryCatch(class(e)[1], error = function(...) "unknown_class")
+          
+          worker_log(
+            paste0(
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              " | WORKER RAW ERROR | rawdatafile = ", pairs_val$data_file[i],
+              " | designfile = ", pairs_val$design_file[i],
+              " | class = ", raw_cls,
+              " | error = ", raw_err,
+              "\n"
+             )
+          )
+          
+          err <- growthcurve:::gc_format_error(e, dev = gc_dev_mode())
           
           list(
             success = FALSE,
             message = err$user_message,
             debug   = err$debug,
-            plate   = pairs_val$data_file[i]
+            plate   = pairs_val$data_file[i],
+            raw_error = raw_err
           )
         })
         
+        
         if (!is.list(res) || is.null(res$plots)) {
+          
+          err_msg <- if (is.list(res) && !is.null(res$message)) {
+            as.character(res$message)
+          } else {
+            "Run failed before producing valid output"
+          }
+          
+          worker_log(
+            paste0(
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+              " | APP BATCH ERROR | rawdatafile = ", pairs_val$data_file[i],
+              " | designfile = ", pairs_val$design_file[i],
+              " | error = ", err_msg,
+              "\n"
+            )
+          )
+          
           return(
             list(
               success = FALSE,
-              message = res$message %||% "Run failed before producing valid output",
+              message = err_msg,
               plate   = pairs_val$data_file[i]
             )
           )
@@ -4352,20 +4807,51 @@ B           0   0   1
           ))
         }
         
-        dir.create(root_path,
-                   recursive = TRUE,
-                   showWarnings = FALSE)
-        
+        dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
         dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
         
+        # Re-check after directories exist but before writing outputs
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         report_file <- file.path(plate_dir, "plate_report.pdf")
+        
+        # Re-check before report write
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         gc_save_report(res$plots, report_file, plate_name = plate_tag)
+        
+        # Re-check before summaries
+        if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
+          unlink(plate_dir, recursive = TRUE, force = TRUE)
+          return(list(
+            success = FALSE,
+            message = "Cancelled by user",
+            plate   = pairs_val$data_file[i]
+          ))
+        }
+        
         gc_write_summaries(
-          core        = res$core,
-          params      = res$params,
-          instrument  = res$instrument,
-          out_dir     = plate_dir,
-          region      = region
+          core               = res$core,
+          params             = res$params,
+          instrument         = res$instrument,
+          out_dir            = plate_dir,
+          region             = region,
+          raw_data_format    = res$raw_data_format,
+          design_file_format = res$design_file_format
         )
         
         list(success = TRUE)
@@ -4385,13 +4871,11 @@ B           0   0   1
     start_cancellation_monitor <- function(root_path, bs, maybe_finish_fn) {
       monitor <- function() {
         if (cancel_requested(root_path)) {
-          bs$aborted <- TRUE
+          bs$aborted   <- TRUE
           bs$cancelled <- TRUE
-          bs$queue   <- list()  # <- DRAIN THE QUEUE IMMEDIATELY
+          bs$queue     <- list()
           gc_log("CANCELLATION DETECTED MID-PLATE")
-          # Queue will drain naturally when this plate finishes
-          maybe_finish_fn()  # Trigger finish check
-          return()  # Stop monitoring
+          return()
         }
         later::later(monitor, delay = 1)  # Check every second
       }
@@ -4501,7 +4985,7 @@ B           0   0   1
     # -- catch: promise itself rejected (system/async error) -------------------
     prom <- promises::catch(prom, function(e) {
       
-      err <- gc_format_error(e)
+      err <- growthcurve:::gc_format_error(e)
       
       gc_log_block(
         paste("ASYNC ERROR plate", i),
@@ -4518,8 +5002,10 @@ B           0   0   1
         bs$failures  <- c(bs$failures,
                           paste0("Plate ", i, ": ", err$user_message)
                           )
-        gc_log_block(paste("ASYNC SYSTEM ERROR plate", i),
-                     conditionMessage(e))
+        gc_log_block(
+          paste("ASYNC SYSTEM ERROR plate", i),
+          paste("Unhandled async failure while finalizing plate", i)
+        )
         maybe_finish_fn()
       }, error = function(e2) {
         gc_log_block("CATCH HANDLER ERROR", conditionMessage(e2))
@@ -4530,6 +5016,8 @@ B           0   0   1
   }
   
   run_batch_async <- function(pairs_val, n, root_path, batch_start_time, region, params, old_plan) {
+    
+    batch_trace("BATCH: entered run_batch_async")
     
     max_workers <- if (isTRUE(params$parallel)) 2L else 1L
     
@@ -4545,6 +5033,8 @@ B           0   0   1
     bs$successes <- character(0)
     bs$finished <- FALSE
     bs$cancelled <- FALSE
+    
+    batch_trace("BATCH: state initialized")
     
     all_plate_names <- basename(pairs_val$data_file)
     
@@ -4563,27 +5053,43 @@ B           0   0   1
         return()
       }
       
-      if (bs$completed == n || bs$aborted) {
-        bs$finished <- TRUE   # lock it
+      # Only finish when:
+      # - all plates have completed, OR
+      # - cancellation/abort has happened AND no workers are still running
+      done_all <- (bs$completed == n)
+      done_cancelled <- isTRUE(bs$aborted) && identical(bs$running, 0L)
+      
+      if (done_all || done_cancelled) {
+        bs$finished <- TRUE
         
         finish_batch(
-          completed_val = bs$completed,
-          n = n,
-          root_path = root_path,
+          completed_val   = bs$completed,
+          n               = n,
+          root_path       = root_path,
           batch_start_time = batch_start_time,
-          progress = progress,
-          old_plan = old_plan,
-          failures = bs$failures,
-          all_failed = length(bs$failures) == n,
+          progress        = progress,
+          old_plan        = old_plan,
+          failures        = bs$failures,
+          all_failed      = length(bs$failures) == n,
           all_plate_names = all_plate_names,
-          successes = bs$successes,
-          region = region,
-          cancelled = isTRUE(bs$cancelled)
+          successes       = bs$successes,
+          region          = region,
+          cancelled       = isTRUE(bs$cancelled)
         )
       }
     }
     
+    gc_log_block(
+      "BATCH PARAMS",
+      list(
+        instrument = params$instrument,
+        vars       = params$design_vars
+      )
+    )
+    
     launch_next <- function() {
+      
+      batch_trace("BATCH: launch_next called")
       
       # CHECK CANCEL FIRST (before doing anything)
       if (cancel_requested(root_path)) {
@@ -4603,6 +5109,8 @@ B           0   0   1
       }
       
       i <- bs$queue[[1]]
+      batch_trace(sprintf("BATCH: launching plate index %s", i))
+      
       bs$queue <- bs$queue[-1]
       bs$running <- bs$running + 1L
       
@@ -4620,6 +5128,7 @@ B           0   0   1
         region = region
       )
     }
+    batch_trace("BATCH: launching initial workers")
     
     for (k in seq_len(max_workers)) {
       launch_next()
@@ -4628,6 +5137,8 @@ B           0   0   1
   
   observeEvent(input$run_batch, {
     req(validated_pairs_cached(), nrow(validated_pairs_cached()) > 0)
+    
+    batch_trace("BATCH: entered observeEvent(run_batch)")
     
     pairs_val <- validated_pairs_cached()
     n <- nrow(pairs_val)
@@ -4644,6 +5155,18 @@ B           0   0   1
     root_path <- file.path(wd_path(), "Analysis", batch_tag)
     
     dir.create(root_path, recursive = TRUE, showWarnings = FALSE)
+    
+    batch_debug_name <- paste0(basename(root_path), "_debug_log.txt")
+
+    batch_debug_log <- if (isTRUE(gc_dev_mode())) {
+      file.path(root_path, batch_debug_name)
+    } else {
+      NULL
+    }
+    
+    if (!is.null(batch_debug_log) && file.exists(batch_debug_log)) {
+      file.remove(batch_debug_log)
+    }
     
     batch_root(root_path)
     clear_cancel_file(root_path)
@@ -4664,17 +5187,32 @@ B           0   0   1
     # CAPTURE REACTIVE VALUES HERE
     region_val <- region_selected()
     
+    first_design_file <- pairs_val$design_file[1]
+    
     params <- list(
-      hrs        = input$batch_hrs,
-      interval   = input$batch_interval / 60,
-      minod      = input$batch_minod,
-      maxod      = input$batch_maxod,
-      instrument = input$batch_instrument,
-      blank_mode = input$batch_blank_mode,
-      prefix     = input$batch_prefix,
-      parallel   = input$batch_parallel
+      hrs                = input$batch_hrs,
+      interval           = input$batch_interval / 60,
+      minod              = input$batch_minod,
+      maxod              = input$batch_maxod,
+      instrument         = input$batch_instrument,
+      blank_mode         = input$batch_blank_mode,
+      prefix             = input$batch_prefix,
+      parallel           = input$batch_parallel,
+      raw_data_format    = NULL,
+      design_file_format = NULL,
+      design_vars        = resolve_design_vars(
+        designfile = first_design_file,
+        selected_vars = NULL,
+        instrument = input$batch_instrument,
+        design_file_format = NULL
+      ),
+      debug_logfile      = batch_debug_log,
+      dev_mode           = isTRUE(gc_dev_mode())
     )
     
+    batch_trace("BATCH: params built")
+    
+    batch_trace("BATCH: scheduling run_batch_async")
     later::later(function() {
       run_batch_async(
         pairs_val = pairs_val,
@@ -4748,13 +5286,21 @@ B           0   0   1
     f <- res$params
     
     # Build output directories explicitly
-    dirs <- make_export_dirs(wd = wd_path(), prefix = f$prefix)
+    analysis_dir <- single_run_root()
+    
+    if (is.null(analysis_dir) || !nzchar(analysis_dir)) {
+      analysis_dir <- make_export_dirs(
+        wd = wd_path(),
+        prefix = f$prefix
+      )$analysis_dir
+      single_run_root(analysis_dir)
+    }
     
     # Derive plate name from raw file
     fname <- tools::file_path_sans_ext(input$raw_file)
     
     # Nest inside per-plate folder
-    plate_dir <- file.path(dirs$analysis_dir, fname)
+    plate_dir <- file.path(analysis_dir, fname)
     
     last_export_dir(plate_dir)
     
@@ -4775,6 +5321,22 @@ B           0   0   1
       
       dir.create(plate_dir, recursive = TRUE, showWarnings = FALSE)
       
+      if (isTRUE(gc_dev_mode()) &&
+          !is.null(single_debug_temp()) &&
+          file.exists(single_debug_temp())) {
+        
+        debug_name <- paste0(
+          basename(analysis_dir),
+          "_debug_log.txt"
+        )
+        
+        file.copy(
+          from = single_debug_temp(),
+          to   = file.path(analysis_dir, debug_name),
+          overwrite = TRUE
+        )
+      }
+      
       incProgress(0.5, "Saving plots")
       
       report_file <- file.path(plate_dir, "plate_report.pdf")
@@ -4783,11 +5345,13 @@ B           0   0   1
       incProgress(0.8, "Writing summary tables")
       
       gc_write_summaries(
-        core        = res$core,
-        params      = res$params,
-        instrument  = res$instrument,
-        out_dir     = plate_dir,
-        region      = region_selected()
+        core               = res$core,
+        params             = res$params,
+        instrument         = res$instrument,
+        out_dir            = plate_dir,
+        region             = region_selected(),
+        raw_data_format    = res$raw_data_format,
+        design_file_format = res$design_file_format
       )
       
       incProgress(1)
@@ -4835,6 +5399,22 @@ B           0   0   1
       shinyjs::disable("raw_file")
       shinyjs::disable("design_file")
       shinyjs::disable("instrument")
+      shinyjs::disable("blank_mode")
+    } else {
+      shinyjs::enable("hrs")
+      shinyjs::enable("interval_min")
+      shinyjs::enable("minod")
+      shinyjs::enable("maxod")
+      shinyjs::enable("prefix")
+      shinyjs::enable("design_vars")
+      shinyjs::enable("raw_file")
+      shinyjs::enable("design_file")
+      shinyjs::enable("instrument")
+      
+      # Let your existing instrument-specific rule decide whether
+      # blank_mode should be enabled/disabled and shown/hidden.
+      req(input$instrument)
+      enforce_blank_mode_state(session, input$instrument)
     }
   })
   

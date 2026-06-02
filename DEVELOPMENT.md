@@ -114,6 +114,7 @@ devtools::install()
 
 ## Next Steps
 
+- [ ] “Potential optimization: avoid double-reading block-format files and precompute detection masks.”
 - [ ] Add unit tests in `tests/testthat/`
 - [ ] Add example data in `inst/extdata/`
 - [ ] Consider submitting to CRAN

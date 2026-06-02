@@ -9,7 +9,7 @@ Do not edit manually.
 
 ## User & Technical Guide
 
-Version 1.0.10
+Version 1.1.0
 
 github.com/jordanmbarrows/growthcurve
 
@@ -30,8 +30,9 @@ github.com/jordanmbarrows/growthcurve
 
 - 3.1 Raw Data File — Plate Reader
 - 3.2 Raw Data File — oCelloscope
-- 3.3 CSV Format Compatibility
-- 3.4 Design File
+- 3.3 Instrument Detection and Well Name Extraction
+- 3.4 CSV Format Compatibility
+- 3.5 Design File
 
 #### 4.  Analysis Parameters
 
@@ -82,6 +83,8 @@ github.com/jordanmbarrows/growthcurve
 
 #### 11. `gcplyr` Integration
 
+- 11.1 Functions Replaced in This Version
+
 #### 12. Input/Output File Structure Reference
 
 - 12.1 Single Plate
@@ -120,12 +123,13 @@ pak::pak("jordanmbarrows/growthcurve")
 Once installed, launch the app with: 
 
 ```
+
 library(growthcurve)
 
 run_growthcurve()
 ```
 
-The app performs a dependency check on startup and automatically installs any missing required packages. This installation requires an internet connection and will fail with a descriptive error message if any required packages cannot be installed. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
+The app performs a dependency check on startup and stops with a descriptive error if required packages are missing. Missing packages must be installed manually before the app can run. Required packages include: `ggplot2`, `dplyr`, `tidyr`, `gcplyr`, `lubridate`, `multcomp`, `shiny`, `shinyjs`, `DT`, `future`, `promises`, `later`, `htmlwidgets`, and `shinyBS`.
 
 ### 1.2 Application Architecture
 
@@ -155,12 +159,12 @@ Single Plate is the exploratory workflow. It is designed for interactive investi
 - Export produces the same output structure as Batch Processing (plots PDF, tidy CSV, metadata CSV)
 - Input controls are locked after analysis runs to prevent accidental modification
 
-Once a Single Plate analysis completes, all input fields are disabled. To re-run with different parameters, the page must be refreshed.
+Once a Single Plate analysis completes, all input fields are disabled. To re-run with different parameters, reset the analysis state and then run again.
 
 Expected file layout for single plate input:
 ``` 
 /project/
-├── raw_data.csv                        # plate reader or oCelloscope data 
+├── <plate_name>.csv                    # plate reader or oCelloscope data 
 └── design.csv                          # experimental design
 ``` 
 
@@ -168,7 +172,7 @@ Output structure per run:
 ``` 
 Analysis/                               # created on export
 └──YYYYMMDD_HHMMSS_[prefix_]single/     # created on export
-   └── raw_data/              
+   └── <plate_name>/              
        ├── plate_report.pdf
        ├── plate_tidy.csv
        └── Analysis_arguments.csv
@@ -196,11 +200,11 @@ Expected file layout for batch input:
 ``` 
 /batch/
 ├── data/                               # plate reader or oCelloscope data 
-│   ├── plate1.csv
-│   └── plate2.csv
+│   ├── <plate1_name>.csv
+│   └── <plate2_name>.csv
 └── design/                             # experimental design
-    ├── plate1_design.csv
-    └── plate2_design.csv
+    ├── <plate1_design>.csv
+    └── <plate2_design>.csv
 ``` 
 
 The Batch Processing UI presents a matching table where each raw data file is paired with a design file using a dropdown selector. Design files that do not match a raw file can be excluded from the run.
@@ -210,11 +214,11 @@ Output structure per run:
 ``` 
 Analysis/                               # created on export
 └── YYYYMMDD_HHMMSS_[prefix_]batch/     # created on export
-    ├── plate1/
+    ├── <plate1_name>/
     │   ├── plate_report.pdf
     │   ├── plate_tidy.csv
     │   └── Analysis_arguments.csv
-    ├── plate2/
+    ├── <plate2_name>/
     │   ...
     └── batch_run_summary.csv
 ```
@@ -301,23 +305,25 @@ Duplicate detection key: the combination of plate name and prefix forms a unique
 Plate reader raw exports are technically CSVs, but they are often produced in a format that is not directly parseable by R without preprocessing. The required workflow is:
 
 1.  Open the exported file in Excel
-2.  Save As CSV (standard comma-separated format)
+2.  Save As CSV using your local Excel default CSV format (comma- or semicolon-delimited)
 3.  Use this saved file as the raw data input
 
-Skipping this step will cause parsing to fail.
+Skipping this step may cause parsing to fail.
 
-Internally, the plate reader parser uses `gcplyr::import_blockmeasures()` to extract the repeating 8-row x 12-column data blocks from the file. It expects data blocks starting at row 3 with a stride of 12 rows per timepoint. Columns 1–13 are read, and the first column (row labels) is dropped after import.
+**Supported formats:** Plate reader files may be in either `block` or `wide` format. The app automatically detects which format is present and parses it accordingly.
 
-Instrument detection: the app distinguishes plate reader files from oCelloscope files by scanning the first 200 lines of the raw file and counting the number of occurrences of "Time (seconds)" as a row header. Files with more than one such header are classified as oCelloscope format.
+- **Block format** is the traditional repeating layout: each timepoint appears as a plate-like numeric block with row labels in the first column. The parser (`read_plate_block_flexible()`) detects these rectangular data regions flexibly rather than requiring fixed hard-coded positions.
+- **Wide format** has a single header row of well names and one row per timepoint. The parser (`read_plate_wide()`) reads this directly without block detection.
 
 ### 3.2 Raw Data File — oCelloscope
 
 oCelloscope files require a specific export and preparation workflow:
 
-4.  Export the .xlsx file from the oCelloscope software
-5.  Open in Excel
-6.  Select the raw data sheet
-7.  Use Save As to save that sheet as a CSV
+1.  Export the .xlsx file from the oCelloscope software
+2.  Open in Excel
+3.  Select the raw data sheet
+4.  Use Save As to save that sheet as a CSV using your local Excel default CSV format (comma- or semicolon-delimited)
+5.  Use this saved file as the raw data input
 
 Direct oCelloscope CSV exports are not compatible with this pipeline. Only the workflow above produces a correctly formatted file.
 
@@ -326,16 +332,17 @@ The parser searches the file for a line beginning with `TANormalized`. This is t
 After locating the `TANormalized` header, the parser:
 
 - Skips any empty lines between the header and data
-
 - Reads data lines until it encounters an empty or delimiter-only row
-
-- Passes the extracted block through `read_csv_safe_text(`)` for robust regional format handling
-
+- Passes the extracted block through `read_csv_safe_text()` for robust regional format handling
 - Applies a sanity check: the maximum value in the data block must be less than 10 (normalized data). Values exceeding this threshold indicate a parsing error.
 
-Well name extraction: well identifiers are extracted from column headers using a regex pattern (\^([A-H][0-9]+).\*), stripping any trailing suffixes. Only wells that appear in the design file's `Well_type` block are retained.
+### 3.3 Instrument Detection and Well Name Extraction
 
-### 3.3 CSV Format Compatibility
+**Instrument detection** happens before any parsing. The app scans the incoming file for a line beginning with `TANormalized`. Files containing this marker are classified as oCelloscope format; all others are treated as plate reader files.
+
+**Well name extraction** applies to any file read in wide format — both oCelloscope data and wide-format plate reader files. Some instruments include extra text appended to well names in column headers (e.g., `A1_raw` or `A1 (OD600)`). Well identifiers are extracted from column headers using the regex pattern `^([A-H][0-9]+).*` via `extract_well_names()`, which strips any trailing suffixes, leaving only the bare well identifier. If duplicate well names result after stripping, the wide-format import path aborts with an error asking the user to remove the redundant columns from the input file. Block-format plate reader files are not affected, as well names are constructed from row labels and column indices rather than read from headers.
+
+### 3.4 CSV Format Compatibility
 
 The app supports both US and EU regional CSV formats:
 
@@ -348,11 +355,11 @@ Detection is performed by `read_csv_safe()`, which peeks at the first five lines
 
 Output files are written using the region setting selected by the user in the app (or auto-detected from the R session locale on startup). All CSV I/O is routed through `read_csv_safe()` and `write_csv_safe()` — no direct calls to `read.csv()`, `read.table()`, or `write.csv()` are permitted anywhere in the codebase.
 
-### 3.4 Design File
+### 3.5 Design File
 
-The design file defines the experimental layout of the plate. It must be a CSV file structured as a series of named blocks, one block per variable.
+The design file defines the experimental layout of the plate. It must be a CSV file, and can be provided in either `block` or `wide` format. The app detects the format automatically.
 
-Block structure:
+**Block format** (traditional layout):
 
 - Each block begins with a single header cell in the first column (e.g., `Well_type`, Strain, Treatment)
 - The header is followed by exactly 8 rows (corresponding to plate rows A through H)
@@ -360,15 +367,27 @@ Block structure:
 - Blocks are separated by exactly one empty row
 - The stride between block headers is exactly 10 rows (1 header + 8 data rows + 1 empty row)
 
-The first block must always be named `Well_type`. It defines whether each well is a `Blank` or a sample. This block is used for blank correction and is filtered from output metrics.
+These requirements apply specifically to block-format design files, which are parsed using a strict 8×12 template.
 
-Example design file structure (showing `Well_type`, `Strain`, and `Treatment` blocks):
-  
-![an image showing an example layout of a design file with well type, strain, and treatment variables in 96-plate layout format with example designations in corresponding wells](inst/app/www/design_file_image.png)
+**Wide format** (transposed layout):
 
-Design variable selection: the app reads all block header names from the design file (excluding `Well_type`) and presents them as selectable design variables. In Single Plate mode, the user selects which variables to include in the analysis. In Batch Processing mode, design variables are inferred automatically from the design file if not explicitly provided.
+- The first row contains well names (e.g., A1, A2, … H12)
+- Each subsequent row represents one design variable, with the variable name in the first column and values for each well in the remaining columns
 
-Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normalized copy of the design file is written before passing it to `gcplyr`, ensuring regional format compatibility. Row labels (single letters A–H) that appear in design variable columns as an artifact of the block format are removed after import.
+In both formats, a `Well_type` variable is required and must be the first variable defined. It defines whether each well is a `Blank` or a sample. This block is used for blank correction and is filtered from output metrics.
+Note: Although oCelloscope data is not blank corrected during analysis, the `Well_type` variable is still required.
+
+Example design file structures (showing `Well_type`, `Strain`, and `Treatment` variables):
+
+Block format
+![an image showing an example layout of a design file with well type, strain, and treatment variables in 96-well plate block layout format with example designations in corresponding wells](inst/app/www/block_design_file_image.png)
+
+Wide format
+![an image showing an example layout of a design file with well type, strain, and treatment variables in wide format with example designations in corresponding wells](inst/app/www/wide_design_file_image.png)
+
+Design variables are extracted automatically from the design file and used to define the grouping structure for downstream analysis.
+
+Design parsing is handled internally by `gc_read_design()`, which dispatches to format-specific parsers (`read_design_block_strict()` for block format, `read_design_wide()` for wide format) without requiring any external package functions for the design import step. Row labels (single letters A–H) that appear in design variable columns as an artifact of the block format are removed after import.
 
 ## 4. Analysis Parameters
 
@@ -376,9 +395,8 @@ Design parsing is handled by `gcplyr::import_blockdesigns()`. A temporary normal
 
 | Parameter                | Description |
 |-------------------------|-------------|
-| Design variables        | One or more variable names selected from the design file blocks (excluding `Well_type`). These define the grouping structure for mean curve calculation, derivative computation, and summary statistics. |
-| Duration (hours)        | Total experiment duration in hours. Used to generate the time vector for plate reader data. Must be a positive number. |
-| Interval (minutes)      | Measurement frequency in minutes. Used to generate the time vector for both instrument types. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
+| Duration (hours)        | Recorded as an analysis parameter and included in metadata. The time vector used during import is reconstructed from the selected interval and the imported data structure. Must be a positive number. |
+| Interval (minutes) | Measurement frequency in minutes. Used to reconstruct the analysis time vector during import for both instrument types in normal app use. Must be a positive number. Default: 15 min for plate reader, 10 min for oCelloscope. |
 | Min OD                  | Lower bound of the OD window used for growth rate calculation. Only timepoints with blank-corrected OD greater than this value are analyzed. Default: 0.05 for plate reader, 0.01 for oCelloscope. |
 | Max OD                  | Upper bound of the OD window. Only timepoints with OD less than this value are included. Default: 0.7 for both instruments. Max OD value must be a greater than Min OD. |
 
@@ -428,7 +446,7 @@ Instrument-specific default parameters are defined in the `gc_instrument_default
 
 ## 5. Analysis Pipeline
 
-All scientific computation is orchestrated `run_gc()`, the top-level coordinator function in `growthcurve_functions.R`. It delegates to a series of explicit pipeline stages, each with clearly defined responsibilities and no side effects between stages.
+All scientific computation is orchestrated by `run_gc()`, the top-level coordinator function in `growthcurve_functions.R`. It delegates to a series of explicit pipeline stages, each with clearly defined responsibilities and no side effects between stages.
 
 ### 5.1 Pipeline Stages
 
@@ -437,35 +455,55 @@ The `run_gc()` function executes the following stages in order:
 | Stage | Responsibility |
 |--------|----------------|
 | Stage A: `gc_prepare_run()` | Input validation. Checks that all required arguments are present and valid (file paths exist, `hrs` > 0, `interval` > 0, `minod` < `maxod`, `design_vars` is a non-empty character vector). Builds the shared `ggplot` theme object and snapshots all resolved parameters. |
-| Stage B: `gc_import_data()` | Data import. Dispatches to instrument-specific readers, imports and parses the design file, then merges the two datasets using `gcplyr::merge_dfs()`. Validates that design variables exist in the design file before proceeding. |
+| Stage B: `gc_import_data()` | Data import. Dispatches to instrument-specific readers, imports and parses the design file, then merges the two datasets using `dplyr::left_join()`. Validates that design variables exist in the design file before proceeding. |
 | Stage C: `gc_core_compute()` | Core scientific computation. Performs blank correction, OD filtering, derivative calculation, growth rate summarization, and QC flagging. Returns all intermediate and final datasets. This function is pure: no plotting and no file I/O. |
 | Stage D: `gc_build_plots()` | Plot construction. Builds all 11 `ggplot` objects from the outputs of `gc_core_compute()`. No saving or printing occurs at this stage. |
 | Stage E: Assembly | Final assembly. The return object contains the parameter snapshot, instrument type, blank mode, core compute results, and all plot objects. |
 
 ### 5.2 Data Import Details
 
-`gc_import_data()` combines instrument-specific reading logic with shared design parsing and merging:
+`gc_import_data()` combines instrument-specific raw-data import with shared design parsing, well matching, and downstream merging.
 
-For plate reader data:
+#### Plate reader data
 
-- The raw file is normalized through `read_csv_safe()` first
-- A clean temporary copy is written in standard CSV format for `gcplyr` compatibility
-- `gcplyr::import_blockmeasures()` reads the repeating 8x12 data blocks
-- The first column (row labels) is stripped
-- A time vector in hours is computed from the interval and number of timepoints
-- `gcplyr::trans_wide_to_tidy()` converts from wide to long format
+Plate reader input may follow either the `block` or `wide` import path, depending on `detect_plate_format()`. Internally, this can be overridden by passing `raw_data_format` explicitly, but this is not exposed as a user-facing option in the current app.
 
-For oCelloscope data:
+- **Block format path:**  
+  `read_plate_block_flexible()` scans the file to identify plate-like rectangular numeric data blocks, builds block-specific row/column mappings, and reads those blocks without requiring a rigid fixed layout. It returns a wide table with a `Time_min` column, where the time vector is reconstructed from the selected interval and the number of detected timepoints.
+- **Wide format path:**  
+  `read_plate_wide()` reads the raw file as a rectangular table with one row per timepoint and one column per well. Internally, it identifies well columns by matching column names against well-like patterns (`A1`–`H12`) and returns a table with `Time_min`. In the full plate-reader import path, the final cleaned wide table is then passed through `format_plate_reader_data()`, which reconstructs the analysis time vector from the selected interval and applies design-based well filtering.
+- **Common downstream handling:**  
+  In both block and wide paths, a `block_name` column with value `plate_reader` is added, the time column is converted from `Time_min` to `Time` in hours (`Time_min / 60`), and `gcplyr::trans_wide_to_tidy()` converts the result from wide to long format.
 
-- `read_ocello_tanormalized()` extracts the `TANormalized` block as raw lines
+#### oCelloscope data
 
-- `format_ocelloscope_data()` assigns the time vector and filters wells against the design
+For oCelloscope input:
 
-- A `block_name` column is added with value `ocelloscope`
+- `read_ocello_tanormalized()` locates the `TANormalized` section in the exported file, extracts the corresponding raw lines, and parses the measurement block into a rectangular data frame after dropping time/repetition columns.
+- `format_ocelloscope_data()` reconstructs the time vector from the selected interval (in normal app-driven use), extracts and normalizes well names, and filters the imported matrix against the set of wells defined in the design file.
+- After formatting, a `block_name` column with value `ocelloscope` is added, `Time_min` is converted to `Time` in hours (`Time_min / 60`), and `gcplyr::trans_wide_to_tidy()` converts the result from wide to long format.
 
-- `gcplyr::trans_wide_to_tidy()` converts to long format
+#### Shared design parsing and merge
 
-After either path, the tidy data is merged with the parsed design using `gcplyr::merge_dfs()`, `NA` values are removed with `na.omit()`, and the `Time` column is coerced to `numeric`. A warning is emitted if the maximum `Time` value exceeds 200, which suggests the time vector may still be in minutes rather than hours.
+After either raw-data path, the tidy imported data is merged with the parsed design table using `dplyr::left_join()` on the `Well` column.
+
+The design file format (`block` or `wide`) is normally detected automatically by `detect_design_format()`. Internally, this can be overridden by passing `design_file_format` explicitly, but this is not exposed as a user-facing option in the current app.
+
+- `read_design_block_strict()` is used for block-format design files.
+- `read_design_wide()` is used for wide-format design files.
+- `extract_design_blocks()` / `extract_design_blocks_wide()` are used to validate that requested design variables are present before import proceeds.
+
+#### Integrity checks and cleanup
+
+Several validation and cleanup steps occur after import and merge:
+
+- A row-count check after `left_join()` ensures that the join did not introduce spurious rows.
+- The merged data is checked for duplicate `(Well, Time)` pairs.
+- A design-mapping validation step checks that no well has been assigned to multiple groups for the primary design variable.
+- `NA` values are removed using `na.omit()`.
+- The `Time` column is coerced to `numeric`.
+
+A warning is emitted if the maximum `Time` value exceeds `200`, because that suggests the time vector may still be in minutes rather than hours.
 
 ### 5.3 Core Computation Details
 
@@ -473,7 +511,7 @@ After either path, the tidy data is merged with the parsed design using `gcplyr:
 
 #### Blank correction
 
-Blank correction proceeds according to the `blank_mode` argument. The `plate` mode extracts all wells where `Well_type == "Blank"` at t0 and computes the median (`blankmed`). This median is subtracted from all wells at all timepoints. The `per_well` mode subtracts each well's own t 0 value. All modes produce a `Measurements_adj` column and a `Measurements_log` column.
+Blank correction proceeds according to the `blank_mode` argument. The `plate` mode extracts all wells where `Well_type == "Blank"` at t0 and computes the median (`blankmed`). This median is subtracted from all wells at all timepoints. The `per_well` mode subtracts each well's own t0 value. All modes produce a `Measurements_adj` column and a `Measurements_log` column.
 
 #### Mean curve calculation
 
@@ -495,7 +533,7 @@ Within the OD window, the pipeline computes three derivative columns for each we
 | `deriv_percap3`   | Per-capita growth rate with a 3-timepoint rolling window on log-transformed data: `gcplyr::calc_deriv(..., percapita = TRUE, blank = 0, window_width_n = 3, trans_y = "log")` |
 
 
-The `deriv_percap3 column` is the primary metric used for maximum growth rate extraction. The rolling window of 3 timepoints and log transformation improve robustness to noise while preserving the true growth signal. The `window_width_n=3` choice is intentional and instrument-aware — the same code path is used for both instrument types, but oCelloscope data is pre- smoothed before derivatives are computed.
+The `deriv_percap3` column is the primary metric used for maximum growth rate extraction. The rolling window of 3 timepoints and log transformation improve robustness to noise while preserving the true growth signal. The `window_width_n=3` choice is intentional and instrument-aware — the same code path is used for both instrument types, but oCelloscope data is pre-smoothed before derivatives are computed.
 
 For oCelloscope data (`smoothing=TRUE`), `gcplyr::smooth_data()` is applied to `Measurements_adj` using a moving-average method with `window_width_n` equal to the `smoothing_window` value (default 3). This produces the `Measurements_used` column. For plate reader data, `Measurements_used` equals `Measurements_adj` directly.
 
@@ -506,7 +544,7 @@ Per-well summary statistics are computed by grouping on the design variables and
 | Metric          | Computation |
 |----------------|-------------|
 | `max_percap`      | Maximum per-capita growth rate: `gcplyr::max_gc(deriv_percap3, na.rm = TRUE)` |
-| `max_percap_tim`e | Time at which the maximum per-capita growth rate occurs: `gcplyr::extr_val(Time, gcplyr::which_max_gc(deriv_percap3))` |
+| `max_percap_time` | Time at which the maximum per-capita growth rate occurs: `gcplyr::extr_val(Time, gcplyr::which_max_gc(deriv_percap3))` |
 | `doub_time`       | Doubling time in hours: `gcplyr::doubling_time(y = max_percap)` |
 
 
@@ -526,7 +564,7 @@ QC flags are joined back onto the `merged_data`, `merged_data_sub`, and `ex_dat_
 
 ## 6. Diagnostic Plots
 
-All 11 plots are produced by `gc_build_plots()`, which takes the core compute results and the shared `ggplot` theme as inputs. In Single Plate mode, plots are displayed one at a time with stage navigation. In Batch Processing mode, all plots are rendered directly to the PDF report without display.
+Up to 11 plots are produced by `gc_build_plots()`, which takes the core compute results and the shared `ggplot` theme as inputs. In Single Plate mode, plots are displayed one at a time with stage navigation. In Batch Processing mode, all plots are rendered directly to the PDF report without display.
 
 `QC_flag` coloring is applied to relevant plots using `gc_qc_scale()`, which maps `OK` wells to black, `WARN` wells to orange (`#E69F00`), and `FAIL` wells to light grey at reduced opacity (alpha = 0.3). This allows rapid visual identification of problematic wells across all summary plots.
 
@@ -534,21 +572,21 @@ All 11 plots are produced by `gc_build_plots()`, which takes the core compute re
 |------|---------------------|
 | Plot 1: Blank-corrected OD (linear) | All wells plotted on a linear OD scale after blank correction, colored by `Well_type` (`Blank` vs sample). Used to inspect the overall scale of the data and verify blank subtraction. |
 | Plot 2: Blank-corrected OD (log scale) | Same data on a log10 scale. Reveals early exponential growth behavior and helps identify wells that never truly left the blank baseline. |
-| Plot 3: Mean curves with 95% CI | Mean growth curves for each experimental group defined by the design variables, with 95% confidence interval ribbons. Groups are distinguished by both color and linetype. |
-| Plot 4: Per-well OD curves (linear) | Individual well curves faceted by design variable combinations, shown on a linear scale, colored by `QC_flag`. Used to identify outlier wells and inspect within-group variability. |
+| Plot 3: Mean curves with 95% CI | Mean growth curves for each experimental group defined by the design variables, with 95% confidence interval ribbons. Groups are distinguished by both color and fill. |
+| Plot 4: Per-well OD curves (linear) | Individual well curves faceted by `Well`, shown on a linear scale, colored by `QC_flag`. Used to identify outlier wells and inspect within-group variability. |
 | Plot 5: Per-well OD curves (log scale) | Same per-well faceted view on a log10 scale, colored by `QC_flag`. |
 | Plot 6: Raw derivatives | Absolute growth rate (`deriv`) over time per well within the OD window, colored by `QC_flag`. Useful for checking the magnitude and timing of the growth rate signal. |
 | Plot 7: Per-capita derivatives | Per-capita growth rate (`deriv_percap`, no windowing) over time, colored by `QC_flag`. Shows the unsmoothed growth rate trajectory. |
-| Plot 8: Fitted per-capita with maximum | Windowed and fitted per-capita derivative (`deriv_percap3`), colored by `QC_flag`, with a vertical marker at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
-| Plot 9: OD curves with max growth marked | OD curves (from `merged_data_sub`) with a point marking the timepoint of maximum growth for each well, colored by `QC_flag`. |
-| Plot 10: Doubling time summary | Boxplot and jitter of doubling time (hours) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
-| Plot 11: Maximum growth rate summary | Boxplot and jitter of maximum growth rate (per hour) per experimental group, with mean and 95% CI. Wells are colored by the first design variable. |
+| Plot 8: Fitted per-capita with maximum | Windowed and fitted per-capita derivative (`deriv_percap3`), colored by `QC_flag`, with a point at the timepoint of maximum growth rate (`max_percap_time`). This is the primary derivative used for metric extraction. |
+| Plot 9: OD curves with max growth marked | OD curves (from `merged_data`, excluding blank wells) with a vertical line marking the timepoint of maximum growth for each well, colored by `QC_flag`. |
+| Plot 10: Doubling time summary | Summary dot plots showing per-well doubling time (hours) values, jittered points, group mean, and 95% CI. Wells are colored by the first design variable. |
+| Plot 11: Maximum growth rate summary | Summary dot plots showing per-well maximum growth rate (per hour) values, jittered points, group mean, and 95% CI. Wells are colored by the first design variable. |
 
 ## 7. Output Files
 
 ### 7.1 Plot Report (`plate_report.pdf`)
 
-The PDF report contains all 11 diagnostic plots, one per page. It is generated by `gc_save_report()`, which renders each `ggplot` object sequentially to a PDF device. The plate name (derived from the raw data filename) is used as the report title. This file is intended as a visual quality-control record accompanying each analysis.
+The PDF report contains up to 11 diagnostic plots, one per page. It is generated by `gc_save_report()`, which renders each `ggplot` object sequentially to a PDF device. The plate name (derived from the raw data filename) is used as the report title. This file is intended as a visual quality-control record accompanying each analysis.
 
 ### 7.2 Tidy Results (`plate_tidy.csv`)
 
@@ -572,21 +610,22 @@ The tidy format means that `max_growth` and `doub_time` appear as separate rows 
 
 ### 7.3 Analysis Metadata (`Analysis_arguments.csv`)
 
-A single-row CSV recording all parameters used for the analysis. This file provides a complete audit trail for reproducibility.
+A two-column key-value CSV recording the parameters used for the analysis. This file provides a complete audit trail for reproducibility. 
+Note: Several exported `Argument` labels are human-readable metadata labels rather than the internal variable names used in code.
 
-
-| Field | Content |
+| `Argument` | `Value` |
 |------|---------------------|
-| `rawdatafile` | Full path to the raw data file |
-| `designfile` | Full path to the design file |
+| `rawdatafile` | Path to the raw data file recorded for reproducibility |
+| `designfile` | Path to the design file recorded for reproducibility |
 | `instrument` | `plate_reader` or `ocelloscope` |
-| `blank_mode` | `plate`, `per_well`, or `none` |
-| `hrs` | Duration in hours |
-| `interval` | Interval in minutes |
+| `raw_data_format` | `block` or `wide` — the detected or recorded format of the raw data file |
+| `design_file_format` | `block` or `wide` — the detected or recorded format of the design file |
+| `blank_correction_mode` | `plate`, `per_well`, or `none` (derived from `blank_mode`) |
+| `duration (hrs)` | Duration in hours (derived from `hrs`) |
+| `interval (min)` | Interval in minutes (derived from `interval`) |
 | `minod` | Lower OD threshold |
 | `maxod` | Upper OD threshold |
-| `design_vars` | Comma-separated list of selected design variables |
-| `prefix` | Prefix used (empty if none) |
+| `extra_design_vars` | Comma-separated list of selected design variables (derived from `design_vars`) |
 
 ### 7.4 Batch Summary (`batch_run_summary.csv`)
 
@@ -642,6 +681,15 @@ When active, developer mode enables:
 - `gc_log()` and `gc_log_block()` print diagnostic messages to the R console with a `[GC]` prefix
 - Detailed error output in `gc_format_error()`, including error class and full message
 - Debug panels in the Shiny UI
+- A debug log file is written to the run output directory for each analysis
+
+**Debug log file**
+
+The debug log is a plain-text file written to the timestamped run directory alongside the normal outputs. In batch mode it is named `<run_folder>_debug_log.txt` and lives at the top level of the batch output directory. In single plate mode it is named `<run_folder>_debug_log.txt` and is written to the analysis directory on successful export. If a single plate run fails before export, the log is copied to `Analysis/_failed_debug/` with a timestamped filename so it is not lost.
+
+The log captures progress flags at each pipeline stage (`STAGE START` / `STAGE DONE` for prepare, import, compute, plots, and return), parameters resolved at run start, and detailed diagnostics from the import step including: raw file format detection, raw row and well counts, design row and well counts, the full active-well mapping table, well-set comparison (wells in raw but not design, wells in design but not raw), and post-merge row counts. Any duplicate well-time pairs detected before or after merging are also logged.
+
+All console output and debug log writing is suppressed in production mode (when `gc.dev_mode` is not set). In production, all `gc_log()` calls and `gc_dbg_file()` calls are no-ops.
 
 ### 9.3 Update Checker
 
@@ -668,9 +716,16 @@ The Open export folder button in export dialogs uses `open_folder()`, which disp
 
 When a raw data file is selected, the app attempts to build a preview of the file contents:
 
-- For plate reader files: the first 20 rows of the raw CSV are displayed as a table
+- For plate reader files in **block format**: the first 20 rows of the raw CSV are displayed as a table
+- For plate reader files in **wide format**: the growth data is extracted and the first 20 rows are displayed, with the preview time axis reconstructed from the selected interval when needed
 - For oCelloscope files: the `TANormalized` data block is extracted and the first 20 rows are displayed, using the selected interval to compute approximate time values
 - If the oCelloscope preview requires a design file that has not yet been selected, a message is shown instead of a table
+
+When a design file is selected, a separate design preview is also rendered:
+
+- For **block format** design files: the raw file contents are displayed as a styled table with variable block headers highlighted
+- For **wide format** design files: the file is displayed with well names in the header row and only rows with a defined variable name in the first column shown in the preview
+- In Batch Processing mode, the preview shows the first design file found in the selected design directory
 
 The preview helps users verify that the correct file has been selected and that it is being parsed in the expected format before running analysis.
 
@@ -680,11 +735,11 @@ A dark/light theme toggle is available in the top navigation area. Dark mode app
 
 ### 10.3 Cancellation
 
-Batch Processing can be cancelled mid-run using a Cancel button that appears during processing. Cancellation is implemented via a reactive flag checked between each plate in the batch. When cancellation is triggered, the current plate's analysis is allowed to complete, and then the batch loop exits. The batch summary records cancelled as the status for all plates not yet processed.
+Batch Processing can be cancelled mid-run using a Cancel button that appears during processing. When cancellation is triggered, the current plate’s analysis is interrupted as early as possible during the batch workflow rather than always being allowed to finish. A plate is considered completed only once its results have been written to disk (`plate_tidy.csv` present in the output folder). The batch summary records `cancelled` as the status for all plates not yet completed.
 
 ### 10.4 Navigation Lock
 
-In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the page is refreshed. Navigation between plot stages is provided by Previous and Next buttons that are enabled/disabled according to the current stage index.
+In Single Plate mode, all input controls (raw file, design file, instrument, parameters, design variables) are disabled after analysis runs. This prevents accidental modification of inputs while reviewing results. The controls remain disabled until the analysis state is reset. Navigation between plot stages is provided by Previous and Next buttons that are enabled/disabled according to the current stage index.
 
 ### 10.5 User Guide
 
@@ -696,16 +751,30 @@ GrowthCurve uses the `gcplyr` R package (Blazanin 2024, BMC Bioinformatics) as i
 
 | Function | Role in pipeline |
 |-------|---------|
-| `gcplyr::import_blockmeasures()` | Reads repeating data blocks from plate reader CSV files. Called with `startrow`, `endrow`, `startcol`, and `endcol` vectors defining the position of each timepoint block. |
-| `gcplyr::trans_wide_to_tidy()` | Converts wide-format plate data (one column per well) to tidy long format (one row per well per timepoint). |
-| `gcplyr::import_blockdesigns()` | Reads the design file block structure. Called with `block_names`, `startrow`, and `endrow` vectors. |
-| `gcplyr::merge_dfs()` | Merges the tidy data with the design metadata by the `Well` column. |
-| `gcplyr::smooth_data()` | Applies a moving-average smooth to the `Measurements_adj` column for oCelloscope data (`sm_method="moving-average"`, `window_width_n=3`). |
-| `gcplyr::calc_deriv()` | Computes absolute and per-capita derivatives. The windowed per-capita derivative (`window_width_n=3, trans_y="log"`) is the primary metric input. |
+| `gcplyr::trans_wide_to_tidy()` | Converts wide-format plate data (one column per well) to tidy long format (one row per well per timepoint). Used for both plate reader and oCelloscope data after the instrument-specific read step. |
+| `gcplyr::smooth_data()` | Applies a moving-average smooth to the `Measurements_adj` column for oCelloscope data (`sm_method="moving-average"`, `window_width_n=3`, `subset_by=Well`). |
+| `gcplyr::calc_deriv()` | Computes absolute and per-capita derivatives. All calls include `subset_by = Well` to ensure per-well computation. The windowed per-capita derivative (`window_width_n=3, trans_y="log"`) is the primary metric input. |
 | `gcplyr::max_gc()` | Extracts the maximum value of the windowed derivative per well. |
 | `gcplyr::which_max_gc()` | Returns the index of the maximum in the derivative vector. |
 | `gcplyr::extr_val()` | Extracts the Time value at the index returned by `which_max_gc()`. |
 | `gcplyr::doubling_time()` | Converts the maximum per-capita growth rate to doubling time in hours: log(2) / `max_percap`. |
+
+### 11.1 Functions Replaced in This Version
+
+Two `gcplyr` functions previously used in the pipeline — `gcplyr::import_blockdesigns()` and `gcplyr::merge_dfs()` — have been replaced with internal implementations. The replacements handle the same logical steps but integrate more directly with the app's format detection, regional CSV handling, and debug logging.
+
+**Design import** (`gcplyr::import_blockdesigns()` → `gc_read_design()`)
+
+`gc_read_design()` dispatches to one of two internal parsers depending on the detected design file format:
+
+- `read_design_block_strict()` handles the traditional block layout (variable name in column 1, followed by 8 data rows, repeated with a stride of 10). It validates that block headers appear at the expected positions and that data dimensions match the 8×12 plate grid.
+- `read_design_wide()` handles the transposed wide layout (well names in row 1, one design variable per subsequent row). It identifies well-name columns by regex, maps each variable row to the corresponding wells, and returns a data frame in the same `Well | Var1 | Var2 | …` shape as the block parser.
+
+Both parsers return the same output structure, so the rest of the pipeline is format-agnostic after this step. No temporary file is written; regional format handling is applied internally via `read_csv_safe()`.
+
+**Data/design merge** (`gcplyr::merge_dfs()` → `dplyr::left_join()`)
+
+The tidy raw data and parsed design are now joined with `dplyr::left_join(imported_tidy, my_design, by = "Well")`. A post-join row-count check ensures that no spurious rows were introduced by duplicate keys in the design table. If the row count changes, analysis aborts with a descriptive error.
 
 For a comprehensive explanation of the underlying methodology, including the mathematical basis for per-capita derivative calculation and the interpretation of `window_width_n`, refer to the `gcplyr` documentation at:
 
@@ -718,7 +787,7 @@ For a comprehensive explanation of the underlying methodology, including the mat
 Import:
 ``` 
 /project/
-├── raw_data.csv                        # plate reader or oCelloscope data 
+├── <plate_name>.csv                    # plate reader or oCelloscope data 
 └── design.csv                          # experimental design
 ``` 
 
@@ -726,7 +795,7 @@ Export:
 ``` 
 Analysis/                               # created on export
 └──YYYYMMDD_HHMMSS_[prefix_]single/     # created on export
-   └── raw_data/              
+   └── <plate_name>/              
        ├── plate_report.pdf
        ├── plate_tidy.csv
        └── Analysis_arguments.csv
@@ -738,23 +807,22 @@ Import:
 ``` 
 /batch/
 ├── data/                               # plate reader or oCelloscope data 
-│   ├── plate1.csv
-│   └── plate2.csv
+│   ├── <plate1_name>.csv
+│   └── <plate2_name>.csv
 └── design/                             # experimental design
-    ├── plate1_design.csv
-    └── plate2_design.csv
-
+    ├── <plate1_design>.csv
+    └── <plate2_design>.csv
 ``` 
 
 Export:
 ``` 
 Analysis/                               # created on export
 └── YYYYMMDD_HHMMSS_[prefix_]batch/     # created on export
-    ├── plate1/
+    ├── <plate1_name>/
     │   ├── plate_report.pdf
     │   ├── plate_tidy.csv
     │   └── Analysis_arguments.csv
-    ├── plate2/
+    ├── <plate2_name>/
     │   ...
     └── batch_run_summary.csv
 ```
@@ -763,13 +831,13 @@ Analysis/                               # created on export
 
 ``` 
 /Analysis/                            
-├── run_1_single/  
-│   └── plate1/
+├── <run_1_single_name>/  
+│   └── <plate_name>/
 │       └── plate_tidy.csv
-└── run_2_batch/
-│   └── plate2_1/
+└── <run_2_batch_name>/
+│   └── <plate2_1_name>/
 │       └── plate_tidy.csv
-│   └── plate2_2/
+│   └── <plate2_2_name>/
 │       └── plate_tidy.csv
 │   ...
 └── combined_tidy_YYYYMMDD_HHMMSS.csv   # produced by Aggregate Results
@@ -782,7 +850,8 @@ Analysis/                               # created on export
 | `"TANormalized block not found"` | The oCelloscope file was not exported correctly, or the wrong sheet was saved. Re-export from oCelloscope, open in Excel, select the raw data sheet, and Save As CSV. |
 | `"TANormalized sanity check failed: max value is X"` | The data block contains values greater than 10, indicating the data is not normalized. Check that the correct block/sheet was exported from oCelloscope. |
 | `"No data points fall within the OD window"` | The OD window `[minod, maxod]` does not overlap with any blank- corrected measurements. Check that the correct instrument mode is selected, that the design file matches the data, and that the OD thresholds are appropriate for the data range. |
-| `"No overlapping wells between data and design"` | Well names in the raw data file do not match well names in the design file. Verify both files use standard plate notation (A1–H12). |
-| `"Design variables not found in design file"` | One or more selected design variables do not appear as block headers in the design file. Check for typos or verify the design file has been saved correctly. |
+| `"No overlapping wells between data and design"` | Well names in the raw data file do not match well names in the design file. Verify that the design file uses exact plate notation (A1–H12) and that raw-data well names can be reduced cleanly to matching well identifiers. |
+| `"duplicated well columns after normalization"` | Multiple raw-data columns collapse to the same well name after suffix stripping (for example, `B10_raw` and `B10_OD`). Remove redundant or derived columns from the raw input file and retry. |
+| `"Design variables not found in design file"` | One or more selected design variables do not appear as variable names in the design file. Check for typos or verify the design file has been saved correctly. |
 | Plate reader file fails to parse | The file was not saved as a standard CSV from Excel. Open in Excel and re-save as CSV before uploading. |
 | App fails to start with missing backend error | A required package is not installed. Run `gc_check_packages()` in the R console to identify missing dependencies and install them. |

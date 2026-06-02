@@ -102,6 +102,10 @@ check_for_updates <- function(current_version, repo) {
 # DEBUG LOGGING UTILITIES
 # ============================================================
 
+# Internal null-coalescing operator; must be defined here so package
+# functions can resolve it through the package namespace (not the search path).
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 gc_log <- function(...) {
   if (!gc_dev_mode()) return(invisible(NULL))
   
@@ -160,6 +164,8 @@ gc_abort <- function(message) {
 # Formats errors for shared error handling
 # ============================================================
 
+#' Format errors for shared error handling
+#' @export
 gc_format_error <- function(e, dev = NULL) {
   
   if (is.null(dev)) dev <- gc_dev_mode()

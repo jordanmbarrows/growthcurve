@@ -4,6 +4,34 @@
 
 - Nothing to see here...please come back later. :)
 
+## [1.1.0] - 2026-06-02
+
+This release adds flexible block/wide input support, improves batch cancellation and debugging, and fixes several important design parsing issues.
+
+### Added
+
+- Automatic detection of block vs wide raw data formats
+- Support for wide design files
+- `raw_data_format` and `design_file_format` recorded in `Analysis_arguments.csv`
+- Wide-format preview updates
+- Dev-mode debug logging files and structured import diagnostics
+- Wide-format template downloads
+
+### Changed
+
+- Plate reader block parser is now more flexible and can detect rectangular data blocks more broadly within source files
+- Batch cancellation now interrupts active analyses earlier and defines completed plates based on files written to disk
+- Console output is suppressed in production mode
+- User Guide updated to document new import behavior
+
+### Fixed
+
+- Phantom 13th-column / oCelloscope design alignment bug affecting well assignment
+  - **Important:** Current single and batch oCelloscope outputs now align with the design file and raw well set. Users may wish to re-run older oCelloscope analyses with the corrected parser.
+- Blank mode radio-button state after single runs
+- Batch `prefix` column writing plate name instead of prefix
+- Explicit `subset_by = Well` in derivative calculations for future-proofing and cleaner behavior
+
 ## [1.0.10] - 2026-05-29
 
 - Renamed `deriv_percap5` object to `deriv_percap3` in `growthcurve_functions.R`
@@ -14,7 +42,7 @@
 - Added note at bottom of User Guide tab in app that displays current version number and provides a link to the repo for more info and latest updates
 - Enhanced Aggregate Results section in the User Guide tab
 - Made parallel processing the default for batch processing
-  
+
 ## [1.0.9] - 2026-05-28
 
 ### Improvements
