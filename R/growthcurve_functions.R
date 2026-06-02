@@ -464,6 +464,18 @@ format_plate_reader_data <- function(df, design_file, interval = NULL) {
   
   wells <- extract_well_names(raw_cols)
   
+  dup_cols <- unique(wells[duplicated(wells)])
+  
+  if (length(dup_cols) > 0) {
+    gc_abort(
+      paste0(
+        "oCelloscope file contains duplicated well columns after normalization: ",
+        paste(dup_cols, collapse = ", "),
+        ". Please remove duplicate/derived columns from the input file."
+      )
+    )
+  }
+  
   design_wells <- get_design_wells_any(design_file)
   
   # ---- TEMP UNIQUE ----
