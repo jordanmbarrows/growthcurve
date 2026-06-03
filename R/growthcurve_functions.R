@@ -1226,7 +1226,7 @@ build_preview_label <- function(file, preview_result, instrument = NULL,
 # ------------------------------------------------------------
 # Package bootstrap helper
 # Runs once when functions.R is sourced (i.e. at Shiny startup,
-# not inside run_gc). Safe to call repeatedly - install only
+# not inside gc_run). Safe to call repeatedly - install only
 # happens when a package is genuinely absent.
 # ------------------------------------------------------------
 
@@ -1290,7 +1290,7 @@ gc_instrument_defaults <- list(
 # Helper: gc_prepare_run()
 #
 # Purpose:
-#   Stage A of run_gc(): input validation and setup.
+#   Stage A of gc_run(): input validation and setup.
 #
 # Responsibilities:
 #   - Validate arguments
@@ -1712,7 +1712,7 @@ gc_read_design <- function(designfile, blocklist, design_file_format = NULL) {
 # Helper: extract design block names for Shiny UI
 # Reads the first column of each block header (stride = 10)
 # and returns all names except Well_type (which is added
-# internally by run_gc).
+# internally by gc_run).
 # ------------------------------------------------------------
 extract_design_blocks <- function(designfile,
                                   start_row = 1,
@@ -2968,7 +2968,7 @@ gc_materialize_plots <- function(plot_builders) {
 # Helper: gc_build_plots()
 #
 # Purpose:
-#   Stage C of run_gc(): construct all ggplot objects.
+#   Stage C of gc_run(): construct all ggplot objects.
 #
 # Responsibilities:
 #   - Build all plots from gc_core_compute() output
@@ -3027,7 +3027,7 @@ gc_save_report_from_builders <- function(plot_builders, file, plate_name = NULL)
 # Helper: gc_save_report()
 #
 # Purpose:
-#   Stage D of run_gc(): export all plots into a single PDF report.
+#   Stage D of gc_run(): export all plots into a single PDF report.
 #
 # Responsibilities:
 #   - Combine all plots into a multi-page PDF
@@ -3069,7 +3069,7 @@ gc_save_report <- function(plots, file, plate_name = NULL) {
 # Helper: gc_write_summaries()
 #
 # Purpose:
-#   Stage E of run_gc(): write CSV summary outputs.
+#   Stage E of gc_run(): write CSV summary outputs.
 #
 # Responsibilities:
 #   - Write summary table (growth rates & doubling times)
@@ -3345,7 +3345,7 @@ gc_make_tidy <- function(core, prefix = NA_character_, instrument = NA_character
 }
 
 # ------------------------------------------------------------
-# run_gc() - Orchestrated growth-curve analysis pipeline
+# gc_run() - Orchestrated growth-curve analysis pipeline
 #
 # Purpose:
 #   High-level coordinator for growth curve analysis.
@@ -3365,7 +3365,7 @@ gc_make_tidy <- function(core, prefix = NA_character_, instrument = NA_character
 
 #' Run growth curve analysis
 #' @export
-run_gc <- function(
+gc_run <- function(
     rawdatafile,
     designfile,
     design_vars = NULL,
@@ -3384,7 +3384,7 @@ run_gc <- function(
     debug_logfile      = NULL
 ) {
   
-  gc_dbg_file(debug_logfile, "STAGE: run_gc start")
+  gc_dbg_file(debug_logfile, "STAGE: gc_run start")
 
   
 
@@ -3590,7 +3590,7 @@ run_gc <- function(
   
   gc_dbg_file(debug_logfile, "STAGE DONE: return success")
   
-  gc_dbg_file(debug_logfile, "RUN_GC DONE: success")
+  gc_dbg_file(debug_logfile, "GC_RUN DONE: success")
   
   result
   
