@@ -20,7 +20,7 @@ run_growthcurve()
 
 ## Installation
 
-### From GitHub
+### Install from GitHub
 
 #### Latest stable release
 ```r
@@ -37,7 +37,7 @@ pak::pak("jordanmbarrows/growthcurve@*release")
 pak::pak("jordanmbarrows/growthcurve")
 ```
 
-### Local Installation
+### Local installation from source
 
 1. Clone or download the repository
 
@@ -150,7 +150,7 @@ Aggregate Results exports:
 
 - R >= 4.1.0
 - Required package dependencies must be installed
-- If dependencies are missing, the app will stop with a descriptive error at startup
+- If dependencies are missing, the app will stop at startup with a descriptive error message
 
 ## License
 
