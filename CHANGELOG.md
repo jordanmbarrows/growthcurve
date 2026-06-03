@@ -4,11 +4,10 @@
 
 ### Performance and internal improvements
 
-- Refactored block-format raw-data import to avoid redundant file reads during flexible block detection
-- Consolidated design parsing so design metadata is prepared once per run and reused downstream
-- Simplified the wide-format plate reader import path
-- Refactored batch PDF generation to use lazy plot builders rather than eagerly constructing all ggplot objects
-- Internal benchmarking showed improved runtime, especially for slower block-format batch workflows
+- Reduced redundant parsing in raw-data and design-file import paths
+- Simplified wide-format plate reader import
+- Batch PDF export now builds plots lazily during report generation
+- Internal benchmarking suggests improved runtime, especially in some block-format workflows
 
 ## [1.1.0] - 2026-06-02
 
