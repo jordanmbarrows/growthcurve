@@ -9,6 +9,9 @@
 - Batch PDF export now builds plots lazily during report generation
 - Internal benchmarking suggests improved runtime, especially in some block-format workflows
 
+### Internal/API cleanup
+- Renamed the programmatic backend entry point from `run_gc()` to `gc_run()` for clearer distinction from `run_growthcurve()`
+
 ## [1.1.0] - 2026-06-02
 
 This release adds flexible block/wide input support, improves batch cancellation and debugging, and fixes several important design parsing issues.
