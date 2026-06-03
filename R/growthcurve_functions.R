@@ -61,8 +61,6 @@ gc_dbg_file <- function(logfile = NULL, ...) {
   invisible(TRUE)
 }
 
-
-
 extract_well_names <- function(colnames_vec) {
   sub("^([A-H][0-9]+).*", "\\1", colnames_vec)
 }
@@ -215,12 +213,116 @@ find_plate_blocks_flexible <- function(file,
   )
 }
 
+find_plate_blocks_flexible_df <- function(df,
+                                          min_rows = 2L,
+                                          min_cols = 2L,
+                                          numeric_threshold = 0.8) {
+  df[] <- lapply(df, function(x) trimws(as.character(x)))
+  
+  nr <- nrow(df)
+  nc <- ncol(df)
+  
+  candidates <- list()
+  cand_id <- 0L
+  
+  for (r in seq_len(nr - 1L)) {
+    row_vals <- as.character(unlist(df[r, , drop = FALSE]))
+    num_cols <- which(vapply(row_vals, gc_is_int_label, logical(1)))
+    
+    if (length(num_cols) == 0) next
+    
+    runs <- gc_contiguous_runs(num_cols)
+    
+    for (run in runs) {
+      run <- as.integer(run)
+      if (length(run) < min_cols) next
+      if (min(run) <= 1L) next
+      
+      row_label_col <- min(run) - 1L
+      startcol <- min(run)
+      endcol <- max(run)
+      
+      col_labels <- trimws(as.character(unlist(df[r, startcol:endcol, drop = FALSE])))
+      
+      rr <- r + 1L
+      row_labels <- character(0)
+      data_rows <- integer(0)
+      
+      while (rr <= nr) {
+        lbl <- trimws(as.character(df[rr, row_label_col]))
+        if (!gc_is_row_label(lbl)) break
+        
+        body <- as.character(unlist(df[rr, startcol:endcol, drop = FALSE]))
+        frac_numeric <- mean(gc_is_numericish(body))
+        
+        if (frac_numeric < numeric_threshold) break
+        
+        row_labels <- c(row_labels, lbl)
+        data_rows <- c(data_rows, rr)
+        rr <- rr + 1L
+      }
+      
+      if (length(row_labels) < min_rows) next
+      if (!gc_is_contiguous_letters(row_labels)) next
+      
+      cand_id <- cand_id + 1L
+      candidates[[cand_id]] <- list(
+        header_row = r,
+        row_label_col = row_label_col,
+        startcol = startcol,
+        endcol = endcol,
+        data_start = min(data_rows),
+        data_end = max(data_rows),
+        row_labels = row_labels,
+        col_labels = col_labels
+      )
+    }
+  }
+  
+  if (length(candidates) == 0) {
+    gc_abort("No plate-like data blocks could be detected in the file.")
+  }
+  
+  keys <- vapply(candidates, function(x) {
+    paste(
+      x$row_label_col,
+      x$startcol,
+      x$endcol,
+      paste(x$row_labels, collapse = ""),
+      paste(x$col_labels, collapse = ","),
+      sep = "|"
+    )
+  }, character(1))
+  
+  key_tab <- table(keys)
+  best_key <- names(key_tab)[which.max(key_tab)]
+  
+  blocks <- candidates[keys == best_key]
+  
+  ord <- order(vapply(blocks, `[[`, integer(1), "data_start"))
+  blocks <- blocks[ord]
+  
+  startrow_vec <- vapply(blocks, `[[`, integer(1), "data_start")
+  endrow_vec   <- vapply(blocks, `[[`, integer(1), "data_end")
+  stride <- if (length(startrow_vec) >= 2L) diff(startrow_vec)[1] else NA_integer_
+  
+  list(
+    blocks = blocks,
+    startrow_vec = startrow_vec,
+    endrow_vec = endrow_vec,
+    stride = stride,
+    startcol = blocks[[1]]$startcol,
+    endcol = blocks[[1]]$endcol,
+    row_label_col = blocks[[1]]$row_label_col
+  )
+}
+
 read_plate_block_flexible <- function(file, interval = NULL) {
   df_raw <- read_csv_safe(file, header = FALSE)
   df_chr <- df_raw
   df_chr[] <- lapply(df_chr, function(x) trimws(as.character(x)))
   
-  det <- find_plate_blocks_flexible(file)
+  det <- find_plate_blocks_flexible_df(df_chr)
   
   all_rows <- list()
   
