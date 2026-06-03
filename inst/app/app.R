@@ -491,9 +491,10 @@ server <- function(input, output, session) {
   gc_check_packages <- growthcurve:::gc_check_packages
   
   # --- Core analysis ---
-  run_gc             <- growthcurve:::run_gc
-  gc_save_report     <- growthcurve:::gc_save_report
-  gc_write_summaries <- growthcurve:::gc_write_summaries
+  run_gc                       <- growthcurve:::run_gc
+  gc_save_report               <- growthcurve:::gc_save_report
+  gc_save_report_from_builders <- growthcurve:::gc_save_report_from_builders
+  gc_write_summaries           <- growthcurve:::gc_write_summaries
   
   # --- File I/O ---
   read_csv_safe     <- growthcurve:::read_csv_safe
@@ -4832,7 +4833,7 @@ server <- function(input, output, session) {
           ))
         }
         
-        gc_save_report(res$plots, report_file, plate_name = plate_tag)
+        gc_save_report_from_builders(result$plot_builders, file, plate_name)
         
         # Re-check before summaries
         if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
