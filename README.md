@@ -6,6 +6,8 @@ GrowthCurve provides a structured workflow for importing raw growth data, applyi
 
 ## Quick Start
 
+Run the following commands in an R session (typically in RStudio) to launch the app:
+
 ```r
 if (!requireNamespace("pak", quietly = TRUE)) {
   install.packages("pak")
@@ -15,20 +17,24 @@ pak::pak("jordanmbarrows/growthcurve@*release")
 library(growthcurve)
 run_growthcurve()
 ```
-Run the above commands in an R session (typically in RStudio) to launch the app.
 
 ## Installation
 
 ### From GitHub
 
+#### Latest stable release
 ```r
 # Install pak if needed
 if (!requireNamespace("pak", quietly = TRUE)) {
   install.packages("pak")
 }
 
-# Install latest stable release of growthcurve package
 pak::pak("jordanmbarrows/growthcurve@*release")
+```
+
+#### Latest development version
+```r
+pak::pak("jordanmbarrows/growthcurve")
 ```
 
 ### Local Installation
