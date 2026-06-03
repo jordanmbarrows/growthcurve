@@ -491,7 +491,7 @@ server <- function(input, output, session) {
   gc_check_packages <- growthcurve:::gc_check_packages
   
   # --- Core analysis ---
-  run_gc                       <- growthcurve:::run_gc
+  gc_run                       <- growthcurve:::gc_run
   gc_save_report               <- growthcurve:::gc_save_report
   gc_save_report_from_builders <- growthcurve:::gc_save_report_from_builders
   gc_write_summaries           <- growthcurve:::gc_write_summaries
@@ -4434,7 +4434,7 @@ server <- function(input, output, session) {
                        cat(
                          paste0(
                            format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-                           " | APP SINGLE | about to call run_gc",
+                           " | APP SINGLE | about to call gc_run",
                            " | raw = ", raw_file_path,
                            " | design = ", design_file_path,
                            " | vars = ", paste(design_vars_effective, collapse = ", "),
@@ -4446,7 +4446,7 @@ server <- function(input, output, session) {
                      }
                      
                      res <- gc_run_quiet(
-                       run_gc(
+                       gc_run(
                          rawdatafile        = raw_file_path,
                          designfile         = design_file_path,
                          design_vars        = design_vars_effective,
@@ -4725,7 +4725,7 @@ server <- function(input, output, session) {
         
         res <- tryCatch({
           gc_run_quiet_worker(
-            run_gc(
+            gc_run(
               rawdatafile        = pairs_val$data_file[i],
               designfile         = pairs_val$design_file[i],
               design_vars        = params$design_vars,
