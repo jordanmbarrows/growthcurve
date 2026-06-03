@@ -10,7 +10,7 @@ GrowthCurve provides a structured workflow for importing raw growth data, applyi
 if (!requireNamespace("pak", quietly = TRUE)) {
   install.packages("pak")
 }
-pak::pak("jordanmbarrows/growthcurve")
+pak::pak("jordanmbarrows/growthcurve@*release")
 
 library(growthcurve)
 run_growthcurve()
@@ -27,8 +27,8 @@ if (!requireNamespace("pak", quietly = TRUE)) {
   install.packages("pak")
 }
 
-# Install growthcurve package
-pak::pak("jordanmbarrows/growthcurve")
+# Install latest stable release of growthcurve package
+pak::pak("jordanmbarrows/growthcurve@*release")
 ```
 
 ### Local Installation
