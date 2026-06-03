@@ -635,7 +635,11 @@ gc_prepare_design <- function(designfile,
   blocklist <- c(list("Well_type"), as.list(design_vars))
   vars <- unlist(blocklist[-1])
   
-  my_design <- design_info$design_table
+  my_design <- gc_read_design(
+    designfile = designfile,
+    blocklist = blocklist,
+    design_file_format = dfmt
+  )
   
   keep_design <- !is.na(my_design$Well_type)
   for (v in vars) {
@@ -1121,7 +1125,8 @@ build_preview <- function(file, design_file = NULL, interval = NULL, instrument,
     result <- tryCatch({
       
       df  <- read_ocello_tanormalized(file)
-      fmt <- format_ocelloscope_data(df, design_file, interval)
+      design_wells <- get_design_wells_any(design_file)
+      fmt <- format_ocelloscope_data(df, design_wells, interval)
       
       # Return first nrows, keep Time_min for display
       out <- head(fmt, nrows)
@@ -1842,11 +1847,7 @@ gc_import_data <- function(
   # ==========================================================
   # READ DESIGN (shared)
   # ==========================================================
-  my_design <- gc_read_design(
-    designfile = designfile,
-    blocklist  = blocklist,
-    design_file_format = design_file_format
-  )
+  my_design <- design_info$design_table
   
   gc_dbg_file(debug_logfile, "---- DESIGN DEBUG ----")
   design_wells_all <- sort(unique(my_design$Well))
