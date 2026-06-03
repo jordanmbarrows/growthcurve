@@ -2835,6 +2835,123 @@ gc_plot_max_growth_rate <- function(data_forplots,
   p
 }
 
+gc_plot_builders <- function(core, ggplot_theme, region) {
+  
+  stopifnot(is.list(core), !is.null(core$blocklist))
+  
+  blocklist         <- core$blocklist
+  merged_data       <- core$merged_data
+  merged_data_means <- core$merged_data_means
+  merged_data_sub   <- core$merged_data_sub
+  ex_dat_mrg_sum    <- core$ex_dat_mrg_sum
+  data_forplots     <- core$data_forplots
+  
+  builders <- list(
+    
+    blank_linear = function() {
+      gc_plot_blank_corrected(
+        merged_data  = merged_data,
+        blocklist    = blocklist,
+        ggplot_theme = ggplot_theme,
+        region       = region
+      )
+    },
+    
+    blank_log = function() {
+      gc_plot_blank_log(
+        merged_data  = merged_data,
+        blocklist    = blocklist,
+        ggplot_theme = ggplot_theme,
+        region       = region
+      )
+    },
+    
+    mean_curves = function() {
+      gc_plot_mean_curves(
+        merged_data_means = merged_data_means,
+        ggplot_theme      = ggplot_theme,
+        region            = region
+      )
+    },
+    
+    perwell_linear = function() {
+      gc_plot_perwell_linear(
+        merged_data = merged_data,
+        region      = region
+      )
+    },
+    
+    perwell_log = function() {
+      gc_plot_perwell_log(
+        merged_data = merged_data,
+        region      = region
+      )
+    },
+    
+    deriv_raw = function() {
+      gc_plot_derivative_perwell(
+        merged_data_sub = merged_data_sub,
+        region          = region
+      )
+    },
+    
+    deriv_percap = function() {
+      gc_plot_percap_derivative_perwell(
+        merged_data_sub = merged_data_sub,
+        region          = region
+      )
+    },
+    
+    fitted_percap = function() {
+      gc_plot_fitted_percap_with_max(
+        merged_data_sub = merged_data_sub,
+        ex_dat_mrg_sum  = ex_dat_mrg_sum,
+        region          = region
+      )
+    },
+    
+    od_with_maxgc = function() {
+      gc_plot_od_curves_with_maxgc(
+        merged_data    = merged_data,
+        ex_dat_mrg_sum = ex_dat_mrg_sum,
+        blocklist      = blocklist,
+        region         = region
+      )
+    }
+  )
+  
+  if (nrow(data_forplots) > 0) {
+    
+    builders$doubling_time <- function() {
+      gc_plot_doubling_time(
+        data_forplots = data_forplots,
+        blocklist     = blocklist,
+        region        = region
+      )
+    }
+    
+    builders$max_growth_rate <- function() {
+      gc_plot_max_growth_rate(
+        data_forplots = data_forplots,
+        blocklist     = blocklist,
+        region        = region
+      )
+    }
+  }
+  
+  builders
+}
+
+gc_materialize_plots <- function(plot_builders) {
+  
+  stopifnot(is.list(plot_builders))
+  
+  lapply(plot_builders, function(f) {
+    stopifnot(is.function(f))
+    f()
+  })
+}
+
 # ------------------------------------------------------------
 # Helper: gc_build_plots()
 #
@@ -2852,104 +2969,43 @@ gc_plot_max_growth_rate <- function(data_forplots,
 # ------------------------------------------------------------
 
 gc_build_plots <- function(core, ggplot_theme, region) {
+  builders <- gc_plot_builders(core, ggplot_theme, region)
+  gc_materialize_plots(builders)
+}
+
+gc_save_report_from_builders <- function(plot_builders, file, plate_name = NULL) {
   
-  stopifnot(is.list(core), !is.null(core$blocklist))
-  
-  blocklist         <- core$blocklist
-  merged_data       <- core$merged_data
-  merged_data_means <- core$merged_data_means
-  merged_data_sub   <- core$merged_data_sub
-  ex_dat_mrg_sum    <- core$ex_dat_mrg_sum
-  data_forplots     <- core$data_forplots
-  
-  plots <- list()
-  
-  # ----------------------------------------------------------
-  # Plots 1-3: Global growth curves
-  # ----------------------------------------------------------
-  
-  plots$blank_linear <- gc_plot_blank_corrected(
-    merged_data  = merged_data,
-    blocklist    = blocklist,
-    ggplot_theme = ggplot_theme,
-    region       = region
-  )
-  
-  plots$blank_log <- gc_plot_blank_log(
-    merged_data  = merged_data,
-    blocklist    = blocklist,
-    ggplot_theme = ggplot_theme,
-    region       = region
-  )
-  
-  plots$mean_curves <- gc_plot_mean_curves(
-    merged_data_means = merged_data_means,
-    ggplot_theme      = ggplot_theme,
-    region            = region
-  )
-  
-  # ----------------------------------------------------------
-  # Plots 4-5: Per-well OD curves
-  # ----------------------------------------------------------
-  
-  plots$perwell_linear <- gc_plot_perwell_linear(
-    merged_data = merged_data,
-    region      = region
-  )
-  
-  plots$perwell_log <- gc_plot_perwell_log(
-    merged_data = merged_data,
-    region      = region
-  )
-  
-  # ----------------------------------------------------------
-  # Plots 6-9: Growth-rate diagnostics
-  # ----------------------------------------------------------
-  
-  plots$deriv_raw <- gc_plot_derivative_perwell(
-    merged_data_sub = merged_data_sub,
-    region          = region
-  )
-  
-  plots$deriv_percap <- gc_plot_percap_derivative_perwell(
-    merged_data_sub = merged_data_sub,
-    region          = region
-  )
-  
-  plots$fitted_percap <- gc_plot_fitted_percap_with_max(
-    merged_data_sub = merged_data_sub,
-    ex_dat_mrg_sum  = ex_dat_mrg_sum,
-    region          = region
-  )
-  
-  plots$od_with_maxgc <- gc_plot_od_curves_with_maxgc(
-    merged_data    = merged_data,
-    ex_dat_mrg_sum = ex_dat_mrg_sum,
-    blocklist      = blocklist,
-    region         = region
-  )
-  
-  # ----------------------------------------------------------
-  # Plots 10-11: Summary dot plots
-  # ----------------------------------------------------------
-  
-  # Only construct these if data exist
-  if (nrow(data_forplots) > 0) {
-    
-    plots$doubling_time <- gc_plot_doubling_time(
-      data_forplots = data_forplots,
-      blocklist     = blocklist,
-      region        = region
-    )
-    
-    plots$max_growth_rate <- gc_plot_max_growth_rate(
-      data_forplots = data_forplots,
-      blocklist     = blocklist,
-      region        = region
-    )
+  if (!is.list(plot_builders)) {
+    gc_abort("Invalid plot builder object.")
   }
   
-  plots
+  grDevices::pdf(
+    file,
+    width = 10,
+    height = 7,
+    title = plate_name %||% basename(file)
+  )
+  
+  on.exit(grDevices::dev.off(), add = TRUE)
+  
+  for (nm in names(plot_builders)) {
+    
+    builder <- plot_builders[[nm]]
+    
+    if (!is.function(builder)) next
+    
+    p <- builder()
+    
+    if (!is.null(p)) {
+      if (isTRUE(getOption("gc.dev_mode", FALSE))) {
+        print(p)
+      } else {
+        suppressWarnings(print(p))
+      }
+    }
+  }
+  
+  file
 }
 
 # ------------------------------------------------------------
@@ -3478,12 +3534,19 @@ run_gc <- function(
   # ==========================================================
   
   gc_dbg_file(debug_logfile, "STAGE START: gc_build_plots")
-
-  plots <- gc_build_plots(
-    core          = core,
-    ggplot_theme  = prep$ggplot_theme,
-    region        = region
+  
+  plot_builders <- gc_plot_builders(
+    core         = core,
+    ggplot_theme = prep$ggplot_theme,
+    region       = region
   )
+  
+  plots <- if (!isTRUE(batch)) {
+    gc_materialize_plots(plot_builders)
+  } else {
+    NULL
+  }
+  
   gc_dbg_file(debug_logfile, "STAGE DONE: gc_build_plots")
   check_cancel()
   
@@ -3504,6 +3567,7 @@ run_gc <- function(
     blank_mode    = core$blank_mode,
     core          = core,
     plots         = plots,
+    plot_builders = plot_builders,
     blankmed      = core$blankmed,
     raw_data_format    = raw_data_format %||% detect_plate_format(rawdatafile),
     design_file_format = design_file_format %||% detect_design_format(designfile)
