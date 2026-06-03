@@ -114,7 +114,8 @@ devtools::install()
 
 ## Next Steps
 
-- [ ] “Potential optimization: avoid double-reading block-format files and precompute detection masks.”
+- [x] “Potential optimization: avoid double-reading block-format files and precompute detection masks.”
+- [ ] Fix bug where dropdown selectors flicker if nothing selectable is present. Just make this a little more informative/smooth
 - [ ] Add unit tests in `tests/testthat/`
 - [ ] Add example data in `inst/extdata/`
 - [ ] Consider submitting to CRAN
