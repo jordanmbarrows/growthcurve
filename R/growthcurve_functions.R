@@ -635,11 +635,7 @@ gc_prepare_design <- function(designfile,
   blocklist <- c(list("Well_type"), as.list(design_vars))
   vars <- unlist(blocklist[-1])
   
-  my_design <- gc_read_design(
-    designfile = designfile,
-    blocklist = blocklist,
-    design_file_format = dfmt
-  )
+  my_design <- design_info$design_table
   
   keep_design <- !is.na(my_design$Well_type)
   for (v in vars) {
@@ -778,7 +774,7 @@ read_ocello_tanormalized <- function(file) {
   return(df_data)
 }
 
-format_ocelloscope_data <- function(df, design_file, interval = NULL) {
+format_ocelloscope_data <- function(df, design_wells, interval = NULL) {
   
   n <- nrow(df)
   
@@ -816,18 +812,13 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   wells <- extract_well_names(raw_cols)
   
   # ----------------------------------------------------------
-  # 4. GET DESIGN WELLS (DO THIS EARLY)
-  # ----------------------------------------------------------
-  design_wells <- get_design_wells_any(design_file)
-
-  # ----------------------------------------------------------
-  # 5. TEMPORARY UNIQUE NAMES (SAFETY ONLY)
+  # 4. TEMPORARY UNIQUE NAMES (SAFETY ONLY)
   # ----------------------------------------------------------
   tmp_names <- make.unique(wells)
   colnames(mat) <- tmp_names
 
   # ----------------------------------------------------------
-  # 6. FILTER USING ORIGINAL WELLS
+  # 5. FILTER USING ORIGINAL WELLS
   # ----------------------------------------------------------
   keep <- wells %in% design_wells
   
@@ -840,12 +831,12 @@ format_ocelloscope_data <- function(df, design_file, interval = NULL) {
   wells <- wells[keep]
   
   # ----------------------------------------------------------
-  # 7. RESTORE TRUE WELL IDENTITIES (CRITICAL)
+  # 6. RESTORE TRUE WELL IDENTITIES (CRITICAL)
   # ----------------------------------------------------------
   colnames(mat) <- wells
   
   # ----------------------------------------------------------
-  # 8. BUILD FINAL DATAFRAME
+  # 7. BUILD FINAL DATAFRAME
   # ----------------------------------------------------------
   clean_df <- data.frame(
     Time = time_min,
@@ -1404,7 +1395,7 @@ gc_prepare_run <- function(rawdatafile,
 #     block_name, Time, Well, Measurements
 # ------------------------------------------------------------
 
-gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
+gc_read_raw_data <- function(rawdatafile, design_info, hrs, interval, format,
                              raw_data_format = NULL, debug_logfile = NULL) {
 
   format <- match.arg(format, c("plate_reader", "ocelloscope"))
@@ -1502,7 +1493,11 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
       gc_abort("Failed to read TANormalized block from oCelloscope file.")
     }
 
-    df <- format_ocelloscope_data(df, designfile, interval)
+    df <- format_ocelloscope_data(
+      df,
+      design_wells = design_info$all_wells,
+      interval = interval
+    )
 
     #  canonical conversion point
     df$Time <- df$Time_min / 60
@@ -1798,7 +1793,7 @@ gc_import_data <- function(
   # ==========================================================
   imported_tidy <- gc_read_raw_data(
     rawdatafile     = rawdatafile,
-    designfile      = designfile,
+    design_info     = design_info,
     hrs             = hrs,
     interval        = interval,
     format          = format,
