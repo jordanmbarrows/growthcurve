@@ -4835,7 +4835,7 @@ server <- function(input, output, session) {
         gc_save_report_from_builders(
           plot_builders = res$plot_builders,
           file = report_file,
-          plate_name = plate_name
+          plate_name = plate_tag
         )
         
         # Re-check before summaries
