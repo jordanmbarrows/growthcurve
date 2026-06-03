@@ -947,7 +947,7 @@ detect_plate_format <- function(file) {
 #   so it can feed directly into the same tidy pipeline.
 # ------------------------------------------------------------
 
-read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
+read_plate_wide <- function(file, interval = NULL, design_wells = NULL, designfile = NULL) {
 
   lines <- base::readLines(file, warn = FALSE)
   lines <- gsub("\r", "", lines)
@@ -1037,15 +1037,16 @@ read_plate_wide <- function(file, interval = NULL, designfile = NULL) {
       )
     )
   }
-
-  # ---- Filter to design wells if provided ----
-  if (!is.null(designfile) && file.exists(designfile)) {
+  
+  # ---- Resolve design wells if needed ----
+  if (is.null(design_wells) && !is.null(designfile) && file.exists(designfile)) {
     design_wells <- get_design_wells_any(designfile)
-    
-    if (length(design_wells) > 0) {
-      keep_cols <- names(df_wells) %in% design_wells
-      df_wells <- df_wells[, keep_cols, drop = FALSE]
-    }
+  }
+  
+  # ---- Filter to design wells if provided ----
+  if (!is.null(design_wells) && length(design_wells) > 0) {
+    keep_cols <- names(df_wells) %in% design_wells
+    df_wells <- df_wells[, keep_cols, drop = FALSE]
   }
   
   out <- data.frame(Time_min = time_min, df_wells, check.names = FALSE)
@@ -1442,28 +1443,27 @@ gc_read_raw_data <- function(rawdatafile, designfile, hrs, interval, format,
 
     if (plate_fmt == "wide") {
 
-      # ---- Wide: single header row of well names ----
-      df_raw <- read_plate_wide(rawdatafile, interval = interval, designfile = NULL)
-      
-      df_wide <- format_plate_reader_data(
-        df_raw[, -1, drop = FALSE],
-        designfile,
-        interval
+      df_wide <- read_plate_wide(
+        rawdatafile,
+        interval = interval,
+        design_wells = design_info$all_wells
       )
-
+      
       # Attach block_name and pivot to tidy
-      df_wide$Time    <- df_wide$Time_min / 60
+      df_wide$Time <- df_wide$Time_min / 60
       df_wide$Time_min <- NULL
       df_wide$block_name <- "plate_reader"
-
-      df_wide <- df_wide[, c("block_name", "Time",
-                              setdiff(names(df_wide), c("block_name", "Time")))]
-
+      
+      df_wide <- df_wide[, c(
+        "block_name", "Time",
+        setdiff(names(df_wide), c("block_name", "Time"))
+      )]
+      
       imported_tidy <- gcplyr::trans_wide_to_tidy(
         df_wide,
         id_cols = c("block_name", "Time")
       )
-
+      
       imported_tidy$Time <- as.numeric(imported_tidy$Time)
 
     } else {
