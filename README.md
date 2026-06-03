@@ -23,6 +23,7 @@ run_growthcurve()
 ### Install from GitHub
 
 #### Latest stable release
+
 ```r
 # Install pak if needed
 if (!requireNamespace("pak", quietly = TRUE)) {
@@ -33,6 +34,9 @@ pak::pak("jordanmbarrows/growthcurve@*release")
 ```
 
 #### Latest development version
+
+Use this only if you want the newest unreleased changes and are comfortable testing development code.
+
 ```r
 pak::pak("jordanmbarrows/growthcurve")
 ```
