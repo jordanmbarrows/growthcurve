@@ -47,7 +47,7 @@ gc_backend_ready <- function() {
   tryCatch({
     
     required_objects <- c(
-      "run_gc",
+      "gc_run",
       "read_csv_safe",
       "gc_check_packages"
     )
