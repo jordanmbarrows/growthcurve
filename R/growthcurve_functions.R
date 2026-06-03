@@ -469,7 +469,7 @@ format_plate_reader_data <- function(df, design_file, interval = NULL) {
   if (length(dup_cols) > 0) {
     gc_abort(
       paste0(
-        "oCelloscope file contains duplicated well columns after normalization: ",
+        "Plate reader file contains duplicated well columns after normalization: ",
         paste(dup_cols, collapse = ", "),
         ". Please remove duplicate/derived columns from the input file."
       )
