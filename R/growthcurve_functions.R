@@ -609,6 +609,57 @@ format_plate_reader_data <- function(df, design_file, interval = NULL) {
   clean_df
 }
 
+gc_prepare_design <- function(designfile,
+                              design_vars,
+                              design_file_format = NULL) {
+  
+  dfmt <- if (!is.null(design_file_format)) {
+    design_file_format
+  } else {
+    detect_design_format(designfile)
+  }
+  
+  available_blocks <- extract_design_blocks(
+    designfile,
+    design_file_format = dfmt
+  )
+  
+  missing_vars <- setdiff(design_vars, available_blocks)
+  if (length(missing_vars) > 0) {
+    gc_abort(paste0(
+      "Design variables not found in design file: ",
+      paste(missing_vars, collapse = ", ")
+    ))
+  }
+  
+  blocklist <- c(list("Well_type"), as.list(design_vars))
+  vars <- unlist(blocklist[-1])
+  
+  my_design <- gc_read_design(
+    designfile = designfile,
+    blocklist = blocklist,
+    design_file_format = dfmt
+  )
+  
+  keep_design <- !is.na(my_design$Well_type)
+  for (v in vars) {
+    keep_design <- keep_design | !is.na(my_design[[v]])
+  }
+  
+  active_wells <- sort(unique(my_design$Well[keep_design]))
+  all_wells <- sort(unique(my_design$Well))
+  
+  list(
+    design_file_format = dfmt,
+    available_blocks   = available_blocks,
+    blocklist          = blocklist,
+    vars               = vars,
+    design_table       = my_design,
+    active_wells       = active_wells,
+    all_wells          = all_wells
+  )
+}
+
 # ---------------------------
 # Plot titles
 # ---------------------------
@@ -1732,23 +1783,15 @@ gc_import_data <- function(
   
   format <- match.arg(format)
   
-  # ---- Blocklist ----
-  blocklist <- c(list("Well_type"), as.list(design_vars))
-  vars <- unlist(blocklist[-1])
-  
-  # ---- Validate design variables ----
-  available_blocks <- extract_design_blocks(
-    designfile,
+  design_info <- gc_prepare_design(
+    designfile = designfile,
+    design_vars = design_vars,
     design_file_format = design_file_format
   )
   
-  missing_vars <- setdiff(design_vars, available_blocks)
-  if (length(missing_vars) > 0) {
-    gc_abort(paste0(
-      "Design variables not found in design file: ",
-      paste(missing_vars, collapse = ", ")
-    ))
-  }
+  blocklist <- design_info$blocklist
+  vars      <- design_info$vars
+  my_design <- design_info$design_table
   
   # ==========================================================
   # READ RAW DATA (instrument-specific)
@@ -1859,7 +1902,8 @@ gc_import_data <- function(
   # ==========================================================
   # COMPARE RAW VS DESIGN WELL SETS
   # ==========================================================
-  design_wells <- unique(my_design$Well)
+  design_wells <- design_info$all_wells
+  design_wells_active <- design_info$active_wells
   
   in_raw_not_design <- setdiff(raw_wells, design_wells)
   in_design_not_raw <- setdiff(design_wells, raw_wells)
