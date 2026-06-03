@@ -441,11 +441,11 @@ Instrument-specific default parameters are defined in the `gc_instrument_default
 
 ## 5. Analysis Pipeline
 
-All scientific computation is orchestrated by `run_gc()`, the top-level coordinator function in `growthcurve_functions.R`. It delegates to a series of explicit pipeline stages, each with clearly defined responsibilities and no side effects between stages.
+All scientific computation is orchestrated by `gc_run()`, the top-level coordinator function in `growthcurve_functions.R`. It delegates to a series of explicit pipeline stages, each with clearly defined responsibilities and no side effects between stages.
 
 ### 5.1 Pipeline Stages
 
-The `run_gc()` function executes the following stages in order:
+The `gc_run()` function executes the following stages in order:
 
 | Stage | Responsibility |
 |--------|----------------|
@@ -703,7 +703,7 @@ The Open export folder button in export dialogs uses `open_folder()`, which disp
 
 ### 9.5 Backend Readiness Check
 
-`gc_backend_ready()` verifies that the three core backend components — `run_gc`, `read_csv_safe`, and `gc_check_packages` — are present in the `growthcurve` package namespace. This check runs on app startup and assigns any error message to `gc_startup_error` in the global environment, allowing the UI to display a clear startup failure message if the backend is not properly loaded.
+`gc_backend_ready()` verifies that the three core backend components — `gc_run`, `read_csv_safe`, and `gc_check_packages` — are present in the `growthcurve` package namespace. This check runs on app startup and assigns any error message to `gc_startup_error` in the global environment, allowing the UI to display a clear startup failure message if the backend is not properly loaded.
 
 ## 10. UI Features
 
