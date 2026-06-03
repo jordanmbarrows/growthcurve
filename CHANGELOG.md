@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Nothing to see here...please come back later. :)
+### Performance and internal improvements
+
+- Reduced redundant parsing in raw-data and design-file import paths
+- Simplified wide-format plate reader import
+- Batch PDF export now builds plots lazily during report generation
+- Internal benchmarking suggests improved runtime, especially in some block-format workflows
 
 ## [1.1.0] - 2026-06-02
 
