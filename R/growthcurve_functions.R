@@ -818,6 +818,18 @@ format_ocelloscope_data <- function(df, design_wells, interval = NULL) {
   # ----------------------------------------------------------
   # 4. TEMPORARY UNIQUE NAMES (SAFETY ONLY)
   # ----------------------------------------------------------
+  dup_cols <- unique(wells[duplicated(wells)])
+  
+  if (length(dup_cols) > 0) {
+    gc_abort(
+      paste0(
+        "oCelloscope file contains duplicated well columns after normalization: ",
+        paste(dup_cols, collapse = ", "),
+        ". Please remove duplicate/derived columns from the input file."
+      )
+    )
+  }
+  
   tmp_names <- make.unique(wells)
   colnames(mat) <- tmp_names
 
