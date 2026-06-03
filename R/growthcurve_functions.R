@@ -2973,6 +2973,9 @@ gc_build_plots <- function(core, ggplot_theme, region) {
   gc_materialize_plots(builders)
 }
 
+
+#' Saves plots in single report from plot builders (batch only)
+#' @export
 gc_save_report_from_builders <- function(plot_builders, file, plate_name = NULL) {
   
   if (!is.list(plot_builders)) {
