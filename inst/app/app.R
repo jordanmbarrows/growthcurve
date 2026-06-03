@@ -4771,8 +4771,7 @@ server <- function(input, output, session) {
           )
         })
         
-        
-        if (!is.list(res) || is.null(res$plots)) {
+        if (!is.list(res) || is.null(res$plot_builders)) {
           
           err_msg <- if (is.list(res) && !is.null(res$message)) {
             as.character(res$message)
@@ -4833,7 +4832,11 @@ server <- function(input, output, session) {
           ))
         }
         
-        gc_save_report_from_builders(result$plot_builders, file, plate_name)
+        gc_save_report_from_builders(
+          plot_builders = res$plot_builders,
+          file = report_file,
+          plate_name = plate_name
+        )
         
         # Re-check before summaries
         if (file.exists(file.path(root_path, "_CANCEL_BATCH"))) {
