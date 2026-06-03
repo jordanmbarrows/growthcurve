@@ -540,74 +540,74 @@ validate_design_table <- function(my_design, strict_96 = TRUE) {
   my_design
 }
 
-format_plate_reader_data <- function(df, design_file, interval = NULL) {
-  
-  n <- nrow(df)
-  
-  # ---- TIME (identical logic) ----
-  if (!is.null(interval)) {
-    time_min <- seq(0, by = interval * 60, length.out = n)
-  } else {
-    time_min <- seq_len(n) - 1L
-  }
-  
-  # ---- RAW MATRIX ----
-  mat <- df
-  
-  mat[] <- lapply(mat, function(x) as.numeric(as.character(x)))
-  
-  max_val <- suppressWarnings(max(mat, na.rm = TRUE))
-  
-  if (!is.finite(max_val)) {
-    gc_abort("Plate reader parsing failed: non-numeric data.")
-  }
-  
-  raw_cols <- colnames(mat)
-  
-  wells <- extract_well_names(raw_cols)
-  
-  dup_cols <- unique(wells[duplicated(wells)])
-  
-  if (length(dup_cols) > 0) {
-    gc_abort(
-      paste0(
-        "Plate reader file contains duplicated well columns after normalization: ",
-        paste(dup_cols, collapse = ", "),
-        ". Please remove duplicate/derived columns from the input file."
-      )
-    )
-  }
-  
-  design_wells <- get_design_wells_any(design_file)
-  
-  # ---- TEMP UNIQUE ----
-  tmp_names <- make.unique(wells)
-  colnames(mat) <- tmp_names
-  
-  # ---- FILTER using ORIGINAL wells (critical!) ----
-  keep <- wells %in% design_wells
-  
-  if (!any(keep)) {
-    gc_abort("No matching wells between plate reader data and design file.")
-  }
-  
-  mat <- mat[, keep, drop = FALSE]
-  wells <- wells[keep]
-  
-  # ---- RESTORE TRUE WELL NAMES ----
-  colnames(mat) <- wells
-  
-  # ---- BUILD OUTPUT ----
-  clean_df <- data.frame(
-    Time = time_min,
-    mat,
-    check.names = FALSE
-  )
-  
-  colnames(clean_df)[1] <- "Time_min"
-  
-  clean_df
-}
+# format_plate_reader_data <- function(df, design_file, interval = NULL) {
+#   
+#   n <- nrow(df)
+#   
+#   # ---- TIME (identical logic) ----
+#   if (!is.null(interval)) {
+#     time_min <- seq(0, by = interval * 60, length.out = n)
+#   } else {
+#     time_min <- seq_len(n) - 1L
+#   }
+#   
+#   # ---- RAW MATRIX ----
+#   mat <- df
+#   
+#   mat[] <- lapply(mat, function(x) as.numeric(as.character(x)))
+#   
+#   max_val <- suppressWarnings(max(mat, na.rm = TRUE))
+#   
+#   if (!is.finite(max_val)) {
+#     gc_abort("Plate reader parsing failed: non-numeric data.")
+#   }
+#   
+#   raw_cols <- colnames(mat)
+#   
+#   wells <- extract_well_names(raw_cols)
+#   
+#   dup_cols <- unique(wells[duplicated(wells)])
+#   
+#   if (length(dup_cols) > 0) {
+#     gc_abort(
+#       paste0(
+#         "Plate reader file contains duplicated well columns after normalization: ",
+#         paste(dup_cols, collapse = ", "),
+#         ". Please remove duplicate/derived columns from the input file."
+#       )
+#     )
+#   }
+#   
+#   design_wells <- get_design_wells_any(design_file)
+#   
+#   # ---- TEMP UNIQUE ----
+#   tmp_names <- make.unique(wells)
+#   colnames(mat) <- tmp_names
+#   
+#   # ---- FILTER using ORIGINAL wells (critical!) ----
+#   keep <- wells %in% design_wells
+#   
+#   if (!any(keep)) {
+#     gc_abort("No matching wells between plate reader data and design file.")
+#   }
+#   
+#   mat <- mat[, keep, drop = FALSE]
+#   wells <- wells[keep]
+#   
+#   # ---- RESTORE TRUE WELL NAMES ----
+#   colnames(mat) <- wells
+#   
+#   # ---- BUILD OUTPUT ----
+#   clean_df <- data.frame(
+#     Time = time_min,
+#     mat,
+#     check.names = FALSE
+#   )
+#   
+#   colnames(clean_df)[1] <- "Time_min"
+#   
+#   clean_df
+# }
 
 gc_prepare_design <- function(designfile,
                               design_vars,
