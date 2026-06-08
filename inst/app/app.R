@@ -25,6 +25,7 @@
 # ============================================================
 
 library(growthcurve)
+library(shinyFiles)
 
 guide_summary_style <- function() {
   "
@@ -296,11 +297,26 @@ ui <- shiny::fluidPage(
           "Working directory path",
           value = if (gc_dev_mode())
             "C:/Users/Jordan/Desktop/UmU/Lind Lab/Shiny app development/Old stuff/dev/Dummy data"
-          else
-            ""
+          else ""
         ),
-        actionButton("set_wd", "Set working directory"),
-        actionButton("refresh_files", "Refresh files"),
+        div(
+          style = "display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;",
+          # UI
+          shinyFiles::shinyDirButton(
+            id    = "browse_wd",
+            label = "",
+            title = "Select working directory",
+            style = "display: none;"   # hidden but still functional
+          ),
+          actionButton(
+            inputId = "browse_wd_visible",
+            label = HTML("&#128194; Browse..."),
+            class   = "btn btn-default",
+            onclick = "$('#browse_wd').click();"
+          ),
+          actionButton("set_wd",       "Set working directory"),
+          actionButton("refresh_files","Refresh files")
+        ),
         shiny::verbatimTextOutput("wd_txt"),
         
         tags$details(
@@ -590,6 +606,54 @@ server <- function(input, output, session) {
       ""
     }
   })
+  
+  # ---- Directory browser ----
+  wd_volumes <- local({
+    # Windows: use USERPROFILE to get the actual user root (~ points to Documents, not the profile)
+    user_home <- if (.Platform$OS.type == "windows") {
+      Sys.getenv("USERPROFILE")
+    } else {
+      path.expand("~")
+    }
+    
+    drives <- if (.Platform$OS.type == "windows") {
+      all_drives <- setNames(
+        paste0(LETTERS, ":/"),
+        paste0(LETTERS, ":")
+      )
+      all_drives[dir.exists(all_drives)]
+    } else {
+      tryCatch(shinyFiles::getVolumes()(), error = function(e) character(0))
+    }
+    
+    base <- c(
+      Home      = user_home,
+      Desktop   = file.path(user_home, "Desktop"),
+      Documents = file.path(user_home, "Documents")
+    )
+    base <- base[dir.exists(base)]
+    
+    all_vols <- c(drives, base)
+    all_vols[!duplicated(all_vols)]
+  })
+  
+  shinyFiles::shinyDirChoose(
+    input   = input,
+    id      = "browse_wd",
+    roots   = wd_volumes,
+    session = session,
+    hidden  = TRUE
+  )
+  
+  observeEvent(input$browse_wd, {
+    if (is.integer(input$browse_wd)) return()
+    
+    path <- shinyFiles::parseDirPath(wd_volumes, input$browse_wd)
+    if (!length(path) || !nzchar(path)) return()
+    
+    # Just populate the text box — user still needs to click "Set working directory"
+    updateTextInput(session, "wd", value = path)
+  }, ignoreInit = TRUE)
   
   resolve_design_vars <- function(designfile,
                                   selected_vars = NULL,
@@ -1568,7 +1632,7 @@ server <- function(input, output, session) {
           parts <- head(parts, -1)
         }
         
-        # If only timestamp remains → no prefix
+        # If only timestamp remains -> no prefix
         if (length(parts) <= 2) {
           return("")
         }
@@ -3814,9 +3878,9 @@ server <- function(input, output, session) {
       safe_name <- gsub("[^a-zA-Z0-9_]", "_", run)
       is_selected <- isTRUE(input[[paste0("agg_include_", safe_name)]])
       
-      # ---- Case 1: NOT selected → EMPTY CELL ----
+      # ---- Case 1: NOT selected -> EMPTY CELL ----
       if (!is_selected) {
-        return("")   # ← this is the key change
+        return("")   
       }
       
       # ---- check duplicate status ----
@@ -5458,9 +5522,9 @@ server <- function(input, output, session) {
           prefix <- parts[2]
           
           if (nzchar(prefix)) {
-            paste0(prefix, " — ", plate)
+            paste0(prefix, " - ", plate)
           } else {
-            paste0("(no prefix) — ", plate)
+            paste0("(no prefix) - ", plate)
           }
         }
         
