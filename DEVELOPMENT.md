@@ -115,6 +115,7 @@ devtools::install()
 ## Next Steps
 
 - [x] “Potential optimization: avoid double-reading block-format files and precompute detection masks.”
+- [ ] Wells rearrange in deriv plots alphabetically, not numerically (e.g., D10 comes before D2)
 - [ ] Fix bug where dropdown selectors flicker if nothing selectable is present. Just make this a little more informative/smooth
 - [ ] Add unit tests in `tests/testthat/`
 - [ ] Add example data in `inst/extdata/`
