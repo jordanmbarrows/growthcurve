@@ -646,26 +646,13 @@ server <- function(input, output, session) {
   )
   
   observeEvent(input$browse_wd, {
-    # shinyFiles returns a list until a real selection is made
     if (is.integer(input$browse_wd)) return()
     
     path <- shinyFiles::parseDirPath(wd_volumes, input$browse_wd)
     if (!length(path) || !nzchar(path)) return()
     
-    # Populate the text box so the user can still see / edit the path
+    # Just populate the text box — user still needs to click "Set working directory"
     updateTextInput(session, "wd", value = path)
-    
-    # Then trigger the same logic as "Set working directory"
-    cleaned <- clean_path(path)
-    if (!dir.exists(cleaned)) return()
-    
-    wd_path(normalizePath(cleaned, mustWork = FALSE))
-    wd_set(TRUE)
-    file_refresh(file_refresh() + 1)
-    
-    output$wd_txt <- shiny::renderText({
-      paste("Working directory:", wd_path())
-    })
   }, ignoreInit = TRUE)
   
   resolve_design_vars <- function(designfile,
