@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+### Features and additions
 - Added a Browse... button that allows users to open a file browser and select a working directory from there
   - This populates the file path text input, after which the user can click Set working directory
   - Uses `shinyFiles` package, so I added this to DESCRIPTION file list
