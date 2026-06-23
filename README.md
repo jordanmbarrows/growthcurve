@@ -143,7 +143,7 @@ Each analysis can export:
 
 - `plate_report.pdf` — diagnostic plots
 - `plate_tidy.csv` — tidy per-well summary results
-- `plate_od.csv` — tidy per-well cleaned od measurements (for easy plotting of curves after analysis)
+- `plate_od.csv` — tidy per-well cleaned OD data for easy plotting of curves after analysis
 - `Analysis_arguments.csv` — analysis metadata
 - `batch_run_summary.csv` — batch status summary (batch mode only)
 
