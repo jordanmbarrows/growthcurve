@@ -9,7 +9,7 @@ Do not edit manually.
 
 ## User & Technical Guide
 
-Version 1.1.1.9000
+Version 1.1.1
 
 github.com/jordanmbarrows/growthcurve
 
@@ -59,9 +59,10 @@ github.com/jordanmbarrows/growthcurve
 
 - 7.1 Plot Report (`plate_report.pdf`)
 - 7.2 Tidy Results (`plate_tidy.csv`)
-- 7.3 Analysis Metadata (`Analysis_arguments.csv`)
-- 7.4 Batch Summary (`batch_run_summary.csv`)
-- 7.5 Aggregate Output (`combined_tidy_YYYYMMDD_HHMMSS.csv`)
+- 7.3 Cleaned OD Data (`plate_od.csv`)
+- 7.4 Analysis Metadata (`Analysis_arguments.csv`)
+- 7.5 Batch Summary (`batch_run_summary.csv`)
+- 7.6 Aggregate Output (`combined_tidy_YYYYMMDD_HHMMSS.csv`)
 
 #### 8.  Regional Settings
 
@@ -80,6 +81,7 @@ github.com/jordanmbarrows/growthcurve
 - 10.3 Cancellation
 - 10.4 Navigation Lock
 - 10.5 User Guide
+- 10.6 Working Directory Browser
 
 #### 11. `gcplyr` Integration
 
@@ -143,6 +145,8 @@ The application is organized into three code layers, each with a distinct respon
 
 A strict architectural rule is enforced throughout: the UI layer performs no scientific computation, and the analysis backend has no UI side effects. This separation makes the analysis pipeline independently testable and suitable for batch execution outside the Shiny interface.
 
+Recent versions (v1.1.1 and beyond) include internal performance improvements to data import and batch plot generation. These changes reduce redundant parsing and build plots lazily during report export, improving runtime for larger datasets without altering analysis results.
+
 ## 2. Analysis Modes
 
 The app provides three distinct workflows. Users will typically move through them in order — exploring a single dataset first, then running a batch, then aggregating results across multiple experiments.
@@ -156,7 +160,7 @@ Single Plate is the exploratory workflow. It is designed for interactive investi
 - Interactive, step-by-step plot navigation with Previous and Next stage buttons
 - Immediate visual feedback after each analysis stage completes
 - Parameters can be explored and refined before committing to export
-- Export produces the same output structure as Batch Processing (plots PDF, tidy CSV, metadata CSV)
+- Export produces the same output structure as Batch Processing (plots PDF, tidy CSV, cleaned OD CSV, metadata CSV)
 - Input controls are locked after analysis runs to prevent accidental modification
 
 Once a Single Plate analysis completes, all input fields are disabled. To re-run with different parameters, reset the analysis state and then run again.
@@ -175,6 +179,7 @@ Analysis/                               # created on export
    └── <plate_name>/              
        ├── plate_report.pdf
        ├── plate_tidy.csv
+       ├── plate_od.csv
        └── Analysis_arguments.csv
 ```     
 
@@ -217,6 +222,7 @@ Analysis/                               # created on export
     ├── <plate1_name>/
     │   ├── plate_report.pdf
     │   ├── plate_tidy.csv
+    │   ├── plate_od.csv
     │   └── Analysis_arguments.csv
     ├── <plate2_name>/
     │   ...
@@ -227,7 +233,7 @@ Analysis/                               # created on export
 
 ### 2.3 Aggregate Results
 
-Aggregate Results combines the output from multiple independent analyses — whether from Single Plate exports or completed Batch Processing runs — into a single unified dataset for downstream statistical analysis.
+Aggregate Results combines the `plate_tidy.csv` output from multiple independent analyses — whether from Single Plate exports or completed Batch Processing runs — into a single unified dataset for downstream statistical analysis.
 
 Functionality:
 
@@ -597,7 +603,7 @@ Column schema:
 | Column | Content |
 |------|---------------------|
 | [design variables] | One column per design variable selected at analysis time (e.g., Strain, Treatment). Values are taken directly from the design file. |
-| `Well` | Well identifier (e.g., A1, B3). |
+| `Well` | Well identifier (e.g., A1, B3) |
 | `Measurement` | Type of measurement: `max_growth` (the maximum per-capita growth rate) or `doub_time` (the doubling time in hours). |
 | `Value` | Numeric value of the measurement. |
 | `Replicate` | Integer replicate index assigned within each combination of design variables and measurement type. Assigned by `row_number()` within each group. |
@@ -608,7 +614,34 @@ Column schema:
 
 The tidy format means that `max_growth` and `doub_time` appear as separate rows for the same well, not as separate columns. This makes the file directly usable with `dplyr::group_by` and `ggplot2` facet operations in downstream analysis.
 
-### 7.3 Analysis Metadata (`Analysis_arguments.csv`)
+### 7.3 Cleaned OD Data (`plate_od.csv`)
+
+`plate_od.csv` contains time-resolved, cleaned growth data for each analyzed well in tidy format. This file provides direct access to the underlying growth curves after preprocessing, making it suitable for custom plotting or downstream modeling.
+
+Structure:
+
+| Column | Content |
+|------|---------------------|
+| `Well` | Well identifier (e.g., A1, B3) |
+| [design variables] | One column per design variable selected at analysis time (e.g., Strain, Treatment). Values are taken directly from the design file. |
+| `time` | Time in hours |
+| `adjusted_od` | Blank-corrected OD value (or raw value if no blank correction is applied) |
+| `instrument` | The instrument type used: `plate_reader` or `ocelloscope`. |
+
+#### Characteristics:
+
+- One row per well per timepoint
+- Blank wells are excluded
+- `adjusted_od` reflects the selected blank correction mode:
+  - `plate`
+  - `per_well`
+  - `none`
+
+Data is directly suitable for plotting growth curves in `ggplot2` or other tools
+
+This file complements `plate_tidy.csv`, which contains only summary metrics.
+
+### 7.4 Analysis Metadata (`Analysis_arguments.csv`)
 
 A two-column key-value CSV recording the parameters used for the analysis. This file provides a complete audit trail for reproducibility. 
 Note: Several exported `Argument` labels are human-readable metadata labels rather than the internal variable names used in code.
@@ -627,11 +660,11 @@ Note: Several exported `Argument` labels are human-readable metadata labels rath
 | `maxod` | Upper OD threshold |
 | `extra_design_vars` | Comma-separated list of selected design variables (derived from `design_vars`) |
 
-### 7.4 Batch Summary (`batch_run_summary.csv`)
+### 7.5 Batch Summary (`batch_run_summary.csv`)
 
 Produced at the end of every Batch Processing run. Contains one row per plate. Fields include the plate name, analysis status (`success` / `failed` / `cancelled`), and any diagnostic messages produced during analysis of that plate.
 
-### 7.5 Aggregate Output (`combined_tidy_YYYYMMDD_HHMMSS.csv`)
+### 7.6 Aggregate Output (`combined_tidy_YYYYMMDD_HHMMSS.csv`)
 
 Produced by the Aggregate Results workflow. Contains the combined rows from all `plate_tidy.csv` files in the selected run directories. The timestamp in the filename is derived from the system time at the moment of export.
 
@@ -745,6 +778,17 @@ In Single Plate mode, all input controls (raw file, design file, instrument, par
 
 The app includes a built-in User Guide tab containing embedded documentation covering all workflow steps, file format requirements, parameter descriptions, and output file descriptions. The guide is rendered as styled HTML within the Shiny UI using collapsible details/summary elements for each topic.
 
+### 10.6 Working Directory Browser
+
+A Browse… button is available when selecting a working directory.
+
+- Opens a graphical file browser using the `shinyFiles` package
+- Allows users to navigate the file system interactively
+- Selected directory path is automatically populated in the text field
+- Users must still click Set working directory to confirm the selection
+
+This provides a more user-friendly alternative to manually typing file paths.
+
 ## 11. gcplyr Integration
 
 GrowthCurve uses the `gcplyr` R package (Blazanin 2024, BMC Bioinformatics) as its scientific computation engine. `gcplyr` provides the core functions for growth curve data manipulation and analysis. The following `gcplyr` functions are used directly in the pipeline:
@@ -798,6 +842,7 @@ Analysis/                               # created on export
    └── <plate_name>/              
        ├── plate_report.pdf
        ├── plate_tidy.csv
+       ├── plate_od.csv
        └── Analysis_arguments.csv
 ```     
 
@@ -821,6 +866,7 @@ Analysis/                               # created on export
     ├── <plate1_name>/
     │   ├── plate_report.pdf
     │   ├── plate_tidy.csv
+    |   ├── plate_od.csv
     │   └── Analysis_arguments.csv
     ├── <plate2_name>/
     │   ...
