@@ -6,7 +6,8 @@
 - Added a Browse... button that allows users to open a file browser and select a working directory from there
   - This populates the file path text input, after which the user can click Set working directory
   - Uses `shinyFiles` package, so I added this to DESCRIPTION file list
-- Added `plate_od.csv` as an export, which includes `Well`, design variables, `time` (hrs), and cleaned OD values in tidy format for easy plotting and analysis of curves following analysis 
+- Added `plate_od.csv` as an export, which includes `Well`, design variables, `time` (hrs), and cleaned OD values in tidy format for easy plotting and analysis of curves following analysis
+  - Uses `gc_make_od_tidy()` to collect and format data, and this is included in `gc_write_summaries()` for export
 
 ### Performance and internal improvements
 
