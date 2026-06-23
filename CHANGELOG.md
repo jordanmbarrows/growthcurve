@@ -6,6 +6,8 @@
 
 ## [1.1.1] - 2026-06-23
 
+This release adds functionality in the form of a Browse... button and an additional output file that includes cleaned OD data for plotting, as well as performance enhancements through simplified file reading and plot-making. 
+
 ### Features and additions
 - Added a Browse... button that allows users to open a file browser and select a working directory from there
   - This populates the file path text input, after which the user can click Set working directory
